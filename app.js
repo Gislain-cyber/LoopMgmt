@@ -10,6 +10,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDyD7DzKLTAtncmRNhcgADGWOFQvj9F1Aw",
@@ -23,10 +24,15 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 // Loading state
 let isLoading = true;
 let isSyncing = false;
+
+// Admin state
+let isAdmin = false;
+let currentUser = null;
 
 // ============================================
 // DATA STORE
@@ -157,6 +163,13 @@ async function initializeFirebase() {
     try {
         showLoadingState();
         
+        // Set up auth state listener
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            isAdmin = !!user;
+            updateUIForAuthState();
+        });
+        
         // Set up real-time listeners
         setupTeamMembersListener();
         setupStationsListener();
@@ -178,6 +191,67 @@ async function initializeFirebase() {
         hideLoadingState();
         renderAllViews();
     }
+}
+
+function updateUIForAuthState() {
+    const adminBtn = document.getElementById('admin-login-btn');
+    const logoutBtn = document.getElementById('admin-logout-btn');
+    const adminIndicator = document.getElementById('admin-indicator');
+    
+    if (isAdmin) {
+        adminBtn.style.display = 'none';
+        logoutBtn.style.display = 'flex';
+        adminIndicator.style.display = 'flex';
+        console.log('Admin mode enabled');
+    } else {
+        adminBtn.style.display = 'flex';
+        logoutBtn.style.display = 'none';
+        adminIndicator.style.display = 'none';
+        console.log('Public view mode');
+    }
+    
+    // Re-render current view
+    renderAllViews();
+}
+
+async function adminLogin() {
+    const email = document.getElementById('admin-email').value;
+    const password = document.getElementById('admin-password').value;
+    
+    if (!email || !password) {
+        showError('Please enter email and password');
+        return;
+    }
+    
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        closeModal('admin-login-modal');
+        showSuccess('Admin access granted');
+        document.getElementById('admin-login-form').reset();
+    } catch (error) {
+        console.error('Login error:', error);
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+            showError('Invalid email or password');
+        } else if (error.code === 'auth/invalid-email') {
+            showError('Invalid email format');
+        } else {
+            showError('Login failed: ' + error.message);
+        }
+    }
+}
+
+async function adminLogout() {
+    try {
+        await signOut(auth);
+        showSuccess('Logged out');
+    } catch (error) {
+        console.error('Logout error:', error);
+        showError('Logout failed');
+    }
+}
+
+function showAdminLoginModal() {
+    openModal('admin-login-modal');
 }
 
 function setupTeamMembersListener() {
@@ -450,9 +524,26 @@ function switchToView(view) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById(`${view}-view`).classList.add('active');
     
+    // Hide/show action buttons based on admin status
+    updateViewActions();
+    
     if (view === 'dashboard') renderDashboard();
     if (view === 'gantt') renderGanttView();
     if (view === 'team') renderTeam();
+}
+
+function updateViewActions() {
+    // Hide "Add" buttons and edit actions if not admin
+    const actionButtons = document.querySelectorAll('.header-actions .btn-primary, .header-actions .btn-secondary');
+    actionButtons.forEach(btn => {
+        if (!isAdmin && (btn.textContent.includes('Add') || btn.textContent.includes('Export'))) {
+            if (btn.textContent.includes('Add')) {
+                btn.style.display = 'none';
+            }
+        } else {
+            btn.style.display = 'flex';
+        }
+    });
 }
 
 function backToGantt() {
@@ -518,62 +609,103 @@ function renderGanttView() {
 function renderStationTable() {
     const tbody = document.getElementById('station-tbody');
     
-    tbody.innerHTML = stations.map((station, idx) => {
-        const days = daysBetween(station.startDate, station.endDate);
-        const totalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-        const actualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-        const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
-        
-        return `
-            <tr data-station-id="${station.id}" onclick="openStationDetail(${station.id})">
-                <td>${station.id}</td>
-                <td class="editable-cell" onclick="event.stopPropagation()">
-                    <input type="text" value="${station.name}" 
-                           onchange="updateStation(${station.id}, 'name', this.value)" 
-                           onclick="event.stopPropagation()">
-                </td>
-                <td class="editable-cell" onclick="event.stopPropagation()">
-                    <input type="text" value="${station.description}" 
-                           onchange="updateStation(${station.id}, 'description', this.value)"
-                           onclick="event.stopPropagation()">
-                </td>
-                <td class="editable-cell" onclick="event.stopPropagation()">
-                    <input type="date" value="${station.startDate}" 
-                           onchange="updateStation(${station.id}, 'startDate', this.value)"
-                           onclick="event.stopPropagation()">
-                </td>
-                <td class="editable-cell" onclick="event.stopPropagation()">
-                    <input type="date" value="${station.endDate}" 
-                           onchange="updateStation(${station.id}, 'endDate', this.value)"
-                           onclick="event.stopPropagation()">
-                </td>
-                <td>${days}</td>
-                <td>${station.tasks.length}</td>
-                <td>${totalHours}h</td>
-                <td>${progress}%</td>
-                <td class="editable-cell" onclick="event.stopPropagation()">
-                    <select onchange="updateStation(${station.id}, 'priority', this.value)" onclick="event.stopPropagation()">
-                        <option value="Low" ${station.priority === 'Low' ? 'selected' : ''}>Low</option>
-                        <option value="Medium" ${station.priority === 'Medium' ? 'selected' : ''}>Medium</option>
-                        <option value="High" ${station.priority === 'High' ? 'selected' : ''}>High</option>
-                        <option value="Critical" ${station.priority === 'Critical' ? 'selected' : ''}>Critical</option>
-                    </select>
-                </td>
-                <td class="editable-cell" onclick="event.stopPropagation()">
-                    <input type="color" value="${station.color}" 
-                           onchange="updateStation(${station.id}, 'color', this.value)"
-                           onclick="event.stopPropagation()">
-                </td>
-                <td onclick="event.stopPropagation()">
-                    <button class="btn-icon delete" onclick="deleteStation(${station.id})" title="Delete">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                        </svg>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    if (!isAdmin) {
+        // Public view - clean, professional, read-only
+        tbody.innerHTML = stations.map((station, idx) => {
+            const days = daysBetween(station.startDate, station.endDate);
+            const totalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
+            const actualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+            const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
+            
+            return `
+                <tr data-station-id="${station.id}" onclick="openStationDetail(${station.id})" class="public-view-row">
+                    <td style="color: ${station.color}; font-weight: 700;">${station.id}</td>
+                    <td style="font-weight: 600;">${station.name}</td>
+                    <td style="color: var(--text-secondary);">${station.description}</td>
+                    <td>${formatDateDisplay(station.startDate)}</td>
+                    <td>${formatDateDisplay(station.endDate)}</td>
+                    <td>${days}</td>
+                    <td>${station.tasks.length}</td>
+                    <td style="font-family: 'JetBrains Mono', monospace;">${totalHours}h</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="flex: 1; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: ${progress}%; background: ${station.color};"></div>
+                            </div>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${progress}%</span>
+                        </div>
+                    </td>
+                    <td><span class="priority-badge ${getPriorityClass(station.priority)}">${station.priority}</span></td>
+                    <td><div style="width: 24px; height: 24px; background: ${station.color}; border-radius: 6px;"></div></td>
+                    <td></td>
+                </tr>
+            `;
+        }).join('');
+    } else {
+        // Admin view - editable
+        tbody.innerHTML = stations.map((station, idx) => {
+            const days = daysBetween(station.startDate, station.endDate);
+            const totalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
+            const actualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+            const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
+            
+            return `
+                <tr data-station-id="${station.id}" onclick="openStationDetail(${station.id})">
+                    <td>${station.id}</td>
+                    <td class="editable-cell" onclick="event.stopPropagation()">
+                        <input type="text" value="${station.name}" 
+                               onchange="updateStation(${station.id}, 'name', this.value)" 
+                               onclick="event.stopPropagation()">
+                    </td>
+                    <td class="editable-cell" onclick="event.stopPropagation()">
+                        <input type="text" value="${station.description}" 
+                               onchange="updateStation(${station.id}, 'description', this.value)"
+                               onclick="event.stopPropagation()">
+                    </td>
+                    <td class="editable-cell" onclick="event.stopPropagation()">
+                        <input type="date" value="${station.startDate}" 
+                               onchange="updateStation(${station.id}, 'startDate', this.value)"
+                               onclick="event.stopPropagation()">
+                    </td>
+                    <td class="editable-cell" onclick="event.stopPropagation()">
+                        <input type="date" value="${station.endDate}" 
+                               onchange="updateStation(${station.id}, 'endDate', this.value)"
+                               onclick="event.stopPropagation()">
+                    </td>
+                    <td>${days}</td>
+                    <td>${station.tasks.length}</td>
+                    <td>${totalHours}h</td>
+                    <td>${progress}%</td>
+                    <td class="editable-cell" onclick="event.stopPropagation()">
+                        <select onchange="updateStation(${station.id}, 'priority', this.value)" onclick="event.stopPropagation()">
+                            <option value="Low" ${station.priority === 'Low' ? 'selected' : ''}>Low</option>
+                            <option value="Medium" ${station.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                            <option value="High" ${station.priority === 'High' ? 'selected' : ''}>High</option>
+                            <option value="Critical" ${station.priority === 'Critical' ? 'selected' : ''}>Critical</option>
+                        </select>
+                    </td>
+                    <td class="editable-cell" onclick="event.stopPropagation()">
+                        <input type="color" value="${station.color}" 
+                               onchange="updateStation(${station.id}, 'color', this.value)"
+                               onclick="event.stopPropagation()">
+                    </td>
+                    <td onclick="event.stopPropagation()">
+                        <button class="btn-icon delete" onclick="deleteStation(${station.id})" title="Delete">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+}
+
+function formatDateDisplay(dateStr) {
+    if (!dateStr) return '';
+    const date = parseDate(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function renderGanttTimeline() {
@@ -713,6 +845,45 @@ function openStationDetail(stationId) {
 function renderStationTasks(station) {
     const tbody = document.getElementById('station-tasks-tbody');
     
+    if (!isAdmin) {
+        // Public view - professional read-only display
+        tbody.innerHTML = station.tasks.map((task, idx) => {
+            const days = daysBetween(task.startDate, task.endDate);
+            const remaining = (task.estHours || 0) - (task.actualHours || 0);
+            const percentDone = task.estHours > 0 ? Math.round((task.actualHours / task.estHours) * 100) : 0;
+            const memberColor = getMemberColor(task.assignedTo);
+            
+            return `
+                <tr class="public-view-row">
+                    <td>${idx + 1}</td>
+                    <td style="border-left: 3px solid ${memberColor}; padding-left: 10px; font-weight: 500;">${task.name}</td>
+                    <td>${task.assignedTo}</td>
+                    <td>${getMemberRole(task.assignedTo)}</td>
+                    <td>${formatDateDisplay(task.startDate)}</td>
+                    <td>${formatDateDisplay(task.endDate)}</td>
+                    <td>${days}</td>
+                    <td style="font-family: 'JetBrains Mono', monospace;">${task.estHours}h</td>
+                    <td style="font-family: 'JetBrains Mono', monospace;">${task.actualHours}h</td>
+                    <td style="font-family: 'JetBrains Mono', monospace;">${remaining}h</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 40px; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: ${percentDone}%; background: ${memberColor};"></div>
+                            </div>
+                            <span style="font-size: 0.8rem;">${percentDone}%</span>
+                        </div>
+                    </td>
+                    <td><span class="status-badge ${getStatusClass(task.status)}">${task.status}</span></td>
+                    <td><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">${task.notes || '-'}</td>
+                    <td></td>
+                </tr>
+            `;
+        }).join('');
+        return;
+    }
+    
+    // Admin view - editable
     const teamOptions = teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
     
     tbody.innerHTML = station.tasks.map((task, idx) => {

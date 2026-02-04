@@ -212,6 +212,51 @@ body {
     border-color: var(--accent-primary);
 }
 
+.btn-admin, .btn-logout {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: var(--transition-normal);
+    font-family: inherit;
+}
+
+.btn-admin {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(0, 212, 170, 0.1));
+    color: var(--accent-primary);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+}
+
+.btn-admin:hover {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    border-color: var(--accent-primary);
+}
+
+.btn-admin svg, .btn-logout svg {
+    width: 18px;
+    height: 18px;
+}
+
+.btn-logout {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.btn-logout:hover {
+    background: rgba(220, 53, 69, 0.2);
+    color: var(--status-delayed);
+    border-color: var(--status-delayed);
+}
+
 /* ============================================
    MAIN CONTENT
    ============================================ */
@@ -612,6 +657,14 @@ body {
 
 .station-table tbody tr:hover {
     background: var(--bg-tertiary);
+}
+
+.public-view-row {
+    cursor: pointer !important;
+}
+
+.public-view-row:hover {
+    background: rgba(0, 212, 170, 0.05) !important;
 }
 
 .station-table input[type="text"],
