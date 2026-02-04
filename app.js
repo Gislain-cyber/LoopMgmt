@@ -24,104 +24,102 @@ const defaultTeamMembers = [
     { name: "Ren Falkenrath", role: "Member", color: "#ec407a", email: "", targetHours: 40 }
 ];
 
-// Project phases with their tasks
+// Stations with their tasks (automation/manufacturing context)
 const defaultPhases = [
-    {
-        id: 1,
-        name: "Project Initiation",
-        description: "Project kickoff, planning and requirements gathering",
-        startDate: "2026-02-03",
-        endDate: "2026-02-07",
-        color: "#7c3aed",
+    { 
+        id: 1, 
+        name: "Station 1 - Material Intake",
+        description: "Raw material receiving and quality control",
+        startDate: "2026-02-03", 
+        endDate: "2026-02-10",
+        color: "#7c3aed", 
         priority: "High",
         tasks: [
-            { id: 101, name: "Project Kickoff Meeting", assignedTo: "Bander Bakalka", startDate: "2026-02-03", endDate: "2026-02-03", estHours: 4, actualHours: 4, status: "Complete", priority: "High", notes: "Initial team meeting" },
-            { id: 102, name: "Stakeholder Interviews", assignedTo: "Bander Bakalka", startDate: "2026-02-03", endDate: "2026-02-04", estHours: 8, actualHours: 6, status: "Complete", priority: "High", notes: "" },
-            { id: 103, name: "Requirements Documentation", assignedTo: "Jon Klomfass", startDate: "2026-02-04", endDate: "2026-02-07", estHours: 16, actualHours: 12, status: "In Progress", priority: "High", notes: "" },
-            { id: 104, name: "Project Charter", assignedTo: "Bander Bakalka", startDate: "2026-02-05", endDate: "2026-02-07", estHours: 8, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" }
+            { id: 101, name: "Material Inspection Setup", assignedTo: "Bander Bakalka", startDate: "2026-02-03", endDate: "2026-02-04", estHours: 8, actualHours: 6, status: "Complete", priority: "High", notes: "Initial setup complete" },
+            { id: 102, name: "Conveyor System Integration", assignedTo: "Cirex Peroche", startDate: "2026-02-03", endDate: "2026-02-06", estHours: 16, actualHours: 12, status: "In Progress", priority: "High", notes: "" },
+            { id: 103, name: "Barcode Scanner Configuration", assignedTo: "Josh Kavanagh", startDate: "2026-02-05", endDate: "2026-02-07", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
+            { id: 104, name: "PLC Programming - Intake", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-06", endDate: "2026-02-09", estHours: 14, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
+            { id: 105, name: "Sensor Calibration", assignedTo: "Davis Oliver", startDate: "2026-02-08", endDate: "2026-02-10", estHours: 10, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
         ]
     },
-    {
-        id: 2,
-        name: "System Design",
-        description: "Architecture design and technical specifications",
-        startDate: "2026-02-08",
-        endDate: "2026-02-14",
-        color: "#00d4aa",
+    { 
+        id: 2, 
+        name: "Station 2 - Robotic Assembly",
+        description: "Automated assembly and component placement",
+        startDate: "2026-02-08", 
+        endDate: "2026-02-18",
+        color: "#00d4aa", 
+        priority: "Critical",
+        tasks: [
+            { id: 201, name: "Robot Arm Programming", assignedTo: "Jon Klomfass", startDate: "2026-02-08", endDate: "2026-02-12", estHours: 20, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
+            { id: 202, name: "Vision System Setup", assignedTo: "Luke Kivell", startDate: "2026-02-09", endDate: "2026-02-13", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 203, name: "Gripper Mechanism Testing", assignedTo: "Lucas Pasia", startDate: "2026-02-11", endDate: "2026-02-14", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 204, name: "Safety Interlock Configuration", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-13", endDate: "2026-02-16", estHours: 14, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
+            { id: 205, name: "Assembly Sequence Optimization", assignedTo: "Anmol Singh Saini", startDate: "2026-02-15", endDate: "2026-02-18", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" }
+        ]
+    },
+    { 
+        id: 3, 
+        name: "Station 3 - Welding & Joining",
+        description: "Automated welding and fastening operations",
+        startDate: "2026-02-15", 
+        endDate: "2026-02-25",
+        color: "#f59e0b", 
         priority: "High",
         tasks: [
-            { id: 201, name: "Architecture Design", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-08", endDate: "2026-02-10", estHours: 16, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
-            { id: 202, name: "Database Schema Design", assignedTo: "Jon Klomfass", startDate: "2026-02-10", endDate: "2026-02-12", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 203, name: "API Specification", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-11", endDate: "2026-02-13", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 204, name: "UI/UX Wireframes", assignedTo: "Luke Kivell", startDate: "2026-02-08", endDate: "2026-02-12", estHours: 20, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 205, name: "Design Review", assignedTo: "Jon Klomfass", startDate: "2026-02-13", endDate: "2026-02-14", estHours: 8, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
+            { id: 301, name: "Welding Robot Calibration", assignedTo: "Sebastian Chandler", startDate: "2026-02-15", endDate: "2026-02-18", estHours: 16, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
+            { id: 302, name: "Welding Parameter Tuning", assignedTo: "Anton Makaranka", startDate: "2026-02-17", endDate: "2026-02-20", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 303, name: "Fume Extraction System", assignedTo: "Blake Alexander", startDate: "2026-02-18", endDate: "2026-02-21", estHours: 10, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 304, name: "Quality Inspection Camera", assignedTo: "Joel Reyes", startDate: "2026-02-20", endDate: "2026-02-23", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
+            { id: 305, name: "Joint Strength Testing", assignedTo: "Ren Falkenrath", startDate: "2026-02-22", endDate: "2026-02-25", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
         ]
     },
-    {
-        id: 3,
-        name: "Development Phase 1",
-        description: "Core functionality and backend development",
-        startDate: "2026-02-15",
-        endDate: "2026-02-28",
-        color: "#f59e0b",
-        priority: "High",
-        tasks: [
-            { id: 301, name: "Backend API Development", assignedTo: "Cirex Peroche", startDate: "2026-02-15", endDate: "2026-02-21", estHours: 32, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 302, name: "Database Implementation", assignedTo: "Davis Oliver", startDate: "2026-02-15", endDate: "2026-02-19", estHours: 24, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 303, name: "Authentication Module", assignedTo: "Josh Kavanagh", startDate: "2026-02-17", endDate: "2026-02-21", estHours: 20, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
-            { id: 304, name: "Core Business Logic", assignedTo: "Lucas Pasia", startDate: "2026-02-20", endDate: "2026-02-26", estHours: 28, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 305, name: "Unit Tests - Backend", assignedTo: "Anmol Singh Saini", startDate: "2026-02-22", endDate: "2026-02-28", estHours: 24, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" }
-        ]
-    },
-    {
-        id: 4,
-        name: "Development Phase 2",
-        description: "Frontend development and integration",
-        startDate: "2026-02-22",
-        endDate: "2026-03-07",
+    { 
+        id: 4, 
+        name: "Station 4 - Quality Control",
+        description: "Automated inspection and defect detection",
+        startDate: "2026-02-20",
+        endDate: "2026-03-03",
         color: "#ec407a",
-        priority: "High",
+        priority: "Critical",
         tasks: [
-            { id: 401, name: "Frontend Framework Setup", assignedTo: "Sebastian Chandler", startDate: "2026-02-22", endDate: "2026-02-24", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 402, name: "UI Component Library", assignedTo: "Anton Makaranka", startDate: "2026-02-24", endDate: "2026-02-28", estHours: 24, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 403, name: "Dashboard Implementation", assignedTo: "Blake Alexander", startDate: "2026-02-26", endDate: "2026-03-03", estHours: 28, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 404, name: "User Management UI", assignedTo: "Joel Reyes", startDate: "2026-02-28", endDate: "2026-03-04", estHours: 20, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 405, name: "API Integration", assignedTo: "Ren Falkenrath", startDate: "2026-03-01", endDate: "2026-03-05", estHours: 20, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 406, name: "Frontend Testing", assignedTo: "Sebastian Chandler", startDate: "2026-03-04", endDate: "2026-03-07", estHours: 16, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" }
+            { id: 401, name: "3D Scanner Integration", assignedTo: "Jon Klomfass", startDate: "2026-02-20", endDate: "2026-02-24", estHours: 18, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
+            { id: 402, name: "AI Defect Detection Model", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-22", endDate: "2026-02-27", estHours: 20, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 403, name: "Measurement Probe Setup", assignedTo: "Cirex Peroche", startDate: "2026-02-24", endDate: "2026-02-28", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 404, name: "Reject Mechanism Programming", assignedTo: "Davis Oliver", startDate: "2026-02-26", endDate: "2026-03-01", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
+            { id: 405, name: "Data Logging System", assignedTo: "Josh Kavanagh", startDate: "2026-02-28", endDate: "2026-03-03", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
         ]
     },
-    {
-        id: 5,
-        name: "Testing & QA",
-        description: "Quality assurance and bug fixing",
-        startDate: "2026-03-08",
-        endDate: "2026-03-14",
+    { 
+        id: 5, 
+        name: "Station 5 - Packaging",
+        description: "Automated packaging and labeling",
+        startDate: "2026-02-28",
+        endDate: "2026-03-10",
         color: "#17a2b8",
         priority: "High",
         tasks: [
-            { id: 501, name: "Integration Testing", assignedTo: "Jon Klomfass", startDate: "2026-03-08", endDate: "2026-03-10", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 502, name: "Performance Testing", assignedTo: "Cirex Peroche", startDate: "2026-03-09", endDate: "2026-03-11", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 503, name: "Security Audit", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-03-10", endDate: "2026-03-12", estHours: 16, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
-            { id: 504, name: "Bug Fixes", assignedTo: "Davis Oliver", startDate: "2026-03-11", endDate: "2026-03-14", estHours: 20, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 505, name: "User Acceptance Testing", assignedTo: "Bander Bakalka", startDate: "2026-03-12", endDate: "2026-03-14", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
+            { id: 501, name: "Box Former Configuration", assignedTo: "Lucas Pasia", startDate: "2026-02-28", endDate: "2026-03-03", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 502, name: "Product Placement Robot", assignedTo: "Sebastian Chandler", startDate: "2026-03-01", endDate: "2026-03-05", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 503, name: "Label Printer Integration", assignedTo: "Anton Makaranka", startDate: "2026-03-03", endDate: "2026-03-06", estHours: 10, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
+            { id: 504, name: "Sealing Mechanism Setup", assignedTo: "Blake Alexander", startDate: "2026-03-05", endDate: "2026-03-08", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 505, name: "Weight Verification System", assignedTo: "Joel Reyes", startDate: "2026-03-07", endDate: "2026-03-10", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
         ]
     },
-    {
-        id: 6,
-        name: "Deployment & Launch",
-        description: "Production deployment and go-live",
-        startDate: "2026-03-15",
-        endDate: "2026-03-20",
+    { 
+        id: 6, 
+        name: "Station 6 - Shipping & Distribution",
+        description: "Sorting, palletizing and warehouse integration",
+        startDate: "2026-03-08",
+        endDate: "2026-03-18",
         color: "#28a745",
-        priority: "Critical",
+        priority: "High",
         tasks: [
-            { id: 601, name: "Production Environment Setup", assignedTo: "Josh Kavanagh", startDate: "2026-03-15", endDate: "2026-03-16", estHours: 12, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
-            { id: 602, name: "Data Migration", assignedTo: "Lucas Pasia", startDate: "2026-03-16", endDate: "2026-03-17", estHours: 8, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 603, name: "Documentation", assignedTo: "Anton Makaranka", startDate: "2026-03-15", endDate: "2026-03-18", estHours: 16, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 604, name: "Training Materials", assignedTo: "Blake Alexander", startDate: "2026-03-16", endDate: "2026-03-18", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 605, name: "Go-Live Deployment", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-03-19", endDate: "2026-03-19", estHours: 8, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
-            { id: 606, name: "Post-Launch Monitoring", assignedTo: "Jon Klomfass", startDate: "2026-03-19", endDate: "2026-03-20", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 607, name: "Project Closure", assignedTo: "Bander Bakalka", startDate: "2026-03-20", endDate: "2026-03-20", estHours: 4, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" }
+            { id: 601, name: "Palletizing Robot Setup", assignedTo: "Ren Falkenrath", startDate: "2026-03-08", endDate: "2026-03-11", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 602, name: "Sorting System Programming", assignedTo: "Anmol Singh Saini", startDate: "2026-03-09", endDate: "2026-03-13", estHours: 18, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
+            { id: 603, name: "WMS Integration", assignedTo: "Bander Bakalka", startDate: "2026-03-11", endDate: "2026-03-15", estHours: 20, actualHours: 0, status: "Not Started", priority: "Critical", notes: "Warehouse Management System" },
+            { id: 604, name: "RFID Tracking Setup", assignedTo: "Josh Kavanagh", startDate: "2026-03-13", endDate: "2026-03-16", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
+            { id: 605, name: "AGV Path Configuration", assignedTo: "Cirex Peroche", startDate: "2026-03-15", endDate: "2026-03-18", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "Automated Guided Vehicles" }
         ]
     }
 ];
@@ -338,7 +336,7 @@ function renderGanttOverview() {
                             <span style="color: ${phase.color}">●</span>
                             ${phase.name}
                             <span class="priority-badge ${getPriorityClass(phase.priority)}">${phase.priority}</span>
-                        </div>
+                    </div>
                         <div class="phase-dates">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -348,21 +346,21 @@ function renderGanttOverview() {
                             </svg>
                             ${formatDateDisplay(phase.startDate)} - ${formatDateDisplay(phase.endDate)}
                             <span style="margin-left: 8px; color: var(--text-muted);">(${duration} days)</span>
-                        </div>
+                </div>
                     </div>
                     <div class="phase-meta">
                         <div class="phase-stat">
                             <span class="phase-stat-value">${completedTasks}/${taskCount}</span>
                             <span class="phase-stat-label">Tasks</span>
-                        </div>
+                </div>
                         <div class="phase-stat">
                             <span class="phase-stat-value">${totalHours}h</span>
                             <span class="phase-stat-label">Hours</span>
-                        </div>
+                </div>
                         <div class="phase-stat">
                             <span class="phase-stat-value">${progress}%</span>
                             <span class="phase-stat-label">Done</span>
-                        </div>
+            </div>
                         <div class="phase-actions" onclick="event.stopPropagation()">
                             <button class="btn-icon" onclick="editPhase(${phase.id})" title="Edit Phase">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -383,7 +381,7 @@ function renderGanttOverview() {
                         <div class="timeline-bar-fill" style="left: ${leftPercent}%; width: ${widthPercent}%; background: ${phase.color};">
                             <div class="timeline-bar-progress" style="width: ${progress}%"></div>
                             ${phase.name}
-                        </div>
+            </div>
                     </div>
                 </div>
                 <div class="phase-team-preview">
@@ -394,8 +392,8 @@ function renderGanttOverview() {
                     ${phaseMembers.length > 6 ? `<span class="team-count-badge">+${phaseMembers.length - 6} more</span>` : ''}
                     <span class="team-count-badge">${phaseMembers.length} team members</span>
                 </div>
-            </div>
-        `;
+                    </div>
+                `;
     }).join('');
 }
 
@@ -432,7 +430,7 @@ function renderPhaseDetail(phase) {
         <div class="summary-card">
             <div class="summary-card-value">${phase.tasks.length}</div>
             <div class="summary-card-label">Total Tasks</div>
-        </div>
+                </div>
         <div class="summary-card">
             <div class="summary-card-value">${completedTasks}</div>
             <div class="summary-card-label">Completed</div>
@@ -448,8 +446,8 @@ function renderPhaseDetail(phase) {
         <div class="summary-card">
             <div class="summary-card-value">${uniqueMembers}</div>
             <div class="summary-card-label">Team Members</div>
-        </div>
-    `;
+            </div>
+        `;
     
     // Tasks table
     document.getElementById('phase-tasks-tbody').innerHTML = phase.tasks.map((task, idx) => `
@@ -461,22 +459,22 @@ function renderPhaseDetail(phase) {
             <td>${formatDateDisplay(task.endDate)}</td>
             <td>${task.estHours}h</td>
             <td>${task.actualHours}h</td>
-            <td><span class="status-badge ${getStatusClass(task.status)}">${task.status}</span></td>
-            <td><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
-            <td>
+                <td><span class="status-badge ${getStatusClass(task.status)}">${task.status}</span></td>
+                <td><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
+                <td>
                 <button class="btn-icon" onclick="editTask(${phase.id}, ${task.id})" title="Edit">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                </button>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
                 <button class="btn-icon delete" onclick="deleteTask(${phase.id}, ${task.id})" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                    </svg>
-                </button>
-            </td>
-        </tr>
+                            </svg>
+                        </button>
+                </td>
+            </tr>
     `).join('');
     
     // Task timeline
@@ -548,8 +546,8 @@ function renderPhaseTeam(phase) {
                     <span>${data.hours}h</span>
                     <small>assigned</small>
                 </div>
-            </div>
-        `;
+                </div>
+            `;
     }).join('');
 }
 
@@ -627,7 +625,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // ============================================
 
 function addNewPhase() {
-    document.getElementById('phase-modal-title').textContent = 'Add Phase';
+    document.getElementById('phase-modal-title').textContent = 'Add Station';
     document.getElementById('phase-form').reset();
     document.getElementById('phase-id').value = '';
     
@@ -643,7 +641,7 @@ function editPhase(phaseId) {
     const phase = phases.find(p => p.id === phaseId);
     if (!phase) return;
     
-    document.getElementById('phase-modal-title').textContent = 'Edit Phase';
+    document.getElementById('phase-modal-title').textContent = 'Edit Station';
     document.getElementById('phase-id').value = phase.id;
     document.getElementById('phase-name').value = phase.name;
     document.getElementById('phase-description').value = phase.description || '';
@@ -855,9 +853,9 @@ document.getElementById('team-form').addEventListener('submit', (e) => {
         if (oldName && oldName !== memberData.name) {
             phases.forEach(phase => {
                 phase.tasks.forEach(task => {
-                    if (task.assignedTo === oldName) {
-                        task.assignedTo = memberData.name;
-                    }
+                if (task.assignedTo === oldName) {
+                    task.assignedTo = memberData.name;
+                }
                 });
             });
         }
@@ -903,7 +901,7 @@ function validateProject() {
             issues.push(`Task "${task.name}" has no assignment`);
         }
         if (task.startDate && task.endDate && parseDate(task.endDate) < parseDate(task.startDate)) {
-            issues.push(`Task "${task.name}" has end date before start date`);
+                issues.push(`Task "${task.name}" has end date before start date`);
         }
     });
     
