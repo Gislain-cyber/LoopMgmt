@@ -1,0 +1,172 @@
+================================================================================
+         AUTOMATED GANTT CHART FOR EXCEL - SETUP INSTRUCTIONS
+================================================================================
+
+TEAM STRUCTURE:
+- 1 Project Manager
+- 2 Leads  
+- 10 Team Members
+- Total: 13 people
+
+================================================================================
+                           QUICK SETUP GUIDE
+================================================================================
+
+STEP 1: CREATE NEW EXCEL WORKBOOK
+---------------------------------
+1. Open Microsoft Excel
+2. Create a new blank workbook
+3. Save it as "Project_Gantt_Chart.xlsm" (Macro-Enabled Workbook)
+   IMPORTANT: Must be .xlsm to support macros!
+
+STEP 2: IMPORT THE VBA CODE
+---------------------------
+1. Press Alt + F11 to open the VBA Editor
+2. In the menu, click Insert > Module
+3. Open the file "GanttChart_VBA_Code.bas" in Notepad
+4. Copy ALL the code (Ctrl+A, Ctrl+C)
+5. Paste into the new Module in Excel (Ctrl+V)
+6. Close the VBA Editor (Alt+Q or click X)
+
+STEP 3: RUN THE SETUP
+---------------------
+1. Press Alt + F8 to open the Macro dialog
+2. Select "QuickSetup" from the list
+3. Click "Run"
+4. Follow the prompts - this creates all sheets automatically!
+
+STEP 4: ENABLE MACROS (if prompted)
+-----------------------------------
+- When you open the file, click "Enable Content" or "Enable Macros"
+- If blocked, go to: File > Options > Trust Center > Trust Center Settings
+  > Macro Settings > Enable all macros
+
+================================================================================
+                         HOW TO USE THE GANTT CHART
+================================================================================
+
+ADDING TASKS:
+-------------
+1. Go to the "Gantt Chart" sheet
+2. Enter data in these columns:
+   - Column A: Task ID (auto-numbered)
+   - Column B: Task Name (type your task)
+   - Column C: Assigned To (dropdown - select team member)
+   - Column D: Role (auto-fills based on assigned person)
+   - Column E: Start Date (enter date: 2/15/2026)
+   - Column F: End Date (enter date: 2/20/2026)
+   - Column G: Duration (auto-calculates)
+   - Column H: % Complete (enter 0-100 or 0-1)
+   - Column I: Status (dropdown: Not Started, In Progress, Complete, etc.)
+   - Column J: Priority (dropdown: Low, Medium, High, Critical)
+
+3. The Gantt bars will appear automatically in columns K onwards!
+
+UPDATING THE CHART:
+-------------------
+After making changes, run these macros (Alt+F8):
+
+1. RefreshGanttChart  - Updates everything (bars, colors, progress)
+2. ColorBarsByMember  - Colors bars based on who's assigned
+3. UpdateProgressBars - Shows progress with darker shading
+4. AddTodayLine       - Adds a red line for today's date
+
+CUSTOMIZING TEAM MEMBERS:
+-------------------------
+1. Go to "Team Members" sheet
+2. Change names in Column A
+3. Change colors by modifying Column C (right-click > Format Cells > Fill)
+4. Add emails in Column D
+
+================================================================================
+                              FEATURES LIST
+================================================================================
+
+✓ Automatic duration calculation
+✓ Dropdown lists for team members, status, priority
+✓ Color-coded bars by team member
+✓ Progress visualization (darker = completed portion)
+✓ Today line indicator
+✓ Dashboard with:
+  - Total tasks count
+  - Completed/In Progress/Delayed counts
+  - Overall progress percentage
+  - Team workload distribution
+✓ Weekend highlighting (gray columns)
+✓ Frozen panes for easy scrolling
+✓ 60-day timeline (customizable in code)
+
+================================================================================
+                           ADDING MACRO BUTTONS
+================================================================================
+
+For easier access, add buttons to the sheet:
+
+1. Go to Developer tab (enable in File > Options > Customize Ribbon)
+2. Click Insert > Button (Form Control)
+3. Draw a button on the sheet
+4. Select the macro to assign (e.g., RefreshGanttChart)
+5. Right-click button to edit text
+
+Recommended buttons:
+- "Refresh Chart" → RefreshGanttChart
+- "Color by Member" → ColorBarsByMember
+- "Update Progress" → UpdateProgressBars
+- "Show Today" → AddTodayLine
+
+================================================================================
+                              CUSTOMIZATION
+================================================================================
+
+TO CHANGE TIMELINE LENGTH:
+--------------------------
+1. Open VBA Editor (Alt+F11)
+2. Find this line in CreateGanttChart:
+   numDays = 60
+3. Change 60 to your desired number of days
+4. Run QuickSetup again
+
+TO ADD MORE TEAM MEMBERS:
+-------------------------
+1. In SetupTeamMembers sub, add more entries to the teamData array
+2. Update TEAM_SIZE constant
+3. Update the validation range in CreateGanttChart
+
+TO CHANGE COLORS:
+-----------------
+1. In SetupTeamMembers sub, modify the RGB values
+2. Use this format: RGB(Red, Green, Blue)
+3. Values range from 0-255
+
+================================================================================
+                              TROUBLESHOOTING
+================================================================================
+
+PROBLEM: Macros won't run
+SOLUTION: Save as .xlsm and enable macros in Trust Center
+
+PROBLEM: Bars not showing
+SOLUTION: Make sure Start Date and End Date are valid dates
+
+PROBLEM: Colors not applying
+SOLUTION: Run ColorBarsByMember after entering assigned names
+
+PROBLEM: Dropdowns not working
+SOLUTION: Run CreateGanttChart again to reset validations
+
+================================================================================
+                                SHORTCUTS
+================================================================================
+
+Alt + F8     → Open Macro dialog
+Alt + F11    → Open VBA Editor
+Ctrl + ;     → Insert today's date
+Ctrl + Home  → Go to beginning of sheet
+Ctrl + End   → Go to end of data
+
+================================================================================
+
+For questions or customization help, refer to the VBA code comments.
+
+Created: February 2026
+================================================================================
