@@ -8,10 +8,20 @@
 // FIREBASE SETUP
 // ============================================
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+let app = null;
+let db = null;
+let auth = null;
+let firebaseEnabled = false;
 
+// Loading state
+let isLoading = true;
+let isSyncing = false;
+
+// Admin state
+let isAdmin = false;
+let currentUser = null;
+
+// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyDyD7DzKLTAtncmRNhcgADGWOFQvj9F1Aw",
     authDomain: "loopmgnt.firebaseapp.com",
@@ -21,18 +31,36 @@ const firebaseConfig = {
     appId: "1:876125442433:web:1a990fb0d186942a1a1880"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-// Loading state
-let isLoading = true;
-let isSyncing = false;
-
-// Admin state
-let isAdmin = false;
-let currentUser = null;
+// Initialize Firebase asynchronously
+async function initFirebaseSDK() {
+    try {
+        console.log('Loading Firebase SDK...');
+        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js");
+        const { getFirestore, doc, setDoc, onSnapshot, getDoc } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js");
+        const { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js");
+        
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        firebaseEnabled = true;
+        
+        // Store Firebase functions globally
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseOnSnapshot = onSnapshot;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseSignIn = signInWithEmailAndPassword;
+        window.firebaseSignOut = signOut;
+        window.firebaseOnAuthStateChanged = onAuthStateChanged;
+        
+        console.log('Firebase SDK loaded successfully');
+        return true;
+    } catch (error) {
+        console.error('Failed to load Firebase SDK:', error);
+        firebaseEnabled = false;
+        return false;
+    }
+}
 
 // ============================================
 // DATA STORE
@@ -164,8 +192,15 @@ async function initializeFirebase() {
     try {
         showLoadingState();
         
+        // Try to initialize Firebase SDK
+        const firebaseLoaded = await initFirebaseSDK();
+        
+        if (!firebaseLoaded) {
+            throw new Error('Firebase SDK failed to load');
+        }
+        
         // Set up auth state listener
-        onAuthStateChanged(auth, (user) => {
+        window.firebaseOnAuthStateChanged(auth, (user) => {
             currentUser = user;
             isAdmin = !!user;
             updateUIForAuthState();
@@ -176,7 +211,7 @@ async function initializeFirebase() {
         setupStationsListener();
         
         // Check if data exists, if not, initialize with defaults
-        const teamDoc = await getDoc(doc(db, 'projects', 'main-project'));
+        const teamDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project'));
         if (!teamDoc.exists()) {
             console.log('Initializing project with default data...');
             await saveTeamMembers([...defaultTeamMembers]);
@@ -185,7 +220,7 @@ async function initializeFirebase() {
         
     } catch (error) {
         console.error('Firebase initialization error:', error);
-        showError('Failed to connect to database. Using offline mode.');
+        showError('Using offline mode');
         // Fallback to localStorage
         teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
         stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
@@ -224,8 +259,13 @@ async function adminLogin() {
         return;
     }
     
+    if (!firebaseEnabled || !auth) {
+        showError('Firebase not available. Try refreshing.');
+        return;
+    }
+    
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        await window.firebaseSignIn(auth, email, password);
         closeModal('admin-login-modal');
         showSuccess('Admin access granted');
         document.getElementById('admin-login-form').reset();
@@ -242,8 +282,15 @@ async function adminLogin() {
 }
 
 async function adminLogout() {
+    if (!firebaseEnabled || !auth) {
+        isAdmin = false;
+        currentUser = null;
+        updateUIForAuthState();
+        return;
+    }
+    
     try {
-        await signOut(auth);
+        await window.firebaseSignOut(auth);
         showSuccess('Logged out');
     } catch (error) {
         console.error('Logout error:', error);
@@ -256,9 +303,11 @@ function showAdminLoginModal() {
 }
 
 function setupTeamMembersListener() {
-    const teamDocRef = doc(db, 'projects', 'main-project');
+    if (!firebaseEnabled || !db) return;
     
-    onSnapshot(teamDocRef, (docSnapshot) => {
+    const teamDocRef = window.firebaseDoc(db, 'projects', 'main-project');
+    
+    window.firebaseOnSnapshot(teamDocRef, (docSnapshot) => {
         if (docSnapshot.exists()) {
             const data = docSnapshot.data();
             if (data.teamMembers) {
@@ -280,9 +329,11 @@ function setupTeamMembersListener() {
 }
 
 function setupStationsListener() {
-    const stationsDocRef = doc(db, 'projects', 'main-project-stations');
+    if (!firebaseEnabled || !db) return;
     
-    onSnapshot(stationsDocRef, (docSnapshot) => {
+    const stationsDocRef = window.firebaseDoc(db, 'projects', 'main-project-stations');
+    
+    window.firebaseOnSnapshot(stationsDocRef, (docSnapshot) => {
         if (docSnapshot.exists()) {
             const data = docSnapshot.data();
             if (data.stations) {
@@ -302,42 +353,42 @@ async function saveTeamMembers(members) {
     if (isSyncing) return;
     isSyncing = true;
     
-    try {
-        await setDoc(doc(db, 'projects', 'main-project'), {
-            teamMembers: members,
-            lastUpdated: new Date().toISOString()
-        });
-        // Also backup to localStorage
-        localStorage.setItem('loopTeamMembers', JSON.stringify(members));
-    } catch (error) {
-        console.error('Error saving team members:', error);
-        showError('Failed to save team members');
-        // Fallback to localStorage
-        localStorage.setItem('loopTeamMembers', JSON.stringify(members));
-    } finally {
-        isSyncing = false;
+    // Always save to localStorage
+    localStorage.setItem('loopTeamMembers', JSON.stringify(members));
+    
+    if (firebaseEnabled && db) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project'), {
+                teamMembers: members,
+                lastUpdated: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Error saving team members to Firebase:', error);
+        }
     }
+    
+    isSyncing = false;
 }
 
 async function saveStations(stationsData) {
     if (isSyncing) return;
     isSyncing = true;
     
-    try {
-        await setDoc(doc(db, 'projects', 'main-project-stations'), {
-            stations: stationsData,
-            lastUpdated: new Date().toISOString()
-        });
-        // Also backup to localStorage
-        localStorage.setItem('loopStations', JSON.stringify(stationsData));
-    } catch (error) {
-        console.error('Error saving stations:', error);
-        showError('Failed to save stations');
-        // Fallback to localStorage
-        localStorage.setItem('loopStations', JSON.stringify(stationsData));
-    } finally {
-        isSyncing = false;
+    // Always save to localStorage
+    localStorage.setItem('loopStations', JSON.stringify(stationsData));
+    
+    if (firebaseEnabled && db) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-stations'), {
+                stations: stationsData,
+                lastUpdated: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Error saving stations to Firebase:', error);
+        }
     }
+    
+    isSyncing = false;
 }
 
 function showLoadingState() {
@@ -1372,13 +1423,29 @@ window.zoomOut = zoomOut;
 function init() {
     console.log('Initializing app...');
     
-    // Setup navigation event listeners
-    setupNavigation();
-    
-    // Initialize Firebase and load data
-    initializeFirebase();
-    
-    console.log('App initialized successfully');
+    try {
+        // Setup navigation event listeners FIRST
+        setupNavigation();
+        console.log('Navigation setup complete');
+        
+        // Load data from localStorage immediately (so UI works right away)
+        teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
+        stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
+        
+        // Render initial views
+        renderAllViews();
+        console.log('Initial render complete');
+        
+        // Then try Firebase (this can fail without breaking the app)
+        initializeFirebase().catch(err => {
+            console.error('Firebase error:', err);
+        });
+        
+        console.log('App initialized successfully');
+    } catch (error) {
+        console.error('Init error:', error);
+        alert('Error initializing app: ' + error.message);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);
