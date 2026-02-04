@@ -214,6 +214,11 @@
                         <p class="view-subtitle">Click on a station row to view detailed task breakdown</p>
                     </div>
                     <div class="header-actions">
+                        <div class="gantt-zoom-controls">
+                            <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+                            <span class="zoom-level" id="zoom-level">100%</span>
+                            <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                        </div>
                         <button class="btn-secondary" onclick="exportToPDF()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>

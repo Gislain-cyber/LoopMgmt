@@ -1548,15 +1548,72 @@ body {
 }
 
 /* ============================================
+   GANTT ZOOM CONTROLS
+   ============================================ */
+.gantt-zoom-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+}
+
+.zoom-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.zoom-btn:hover {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    border-color: var(--accent-primary);
+}
+
+.zoom-level {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
+@media (max-width: 1400px) {
+    .station-table-scroll {
+        width: 1000px;
+        min-width: 1000px;
+    }
+    
+    .station-table th,
+    .station-table td {
+        padding: 10px 8px;
+        font-size: 0.8rem;
+    }
+}
+
 @media (max-width: 1200px) {
     .stats-row {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .phase-summary {
-        grid-template-columns: repeat(3, 1fr);
+    .station-table-scroll {
+        width: 800px;
+        min-width: 800px;
     }
 }
 
@@ -1568,7 +1625,9 @@ body {
     
     .logo-text,
     .nav-item span,
-    .btn-validate span {
+    .btn-validate span,
+    .btn-admin span,
+    .btn-logout span {
         display: none;
     }
     
@@ -1577,17 +1636,24 @@ body {
         padding-bottom: 16px;
     }
     
-    .nav-item {
+    .nav-item,
+    .btn-validate,
+    .btn-admin,
+    .btn-logout {
         justify-content: center;
-        padding: 12px;
-    }
-    
-    .btn-validate {
         padding: 12px;
     }
     
     .view-header {
         padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
     }
     
     .stats-row {
@@ -1598,7 +1664,76 @@ body {
         padding: 16px;
     }
     
-    .phase-summary {
-        grid-template-columns: repeat(2, 1fr);
+    /* Make Gantt scrollable on mobile */
+    .station-table-scroll {
+        width: calc(100vw - 60px - 40px);
+        min-width: 600px;
+    }
+    
+    .gantt-timeline-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .gantt-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Stack table and timeline vertically on very small screens */
+    .tasks-detail-table-editable {
+        font-size: 0.75rem;
+    }
+    
+    .tasks-detail-table-editable th,
+    .tasks-detail-table-editable td {
+        padding: 8px 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .view-header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .stat-card {
+        padding: 16px;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .hours-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn-primary, .btn-secondary {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+    
+    /* Full width Gantt on very small screens */
+    .station-table-scroll {
+        width: calc(100vw - 60px - 20px);
+    }
+}
+
+/* Touch-friendly enhancements */
+@media (hover: none) and (pointer: coarse) {
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .station-table tbody tr,
+    .public-view-row {
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(0, 212, 170, 0.1);
+    }
+    
+    .nav-item {
+        min-height: 48px;
     }
 }

@@ -154,6 +154,7 @@ let stations = [];
 let currentStationId = null;
 const DAY_WIDTH = 30;
 const TIMELINE_DAYS = 60;
+let zoomLevel = 100; // percentage
 
 // ============================================
 // FIREBASE DATA MANAGEMENT
@@ -509,12 +510,14 @@ function getPriorityClass(priority) {
 // NAVIGATION
 // ============================================
 
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-        const view = item.dataset.view;
-        switchToView(view);
+function setupNavigation() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const view = item.dataset.view;
+            switchToView(view);
+        });
     });
-});
+}
 
 function switchToView(view) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1297,6 +1300,44 @@ function exportToCSV() {
 }
 
 // ============================================
+// ZOOM CONTROLS
+// ============================================
+
+function zoomIn() {
+    if (zoomLevel < 200) {
+        zoomLevel += 10;
+        applyZoom();
+    }
+}
+
+function zoomOut() {
+    if (zoomLevel > 50) {
+        zoomLevel -= 10;
+        applyZoom();
+    }
+}
+
+function applyZoom() {
+    const ganttContainer = document.querySelector('.gantt-table-wrapper');
+    const stationDetailContainer = document.querySelector('.station-detail-content');
+    
+    if (ganttContainer) {
+        ganttContainer.style.transform = `scale(${zoomLevel / 100})`;
+        ganttContainer.style.transformOrigin = 'top left';
+    }
+    
+    if (stationDetailContainer) {
+        stationDetailContainer.style.transform = `scale(${zoomLevel / 100})`;
+        stationDetailContainer.style.transformOrigin = 'top left';
+    }
+    
+    const zoomLevelEl = document.getElementById('zoom-level');
+    if (zoomLevelEl) {
+        zoomLevelEl.textContent = `${zoomLevel}%`;
+    }
+}
+
+// ============================================
 // EXPOSE FUNCTIONS TO GLOBAL SCOPE (for onclick handlers)
 // ============================================
 
@@ -1321,14 +1362,23 @@ window.exportToCSV = exportToCSV;
 window.showAdminLoginModal = showAdminLoginModal;
 window.adminLogin = adminLogin;
 window.adminLogout = adminLogout;
+window.zoomIn = zoomIn;
+window.zoomOut = zoomOut;
 
 // ============================================
 // INITIALIZATION
 // ============================================
 
 function init() {
+    console.log('Initializing app...');
+    
+    // Setup navigation event listeners
+    setupNavigation();
+    
     // Initialize Firebase and load data
     initializeFirebase();
+    
+    console.log('App initialized successfully');
 }
 
 document.addEventListener('DOMContentLoaded', init);
