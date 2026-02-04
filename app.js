@@ -1,7 +1,32 @@
 /**
  * Loop Automation - Project Management Application
  * Full Inline Editing for Stations and Tasks
+ * Firebase Real-Time Database Integration
  */
+
+// ============================================
+// FIREBASE SETUP
+// ============================================
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDyD7DzKLTAtncmRNhcgADGWOFQvj9F1Aw",
+    authDomain: "loopmgnt.firebaseapp.com",
+    projectId: "loopmgnt",
+    storageBucket: "loopmgnt.firebasestorage.app",
+    messagingSenderId: "876125442433",
+    appId: "1:876125442433:web:1a990fb0d186942a1a1880"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Loading state
+let isLoading = true;
+let isSyncing = false;
 
 // ============================================
 // DATA STORE
@@ -115,9 +140,9 @@ const defaultStations = [
     }
 ];
 
-// Load from localStorage or use defaults
-let teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
-let stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
+// Data will be loaded from Firestore
+let teamMembers = [];
+let stations = [];
 
 // Current state
 let currentStationId = null;
@@ -125,12 +150,218 @@ const DAY_WIDTH = 30;
 const TIMELINE_DAYS = 60;
 
 // ============================================
+// FIREBASE DATA MANAGEMENT
+// ============================================
+
+async function initializeFirebase() {
+    try {
+        showLoadingState();
+        
+        // Set up real-time listeners
+        setupTeamMembersListener();
+        setupStationsListener();
+        
+        // Check if data exists, if not, initialize with defaults
+        const teamDoc = await getDoc(doc(db, 'projects', 'main-project'));
+        if (!teamDoc.exists()) {
+            console.log('Initializing project with default data...');
+            await saveTeamMembers([...defaultTeamMembers]);
+            await saveStations(JSON.parse(JSON.stringify(defaultStations)));
+        }
+        
+    } catch (error) {
+        console.error('Firebase initialization error:', error);
+        showError('Failed to connect to database. Using offline mode.');
+        // Fallback to localStorage
+        teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
+        stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
+        hideLoadingState();
+        renderAllViews();
+    }
+}
+
+function setupTeamMembersListener() {
+    const teamDocRef = doc(db, 'projects', 'main-project');
+    
+    onSnapshot(teamDocRef, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            if (data.teamMembers) {
+                teamMembers = data.teamMembers;
+                if (!isLoading) {
+                    console.log('Team members updated from server');
+                    renderAllViews();
+                }
+            }
+        }
+        if (isLoading) {
+            isLoading = false;
+            hideLoadingState();
+            renderAllViews();
+        }
+    }, (error) => {
+        console.error('Error listening to team members:', error);
+    });
+}
+
+function setupStationsListener() {
+    const stationsDocRef = doc(db, 'projects', 'main-project-stations');
+    
+    onSnapshot(stationsDocRef, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            if (data.stations) {
+                stations = data.stations;
+                if (!isLoading) {
+                    console.log('Stations updated from server');
+                    renderAllViews();
+                }
+            }
+        }
+    }, (error) => {
+        console.error('Error listening to stations:', error);
+    });
+}
+
+async function saveTeamMembers(members) {
+    if (isSyncing) return;
+    isSyncing = true;
+    
+    try {
+        await setDoc(doc(db, 'projects', 'main-project'), {
+            teamMembers: members,
+            lastUpdated: new Date().toISOString()
+        });
+        // Also backup to localStorage
+        localStorage.setItem('loopTeamMembers', JSON.stringify(members));
+    } catch (error) {
+        console.error('Error saving team members:', error);
+        showError('Failed to save team members');
+        // Fallback to localStorage
+        localStorage.setItem('loopTeamMembers', JSON.stringify(members));
+    } finally {
+        isSyncing = false;
+    }
+}
+
+async function saveStations(stationsData) {
+    if (isSyncing) return;
+    isSyncing = true;
+    
+    try {
+        await setDoc(doc(db, 'projects', 'main-project-stations'), {
+            stations: stationsData,
+            lastUpdated: new Date().toISOString()
+        });
+        // Also backup to localStorage
+        localStorage.setItem('loopStations', JSON.stringify(stationsData));
+    } catch (error) {
+        console.error('Error saving stations:', error);
+        showError('Failed to save stations');
+        // Fallback to localStorage
+        localStorage.setItem('loopStations', JSON.stringify(stationsData));
+    } finally {
+        isSyncing = false;
+    }
+}
+
+function showLoadingState() {
+    const loader = document.createElement('div');
+    loader.id = 'firebase-loader';
+    loader.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(13, 17, 23, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        flex-direction: column;
+        gap: 20px;
+    `;
+    loader.innerHTML = `
+        <div style="width: 50px; height: 50px; border: 3px solid #30363d; border-top-color: #00d4aa; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div style="color: #8b949e; font-size: 1rem;">Connecting to database...</div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+    `;
+    document.body.appendChild(loader);
+}
+
+function hideLoadingState() {
+    const loader = document.getElementById('firebase-loader');
+    if (loader) loader.remove();
+}
+
+function showError(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #dc3545;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        z-index: 10001;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        animation: slideIn 0.3s ease;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #00d4aa;
+        color: #0d1117;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 10001;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        font-weight: 600;
+        font-size: 0.9rem;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 2000);
+}
+
+function renderAllViews() {
+    const activeView = document.querySelector('.view.active');
+    if (!activeView) return;
+    
+    const viewId = activeView.id;
+    if (viewId === 'dashboard-view') renderDashboard();
+    if (viewId === 'gantt-view') renderGanttView();
+    if (viewId === 'team-view') renderTeam();
+    if (viewId === 'station-detail-view' && currentStationId) {
+        const station = stations.find(s => s.id === currentStationId);
+        if (station) {
+            renderStationTasks(station);
+            renderTaskTimeline(station);
+        }
+    }
+}
+
+// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 
-function saveData() {
-    localStorage.setItem('loopTeamMembers', JSON.stringify(teamMembers));
-    localStorage.setItem('loopStations', JSON.stringify(stations));
+async function saveData() {
+    await Promise.all([
+        saveTeamMembers(teamMembers),
+        saveStations(stations)
+    ]);
 }
 
 function parseDate(dateStr) {
@@ -423,17 +654,16 @@ function renderGanttTimeline() {
     bodyEl.innerHTML = bodyHTML;
 }
 
-function updateStation(stationId, field, value) {
+async function updateStation(stationId, field, value) {
     const station = stations.find(s => s.id === stationId);
     if (station) {
         station[field] = value;
-        saveData();
-        renderGanttTimeline();
-        renderDashboard();
+        await saveStations(stations);
+        showSuccess('Station updated');
     }
 }
 
-function addNewStation() {
+async function addNewStation() {
     const maxId = stations.reduce((max, s) => Math.max(max, s.id), 0);
     const today = new Date().toISOString().split('T')[0];
     
@@ -448,17 +678,15 @@ function addNewStation() {
         tasks: []
     });
     
-    saveData();
-    renderGanttView();
-    renderDashboard();
+    await saveStations(stations);
+    showSuccess('Station added');
 }
 
-function deleteStation(stationId) {
+async function deleteStation(stationId) {
     if (confirm('Delete this station and all its tasks?')) {
         stations = stations.filter(s => s.id !== stationId);
-        saveData();
-        renderGanttView();
-        renderDashboard();
+        await saveStations(stations);
+        showSuccess('Station deleted');
     }
 }
 
@@ -595,21 +823,19 @@ function renderTaskTimeline(station) {
     document.getElementById('task-timeline-body').innerHTML = bodyHTML;
 }
 
-function updateTask(stationId, taskId, field, value) {
+async function updateTask(stationId, taskId, field, value) {
     const station = stations.find(s => s.id === stationId);
     if (station) {
         const task = station.tasks.find(t => t.id === taskId);
         if (task) {
             task[field] = value;
-            saveData();
-            renderStationTasks(station);
-            renderTaskTimeline(station);
-            renderDashboard();
+            await saveStations(stations);
+            showSuccess('Task updated');
         }
     }
 }
 
-function addNewTaskToStation() {
+async function addNewTaskToStation() {
     if (!currentStationId) return;
     
     const station = stations.find(s => s.id === currentStationId);
@@ -620,7 +846,7 @@ function addNewTaskToStation() {
     station.tasks.push({
         id: maxId + 1,
         name: "New Task",
-        assignedTo: teamMembers[0].name,
+        assignedTo: teamMembers[0]?.name || "Unassigned",
         startDate: station.startDate,
         endDate: station.endDate,
         estHours: 8,
@@ -630,21 +856,17 @@ function addNewTaskToStation() {
         notes: ""
     });
     
-    saveData();
-    renderStationTasks(station);
-    renderTaskTimeline(station);
-    renderDashboard();
+    await saveStations(stations);
+    showSuccess('Task added');
 }
 
-function deleteTask(stationId, taskId) {
+async function deleteTask(stationId, taskId) {
     if (confirm('Delete this task?')) {
         const station = stations.find(s => s.id === stationId);
         if (station) {
             station.tasks = station.tasks.filter(t => t.id !== taskId);
-            saveData();
-            renderStationTasks(station);
-            renderTaskTimeline(station);
-            renderDashboard();
+            await saveStations(stations);
+            showSuccess('Task deleted');
         }
     }
 }
@@ -737,7 +959,7 @@ function editTeamMember(index) {
     openModal('team-modal');
 }
 
-document.getElementById('team-form').addEventListener('submit', (e) => {
+document.getElementById('team-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const memberIndex = document.getElementById('member-index').value;
@@ -764,16 +986,16 @@ document.getElementById('team-form').addEventListener('submit', (e) => {
                     }
                 });
             });
+            await saveStations(stations);
         }
     }
     
-    saveData();
+    await saveTeamMembers(teamMembers);
     closeModal('team-modal');
-    renderTeam();
-    renderDashboard();
+    showSuccess(memberIndex === '' ? 'Team member added' : 'Team member updated');
 });
 
-function deleteTeamMember(index) {
+async function deleteTeamMember(index) {
     const member = teamMembers[index];
     const assignedTasks = getAllTasks().filter(t => t.assignedTo === member.name).length;
     
@@ -784,9 +1006,8 @@ function deleteTeamMember(index) {
     
     if (confirm(message)) {
         teamMembers.splice(index, 1);
-        saveData();
-        renderTeam();
-        renderDashboard();
+        await saveTeamMembers(teamMembers);
+        showSuccess('Team member removed');
     }
 }
 
@@ -909,9 +1130,8 @@ function exportToCSV() {
 // ============================================
 
 function init() {
-    renderDashboard();
-    renderGanttView();
-    renderTeam();
+    // Initialize Firebase and load data
+    initializeFirebase();
 }
 
 document.addEventListener('DOMContentLoaded', init);
