@@ -1297,6 +1297,32 @@ function exportToCSV() {
 }
 
 // ============================================
+// EXPOSE FUNCTIONS TO GLOBAL SCOPE (for onclick handlers)
+// ============================================
+
+window.switchToView = switchToView;
+window.openStationDetail = openStationDetail;
+window.backToGantt = backToGantt;
+window.updateStation = updateStation;
+window.addNewStation = addNewStation;
+window.deleteStation = deleteStation;
+window.updateTask = updateTask;
+window.addNewTaskToStation = addNewTaskToStation;
+window.deleteTask = deleteTask;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.addNewTeamMember = addNewTeamMember;
+window.editTeamMember = editTeamMember;
+window.deleteTeamMember = deleteTeamMember;
+window.validateProject = validateProject;
+window.exportToPDF = exportToPDF;
+window.exportStationToPDF = exportStationToPDF;
+window.exportToCSV = exportToCSV;
+window.showAdminLoginModal = showAdminLoginModal;
+window.adminLogin = adminLogin;
+window.adminLogout = adminLogout;
+
+// ============================================
 // INITIALIZATION
 // ============================================
 
