@@ -1,6 +1,6 @@
 /**
  * Loop Automation - Project Management Application
- * Hierarchical Gantt Chart with Phase/Task Drill-down
+ * Full Inline Editing for Stations and Tasks
  */
 
 // ============================================
@@ -24,15 +24,15 @@ const defaultTeamMembers = [
     { name: "Ren Falkenrath", role: "Member", color: "#ec407a", email: "", targetHours: 40 }
 ];
 
-// Stations with their tasks (automation/manufacturing context)
-const defaultPhases = [
-    { 
-        id: 1, 
+// Stations with their tasks
+const defaultStations = [
+    {
+        id: 1,
         name: "Station 1 - Material Intake",
         description: "Raw material receiving and quality control",
-        startDate: "2026-02-03", 
+        startDate: "2026-02-03",
         endDate: "2026-02-10",
-        color: "#7c3aed", 
+        color: "#7c3aed",
         priority: "High",
         tasks: [
             { id: 101, name: "Material Inspection Setup", assignedTo: "Bander Bakalka", startDate: "2026-02-03", endDate: "2026-02-04", estHours: 8, actualHours: 6, status: "Complete", priority: "High", notes: "Initial setup complete" },
@@ -42,40 +42,37 @@ const defaultPhases = [
             { id: 105, name: "Sensor Calibration", assignedTo: "Davis Oliver", startDate: "2026-02-08", endDate: "2026-02-10", estHours: 10, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
         ]
     },
-    { 
-        id: 2, 
+    {
+        id: 2,
         name: "Station 2 - Robotic Assembly",
         description: "Automated assembly and component placement",
-        startDate: "2026-02-08", 
+        startDate: "2026-02-08",
         endDate: "2026-02-18",
-        color: "#00d4aa", 
+        color: "#00d4aa",
         priority: "Critical",
         tasks: [
             { id: 201, name: "Robot Arm Programming", assignedTo: "Jon Klomfass", startDate: "2026-02-08", endDate: "2026-02-12", estHours: 20, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
             { id: 202, name: "Vision System Setup", assignedTo: "Luke Kivell", startDate: "2026-02-09", endDate: "2026-02-13", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
             { id: 203, name: "Gripper Mechanism Testing", assignedTo: "Lucas Pasia", startDate: "2026-02-11", endDate: "2026-02-14", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 204, name: "Safety Interlock Configuration", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-13", endDate: "2026-02-16", estHours: 14, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
-            { id: 205, name: "Assembly Sequence Optimization", assignedTo: "Anmol Singh Saini", startDate: "2026-02-15", endDate: "2026-02-18", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" }
+            { id: 204, name: "Safety Interlock Configuration", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-13", endDate: "2026-02-16", estHours: 14, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" }
         ]
     },
-    { 
-        id: 3, 
+    {
+        id: 3,
         name: "Station 3 - Welding & Joining",
         description: "Automated welding and fastening operations",
-        startDate: "2026-02-15", 
+        startDate: "2026-02-15",
         endDate: "2026-02-25",
-        color: "#f59e0b", 
+        color: "#f59e0b",
         priority: "High",
         tasks: [
             { id: 301, name: "Welding Robot Calibration", assignedTo: "Sebastian Chandler", startDate: "2026-02-15", endDate: "2026-02-18", estHours: 16, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
             { id: 302, name: "Welding Parameter Tuning", assignedTo: "Anton Makaranka", startDate: "2026-02-17", endDate: "2026-02-20", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 303, name: "Fume Extraction System", assignedTo: "Blake Alexander", startDate: "2026-02-18", endDate: "2026-02-21", estHours: 10, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 304, name: "Quality Inspection Camera", assignedTo: "Joel Reyes", startDate: "2026-02-20", endDate: "2026-02-23", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 305, name: "Joint Strength Testing", assignedTo: "Ren Falkenrath", startDate: "2026-02-22", endDate: "2026-02-25", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
+            { id: 303, name: "Fume Extraction System", assignedTo: "Blake Alexander", startDate: "2026-02-18", endDate: "2026-02-21", estHours: 10, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
         ]
     },
-    { 
-        id: 4, 
+    {
+        id: 4,
         name: "Station 4 - Quality Control",
         description: "Automated inspection and defect detection",
         startDate: "2026-02-20",
@@ -85,13 +82,11 @@ const defaultPhases = [
         tasks: [
             { id: 401, name: "3D Scanner Integration", assignedTo: "Jon Klomfass", startDate: "2026-02-20", endDate: "2026-02-24", estHours: 18, actualHours: 0, status: "Not Started", priority: "Critical", notes: "" },
             { id: 402, name: "AI Defect Detection Model", assignedTo: "Gislain Hotcho Nkenga", startDate: "2026-02-22", endDate: "2026-02-27", estHours: 20, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 403, name: "Measurement Probe Setup", assignedTo: "Cirex Peroche", startDate: "2026-02-24", endDate: "2026-02-28", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 404, name: "Reject Mechanism Programming", assignedTo: "Davis Oliver", startDate: "2026-02-26", endDate: "2026-03-01", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 405, name: "Data Logging System", assignedTo: "Josh Kavanagh", startDate: "2026-02-28", endDate: "2026-03-03", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
+            { id: 403, name: "Measurement Probe Setup", assignedTo: "Cirex Peroche", startDate: "2026-02-24", endDate: "2026-02-28", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
         ]
     },
-    { 
-        id: 5, 
+    {
+        id: 5,
         name: "Station 5 - Packaging",
         description: "Automated packaging and labeling",
         startDate: "2026-02-28",
@@ -101,13 +96,11 @@ const defaultPhases = [
         tasks: [
             { id: 501, name: "Box Former Configuration", assignedTo: "Lucas Pasia", startDate: "2026-02-28", endDate: "2026-03-03", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
             { id: 502, name: "Product Placement Robot", assignedTo: "Sebastian Chandler", startDate: "2026-03-01", endDate: "2026-03-05", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 503, name: "Label Printer Integration", assignedTo: "Anton Makaranka", startDate: "2026-03-03", endDate: "2026-03-06", estHours: 10, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 504, name: "Sealing Mechanism Setup", assignedTo: "Blake Alexander", startDate: "2026-03-05", endDate: "2026-03-08", estHours: 12, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 505, name: "Weight Verification System", assignedTo: "Joel Reyes", startDate: "2026-03-07", endDate: "2026-03-10", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "" }
+            { id: 503, name: "Label Printer Integration", assignedTo: "Anton Makaranka", startDate: "2026-03-03", endDate: "2026-03-06", estHours: 10, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" }
         ]
     },
-    { 
-        id: 6, 
+    {
+        id: 6,
         name: "Station 6 - Shipping & Distribution",
         description: "Sorting, palletizing and warehouse integration",
         startDate: "2026-03-08",
@@ -117,19 +110,19 @@ const defaultPhases = [
         tasks: [
             { id: 601, name: "Palletizing Robot Setup", assignedTo: "Ren Falkenrath", startDate: "2026-03-08", endDate: "2026-03-11", estHours: 16, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
             { id: 602, name: "Sorting System Programming", assignedTo: "Anmol Singh Saini", startDate: "2026-03-09", endDate: "2026-03-13", estHours: 18, actualHours: 0, status: "Not Started", priority: "High", notes: "" },
-            { id: 603, name: "WMS Integration", assignedTo: "Bander Bakalka", startDate: "2026-03-11", endDate: "2026-03-15", estHours: 20, actualHours: 0, status: "Not Started", priority: "Critical", notes: "Warehouse Management System" },
-            { id: 604, name: "RFID Tracking Setup", assignedTo: "Josh Kavanagh", startDate: "2026-03-13", endDate: "2026-03-16", estHours: 12, actualHours: 0, status: "Not Started", priority: "Medium", notes: "" },
-            { id: 605, name: "AGV Path Configuration", assignedTo: "Cirex Peroche", startDate: "2026-03-15", endDate: "2026-03-18", estHours: 14, actualHours: 0, status: "Not Started", priority: "High", notes: "Automated Guided Vehicles" }
+            { id: 603, name: "WMS Integration", assignedTo: "Bander Bakalka", startDate: "2026-03-11", endDate: "2026-03-15", estHours: 20, actualHours: 0, status: "Not Started", priority: "Critical", notes: "Warehouse Management System" }
         ]
     }
 ];
 
 // Load from localStorage or use defaults
 let teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
-let phases = JSON.parse(localStorage.getItem('loopPhases')) || JSON.parse(JSON.stringify(defaultPhases));
+let stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
 
 // Current state
-let currentPhaseId = null;
+let currentStationId = null;
+const DAY_WIDTH = 30;
+const TIMELINE_DAYS = 60;
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -137,19 +130,21 @@ let currentPhaseId = null;
 
 function saveData() {
     localStorage.setItem('loopTeamMembers', JSON.stringify(teamMembers));
-    localStorage.setItem('loopPhases', JSON.stringify(phases));
+    localStorage.setItem('loopStations', JSON.stringify(stations));
 }
 
 function parseDate(dateStr) {
+    if (!dateStr) return new Date();
     return new Date(dateStr + 'T00:00:00');
 }
 
-function formatDateDisplay(dateStr) {
-    const date = parseDate(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function formatDateISO(dateStr) {
+    if (!dateStr) return '';
+    return dateStr.split('T')[0];
 }
 
 function daysBetween(start, end) {
+    if (!start || !end) return 0;
     const startDate = parseDate(start);
     const endDate = parseDate(end);
     return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
@@ -170,11 +165,12 @@ function getMemberRole(memberName) {
 }
 
 function getInitials(name) {
+    if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
 function getAllTasks() {
-    return phases.flatMap(p => p.tasks);
+    return stations.flatMap(s => s.tasks);
 }
 
 function getAssignedHours(memberName) {
@@ -183,32 +179,25 @@ function getAssignedHours(memberName) {
         .reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
 }
 
-function getPhaseProgress(phase) {
-    if (!phase.tasks.length) return 0;
-    const totalEst = phase.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-    const totalActual = phase.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-    return totalEst > 0 ? Math.round((totalActual / totalEst) * 100) : 0;
-}
-
 function getStatusClass(status) {
-    const statusMap = {
+    const map = {
         'Complete': 'status-complete',
         'In Progress': 'status-progress',
         'Not Started': 'status-pending',
         'Delayed': 'status-delayed',
         'On Hold': 'status-hold'
     };
-    return statusMap[status] || 'status-pending';
+    return map[status] || 'status-pending';
 }
 
 function getPriorityClass(priority) {
-    const priorityMap = {
+    const map = {
         'Critical': 'priority-critical',
         'High': 'priority-high',
         'Medium': 'priority-medium',
         'Low': 'priority-low'
     };
-    return priorityMap[priority] || 'priority-medium';
+    return map[priority] || 'priority-medium';
 }
 
 // ============================================
@@ -223,40 +212,35 @@ document.querySelectorAll('.nav-item').forEach(item => {
 });
 
 function switchToView(view) {
-    // Update nav
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const navItem = document.querySelector(`[data-view="${view}"]`);
     if (navItem) navItem.classList.add('active');
     
-    // Update views
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById(`${view}-view`).classList.add('active');
     
-    // Refresh view
     if (view === 'dashboard') renderDashboard();
-    if (view === 'gantt') renderGanttOverview();
+    if (view === 'gantt') renderGanttView();
     if (view === 'team') renderTeam();
 }
 
-function backToOverview() {
-    currentPhaseId = null;
+function backToGantt() {
+    currentStationId = null;
     switchToView('gantt');
 }
 
 // ============================================
-// DASHBOARD RENDERING
+// DASHBOARD
 // ============================================
 
 function renderDashboard() {
     const allTasks = getAllTasks();
     
-    // Stats
-    document.getElementById('total-phases').textContent = phases.length;
+    document.getElementById('total-phases').textContent = stations.length;
     document.getElementById('total-tasks').textContent = allTasks.length;
     document.getElementById('completed-tasks').textContent = allTasks.filter(t => t.status === 'Complete').length;
     document.getElementById('in-progress-tasks').textContent = allTasks.filter(t => t.status === 'In Progress').length;
     
-    // Hours
     const totalEstHours = allTasks.reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
     const totalActualHours = allTasks.reduce((sum, t) => sum + (parseFloat(t.actualHours) || 0), 0);
     const remainingHours = totalEstHours - totalActualHours;
@@ -268,7 +252,6 @@ function renderDashboard() {
     const progressPercent = totalEstHours > 0 ? (totalActualHours / totalEstHours) * 100 : 0;
     document.getElementById('hours-progress').style.width = `${Math.min(progressPercent, 100)}%`;
     
-    // Team workload
     const workloadTbody = document.getElementById('workload-tbody');
     workloadTbody.innerHTML = teamMembers.map(member => {
         const assignedHours = getAssignedHours(member.name);
@@ -293,266 +276,381 @@ function renderDashboard() {
 }
 
 // ============================================
-// GANTT OVERVIEW (PHASES)
+// GANTT VIEW - STATION OVERVIEW
 // ============================================
 
-function renderGanttOverview() {
-    const container = document.getElementById('gantt-phases');
+function renderGanttView() {
+    renderStationTable();
+    renderGanttTimeline();
+}
+
+function renderStationTable() {
+    const tbody = document.getElementById('station-tbody');
     
-    // Calculate project timeline
-    const projectStart = phases.reduce((min, p) => {
-        const start = parseDate(p.startDate);
-        return start < min ? start : min;
-    }, parseDate(phases[0].startDate));
-    
-    const projectEnd = phases.reduce((max, p) => {
-        const end = parseDate(p.endDate);
-        return end > max ? end : max;
-    }, parseDate(phases[0].endDate));
-    
-    const totalDays = daysBetween(projectStart.toISOString().split('T')[0], projectEnd.toISOString().split('T')[0]);
-    
-    container.innerHTML = phases.map(phase => {
-        const progress = getPhaseProgress(phase);
-        const taskCount = phase.tasks.length;
-        const completedTasks = phase.tasks.filter(t => t.status === 'Complete').length;
-        const totalHours = phase.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-        
-        // Get unique team members for this phase
-        const phaseMembers = [...new Set(phase.tasks.map(t => t.assignedTo))];
-        
-        // Calculate bar position
-        const phaseStart = parseDate(phase.startDate);
-        const startOffset = daysBetween(projectStart.toISOString().split('T')[0], phase.startDate) - 1;
-        const duration = daysBetween(phase.startDate, phase.endDate);
-        const leftPercent = (startOffset / totalDays) * 100;
-        const widthPercent = (duration / totalDays) * 100;
+    tbody.innerHTML = stations.map((station, idx) => {
+        const days = daysBetween(station.startDate, station.endDate);
+        const totalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
+        const actualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+        const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
         
         return `
-            <div class="phase-card" onclick="openPhaseDetail(${phase.id})" style="--phase-color: ${phase.color}">
-                <div class="phase-card-header">
-                    <div class="phase-info">
-                        <div class="phase-name">
-                            <span style="color: ${phase.color}">●</span>
-                            ${phase.name}
-                            <span class="priority-badge ${getPriorityClass(phase.priority)}">${phase.priority}</span>
-                    </div>
-                        <div class="phase-dates">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            ${formatDateDisplay(phase.startDate)} - ${formatDateDisplay(phase.endDate)}
-                            <span style="margin-left: 8px; color: var(--text-muted);">(${duration} days)</span>
-                </div>
-                    </div>
-                    <div class="phase-meta">
-                        <div class="phase-stat">
-                            <span class="phase-stat-value">${completedTasks}/${taskCount}</span>
-                            <span class="phase-stat-label">Tasks</span>
-                </div>
-                        <div class="phase-stat">
-                            <span class="phase-stat-value">${totalHours}h</span>
-                            <span class="phase-stat-label">Hours</span>
-                </div>
-                        <div class="phase-stat">
-                            <span class="phase-stat-value">${progress}%</span>
-                            <span class="phase-stat-label">Done</span>
-            </div>
-                        <div class="phase-actions" onclick="event.stopPropagation()">
-                            <button class="btn-icon" onclick="editPhase(${phase.id})" title="Edit Phase">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                            </button>
-                            <button class="btn-icon delete" onclick="deletePhase(${phase.id})" title="Delete Phase">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="phase-timeline-bar">
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar-fill" style="left: ${leftPercent}%; width: ${widthPercent}%; background: ${phase.color};">
-                            <div class="timeline-bar-progress" style="width: ${progress}%"></div>
-                            ${phase.name}
-            </div>
-                    </div>
-                </div>
-                <div class="phase-team-preview">
-                    ${phaseMembers.slice(0, 6).map(name => {
-                        const color = getMemberColor(name);
-                        return `<div class="team-avatar-small" style="background: ${color}" title="${name}">${getInitials(name)}</div>`;
-                    }).join('')}
-                    ${phaseMembers.length > 6 ? `<span class="team-count-badge">+${phaseMembers.length - 6} more</span>` : ''}
-                    <span class="team-count-badge">${phaseMembers.length} team members</span>
-                </div>
-                    </div>
-                `;
+            <tr data-station-id="${station.id}" onclick="openStationDetail(${station.id})">
+                <td>${station.id}</td>
+                <td class="editable-cell" onclick="event.stopPropagation()">
+                    <input type="text" value="${station.name}" 
+                           onchange="updateStation(${station.id}, 'name', this.value)" 
+                           onclick="event.stopPropagation()">
+                </td>
+                <td class="editable-cell" onclick="event.stopPropagation()">
+                    <input type="text" value="${station.description}" 
+                           onchange="updateStation(${station.id}, 'description', this.value)"
+                           onclick="event.stopPropagation()">
+                </td>
+                <td class="editable-cell" onclick="event.stopPropagation()">
+                    <input type="date" value="${station.startDate}" 
+                           onchange="updateStation(${station.id}, 'startDate', this.value)"
+                           onclick="event.stopPropagation()">
+                </td>
+                <td class="editable-cell" onclick="event.stopPropagation()">
+                    <input type="date" value="${station.endDate}" 
+                           onchange="updateStation(${station.id}, 'endDate', this.value)"
+                           onclick="event.stopPropagation()">
+                </td>
+                <td>${days}</td>
+                <td>${station.tasks.length}</td>
+                <td>${totalHours}h</td>
+                <td>${progress}%</td>
+                <td class="editable-cell" onclick="event.stopPropagation()">
+                    <select onchange="updateStation(${station.id}, 'priority', this.value)" onclick="event.stopPropagation()">
+                        <option value="Low" ${station.priority === 'Low' ? 'selected' : ''}>Low</option>
+                        <option value="Medium" ${station.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                        <option value="High" ${station.priority === 'High' ? 'selected' : ''}>High</option>
+                        <option value="Critical" ${station.priority === 'Critical' ? 'selected' : ''}>Critical</option>
+                    </select>
+                </td>
+                <td class="editable-cell" onclick="event.stopPropagation()">
+                    <input type="color" value="${station.color}" 
+                           onchange="updateStation(${station.id}, 'color', this.value)"
+                           onclick="event.stopPropagation()">
+                </td>
+                <td onclick="event.stopPropagation()">
+                    <button class="btn-icon delete" onclick="deleteStation(${station.id})" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                    </button>
+                </td>
+            </tr>
+        `;
     }).join('');
 }
 
-// ============================================
-// PHASE DETAIL VIEW
-// ============================================
-
-function openPhaseDetail(phaseId) {
-    currentPhaseId = phaseId;
-    const phase = phases.find(p => p.id === phaseId);
-    if (!phase) return;
+function renderGanttTimeline() {
+    const headerEl = document.getElementById('gantt-timeline-header');
+    const bodyEl = document.getElementById('gantt-timeline-body');
     
-    // Update header
-    document.getElementById('phase-detail-title').textContent = phase.name;
-    document.getElementById('phase-detail-subtitle').textContent = phase.description || 'Phase details and task breakdown';
-    
-    // Hide other views, show phase detail
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('phase-detail-view').classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    
-    renderPhaseDetail(phase);
-}
-
-function renderPhaseDetail(phase) {
-    // Summary cards
-    const totalHours = phase.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-    const actualHours = phase.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-    const completedTasks = phase.tasks.filter(t => t.status === 'Complete').length;
-    const progress = getPhaseProgress(phase);
-    const uniqueMembers = [...new Set(phase.tasks.map(t => t.assignedTo))].length;
-    
-    document.getElementById('phase-summary').innerHTML = `
-        <div class="summary-card">
-            <div class="summary-card-value">${phase.tasks.length}</div>
-            <div class="summary-card-label">Total Tasks</div>
-                </div>
-        <div class="summary-card">
-            <div class="summary-card-value">${completedTasks}</div>
-            <div class="summary-card-label">Completed</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-value">${totalHours}h</div>
-            <div class="summary-card-label">Est. Hours</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-value">${actualHours}h</div>
-            <div class="summary-card-label">Actual Hours</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-card-value">${uniqueMembers}</div>
-            <div class="summary-card-label">Team Members</div>
-            </div>
-        `;
-    
-    // Tasks table
-    document.getElementById('phase-tasks-tbody').innerHTML = phase.tasks.map((task, idx) => `
-        <tr>
-            <td><span style="border-left: 3px solid ${getMemberColor(task.assignedTo)}; padding-left: 10px;">${task.name}</span></td>
-            <td>${task.assignedTo}</td>
-            <td>${getMemberRole(task.assignedTo)}</td>
-            <td>${formatDateDisplay(task.startDate)}</td>
-            <td>${formatDateDisplay(task.endDate)}</td>
-            <td>${task.estHours}h</td>
-            <td>${task.actualHours}h</td>
-                <td><span class="status-badge ${getStatusClass(task.status)}">${task.status}</span></td>
-                <td><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
-                <td>
-                <button class="btn-icon" onclick="editTask(${phase.id}, ${task.id})" title="Edit">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                        </button>
-                <button class="btn-icon delete" onclick="deleteTask(${phase.id}, ${task.id})" title="Delete">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                            </svg>
-                        </button>
-                </td>
-            </tr>
-    `).join('');
-    
-    // Task timeline
-    renderPhaseTimeline(phase);
-    
-    // Team assignments
-    renderPhaseTeam(phase);
-}
-
-function renderPhaseTimeline(phase) {
-    if (!phase.tasks.length) {
-        document.getElementById('phase-timeline').innerHTML = '<p style="color: var(--text-muted);">No tasks in this phase</p>';
+    if (!stations.length) {
+        headerEl.innerHTML = '';
+        bodyEl.innerHTML = '';
         return;
     }
     
-    const phaseStart = parseDate(phase.startDate);
-    const phaseEnd = parseDate(phase.endDate);
-    const totalDays = daysBetween(phase.startDate, phase.endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    document.getElementById('phase-timeline').innerHTML = phase.tasks.map(task => {
-        const taskStart = parseDate(task.startDate);
-        const startOffset = Math.max(0, daysBetween(phase.startDate, task.startDate) - 1);
-        const duration = daysBetween(task.startDate, task.endDate);
-        const leftPercent = (startOffset / totalDays) * 100;
-        const widthPercent = (duration / totalDays) * 100;
-        const color = getMemberColor(task.assignedTo);
+    const earliestDate = stations.reduce((min, s) => {
+        const start = parseDate(s.startDate);
+        return start < min ? start : min;
+    }, parseDate(stations[0].startDate));
+    
+    const timelineStart = new Date(earliestDate);
+    timelineStart.setDate(timelineStart.getDate() - 3);
+    
+    // Header
+    let headerHTML = '';
+    for (let i = 0; i < TIMELINE_DAYS; i++) {
+        const date = new Date(timelineStart);
+        date.setDate(date.getDate() + i);
+        
+        const dayOfWeek = date.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isToday = date.getTime() === today.getTime();
+        
+        headerHTML += `<div class="timeline-day-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}">${date.getDate()}</div>`;
+    }
+    headerEl.innerHTML = headerHTML;
+    
+    // Body
+    let bodyHTML = '';
+    stations.forEach(station => {
+        let rowHTML = '<div class="gantt-timeline-row" onclick="openStationDetail(' + station.id + ')">';
+        
+        for (let i = 0; i < TIMELINE_DAYS; i++) {
+            const date = new Date(timelineStart);
+            date.setDate(date.getDate() + i);
+            
+            const dayOfWeek = date.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isToday = date.getTime() === today.getTime();
+            
+            rowHTML += `<div class="timeline-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}"></div>`;
+        }
+        
+        // Add Gantt bar
+        const stationStart = parseDate(station.startDate);
+        const stationEnd = parseDate(station.endDate);
+        
+        const startOffset = Math.floor((stationStart - timelineStart) / (1000 * 60 * 60 * 24));
+        const duration = daysBetween(station.startDate, station.endDate);
+        
+        if (startOffset < TIMELINE_DAYS && startOffset + duration > 0) {
+            const left = Math.max(0, startOffset) * DAY_WIDTH;
+            const width = Math.min(duration, TIMELINE_DAYS - Math.max(0, startOffset)) * DAY_WIDTH - 4;
+            
+            rowHTML += `
+                <div class="gantt-bar" 
+                     style="left: ${left + 2}px; width: ${width}px; background: ${station.color};"
+                     title="${station.name}">
+                    ${width > 80 ? station.name.substring(0, 15) : ''}
+                </div>
+            `;
+        }
+        
+        rowHTML += '</div>';
+        bodyHTML += rowHTML;
+    });
+    
+    bodyEl.innerHTML = bodyHTML;
+}
+
+function updateStation(stationId, field, value) {
+    const station = stations.find(s => s.id === stationId);
+    if (station) {
+        station[field] = value;
+        saveData();
+        renderGanttTimeline();
+        renderDashboard();
+    }
+}
+
+function addNewStation() {
+    const maxId = stations.reduce((max, s) => Math.max(max, s.id), 0);
+    const today = new Date().toISOString().split('T')[0];
+    
+    stations.push({
+        id: maxId + 1,
+        name: `Station ${maxId + 1}`,
+        description: "Description",
+        startDate: today,
+        endDate: today,
+        color: "#00d4aa",
+        priority: "Medium",
+        tasks: []
+    });
+    
+    saveData();
+    renderGanttView();
+    renderDashboard();
+}
+
+function deleteStation(stationId) {
+    if (confirm('Delete this station and all its tasks?')) {
+        stations = stations.filter(s => s.id !== stationId);
+        saveData();
+        renderGanttView();
+        renderDashboard();
+    }
+}
+
+// ============================================
+// STATION DETAIL VIEW
+// ============================================
+
+function openStationDetail(stationId) {
+    currentStationId = stationId;
+    const station = stations.find(s => s.id === stationId);
+    if (!station) return;
+    
+    document.getElementById('station-detail-title').textContent = station.name;
+    document.getElementById('station-detail-subtitle').textContent = `${station.tasks.length} tasks • ${station.description}`;
+    
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('station-detail-view').classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    
+    renderStationTasks(station);
+    renderTaskTimeline(station);
+}
+
+function renderStationTasks(station) {
+    const tbody = document.getElementById('station-tasks-tbody');
+    
+    const teamOptions = teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+    
+    tbody.innerHTML = station.tasks.map((task, idx) => {
+        const days = daysBetween(task.startDate, task.endDate);
+        const remaining = (task.estHours || 0) - (task.actualHours || 0);
+        const percentDone = task.estHours > 0 ? Math.round((task.actualHours / task.estHours) * 100) : 0;
+        const role = getMemberRole(task.assignedTo);
         
         return `
-            <div class="task-timeline-row">
-                <div class="task-timeline-label" title="${task.name}">${task.name}</div>
-                <div class="task-timeline-bar-container">
-                    <div class="task-timeline-bar" style="left: ${leftPercent}%; width: ${widthPercent}%; background: ${color};">
-                        ${task.estHours}h
-                    </div>
-                </div>
-                <div class="task-timeline-assignee">
-                    <div class="team-avatar-small" style="background: ${color}; width: 24px; height: 24px; font-size: 0.6rem;">${getInitials(task.assignedTo)}</div>
-                    ${task.assignedTo.split(' ')[0]}
-                </div>
-            </div>
+            <tr>
+                <td>${idx + 1}</td>
+                <td><input type="text" value="${task.name}" onchange="updateTask(${station.id}, ${task.id}, 'name', this.value)"></td>
+                <td>
+                    <select onchange="updateTask(${station.id}, ${task.id}, 'assignedTo', this.value)">
+                        ${teamMembers.map(m => `<option value="${m.name}" ${task.assignedTo === m.name ? 'selected' : ''}>${m.name}</option>`).join('')}
+                    </select>
+                </td>
+                <td>${role}</td>
+                <td><input type="date" value="${task.startDate}" onchange="updateTask(${station.id}, ${task.id}, 'startDate', this.value)"></td>
+                <td><input type="date" value="${task.endDate}" onchange="updateTask(${station.id}, ${task.id}, 'endDate', this.value)"></td>
+                <td>${days}</td>
+                <td><input type="number" value="${task.estHours}" min="0" step="0.5" onchange="updateTask(${station.id}, ${task.id}, 'estHours', parseFloat(this.value))"></td>
+                <td><input type="number" value="${task.actualHours}" min="0" step="0.5" onchange="updateTask(${station.id}, ${task.id}, 'actualHours', parseFloat(this.value))"></td>
+                <td>${remaining}h</td>
+                <td>${percentDone}%</td>
+                <td>
+                    <select onchange="updateTask(${station.id}, ${task.id}, 'status', this.value)">
+                        <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
+                        <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
+                        <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                        <option value="Delayed" ${task.status === 'Delayed' ? 'selected' : ''}>Delayed</option>
+                    </select>
+                </td>
+                <td>
+                    <select onchange="updateTask(${station.id}, ${task.id}, 'priority', this.value)">
+                        <option value="Low" ${task.priority === 'Low' ? 'selected' : ''}>Low</option>
+                        <option value="Medium" ${task.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                        <option value="High" ${task.priority === 'High' ? 'selected' : ''}>High</option>
+                        <option value="Critical" ${task.priority === 'Critical' ? 'selected' : ''}>Critical</option>
+                    </select>
+                </td>
+                <td><input type="text" value="${task.notes || ''}" onchange="updateTask(${station.id}, ${task.id}, 'notes', this.value)"></td>
+                <td>
+                    <button class="btn-icon delete" onclick="deleteTask(${station.id}, ${task.id})" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                    </button>
+                </td>
+            </tr>
         `;
     }).join('');
 }
 
-function renderPhaseTeam(phase) {
-    // Group tasks by team member
-    const memberTasks = {};
-    phase.tasks.forEach(task => {
-        if (!memberTasks[task.assignedTo]) {
-            memberTasks[task.assignedTo] = { tasks: [], hours: 0 };
-        }
-        memberTasks[task.assignedTo].tasks.push(task);
-        memberTasks[task.assignedTo].hours += task.estHours || 0;
-    });
+function renderTaskTimeline(station) {
+    if (!station.tasks.length) {
+        document.getElementById('task-timeline-header').innerHTML = '<p style="padding: 20px; color: var(--text-muted);">No tasks in this station</p>';
+        document.getElementById('task-timeline-body').innerHTML = '';
+        return;
+    }
     
-    document.getElementById('phase-team-grid').innerHTML = Object.entries(memberTasks).map(([name, data]) => {
-        const member = getTeamMemberByName(name);
-        const color = member ? member.color : '#3498db';
-        const role = member ? member.role : '';
+    const stationStart = parseDate(station.startDate);
+    const totalDays = daysBetween(station.startDate, station.endDate);
+    const daysToShow = Math.max(totalDays, 30);
+    
+    // Header
+    let headerHTML = '';
+    for (let i = 0; i < daysToShow; i++) {
+        const date = new Date(stationStart);
+        date.setDate(date.getDate() + i);
         
-        return `
-            <div class="phase-team-card">
-                <div class="phase-team-avatar" style="background: ${color}">${getInitials(name)}</div>
-                <div class="phase-team-info">
-                    <h4>${name}</h4>
-                    <p>${role} • ${data.tasks.length} task${data.tasks.length !== 1 ? 's' : ''}</p>
-                </div>
-                <div class="phase-team-hours">
-                    <span>${data.hours}h</span>
-                    <small>assigned</small>
-                </div>
+        headerHTML += `<div class="timeline-day-cell">${date.getDate()}</div>`;
+    }
+    document.getElementById('task-timeline-header').innerHTML = headerHTML;
+    
+    // Body
+    let bodyHTML = '';
+    station.tasks.forEach(task => {
+        const taskStart = parseDate(task.startDate);
+        const startOffset = Math.max(0, Math.floor((taskStart - stationStart) / (1000 * 60 * 60 * 24)));
+        const duration = daysBetween(task.startDate, task.endDate);
+        const color = getMemberColor(task.assignedTo);
+        
+        let rowHTML = '<div class="task-timeline-row-gantt">';
+        
+        for (let i = 0; i < daysToShow; i++) {
+            rowHTML += '<div class="timeline-cell"></div>';
+        }
+        
+        if (startOffset < daysToShow) {
+            const left = startOffset * DAY_WIDTH;
+            const width = Math.min(duration, daysToShow - startOffset) * DAY_WIDTH - 4;
+            
+            rowHTML += `
+                <div class="gantt-bar" 
+                     style="left: ${left + 2}px; width: ${width}px; background: ${color};"
+                     title="${task.name}">
+                    ${width > 60 ? task.name.substring(0, 8) : ''}
                 </div>
             `;
-    }).join('');
+        }
+        
+        rowHTML += '</div>';
+        bodyHTML += rowHTML;
+    });
+    
+    document.getElementById('task-timeline-body').innerHTML = bodyHTML;
+}
+
+function updateTask(stationId, taskId, field, value) {
+    const station = stations.find(s => s.id === stationId);
+    if (station) {
+        const task = station.tasks.find(t => t.id === taskId);
+        if (task) {
+            task[field] = value;
+            saveData();
+            renderStationTasks(station);
+            renderTaskTimeline(station);
+            renderDashboard();
+        }
+    }
+}
+
+function addNewTaskToStation() {
+    if (!currentStationId) return;
+    
+    const station = stations.find(s => s.id === currentStationId);
+    if (!station) return;
+    
+    const maxId = station.tasks.reduce((max, t) => Math.max(max, t.id), currentStationId * 100);
+    
+    station.tasks.push({
+        id: maxId + 1,
+        name: "New Task",
+        assignedTo: teamMembers[0].name,
+        startDate: station.startDate,
+        endDate: station.endDate,
+        estHours: 8,
+        actualHours: 0,
+        status: "Not Started",
+        priority: "Medium",
+        notes: ""
+    });
+    
+    saveData();
+    renderStationTasks(station);
+    renderTaskTimeline(station);
+    renderDashboard();
+}
+
+function deleteTask(stationId, taskId) {
+    if (confirm('Delete this task?')) {
+        const station = stations.find(s => s.id === stationId);
+        if (station) {
+            station.tasks = station.tasks.filter(t => t.id !== taskId);
+            saveData();
+            renderStationTasks(station);
+            renderTaskTimeline(station);
+            renderDashboard();
+        }
+    }
 }
 
 // ============================================
-// TEAM VIEW
+// TEAM MANAGEMENT
 // ============================================
 
 function renderTeam() {
@@ -600,10 +698,6 @@ function renderTeam() {
     }).join('');
 }
 
-// ============================================
-// MODAL HANDLING
-// ============================================
-
 function openModal(modalId) {
     document.getElementById(modalId).classList.add('active');
 }
@@ -619,193 +713,6 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
         }
     });
 });
-
-// ============================================
-// PHASE MANAGEMENT
-// ============================================
-
-function addNewPhase() {
-    document.getElementById('phase-modal-title').textContent = 'Add Station';
-    document.getElementById('phase-form').reset();
-    document.getElementById('phase-id').value = '';
-    
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('phase-start').value = today;
-    document.getElementById('phase-end').value = today;
-    document.getElementById('phase-color').value = '#00d4aa';
-    
-    openModal('phase-modal');
-}
-
-function editPhase(phaseId) {
-    const phase = phases.find(p => p.id === phaseId);
-    if (!phase) return;
-    
-    document.getElementById('phase-modal-title').textContent = 'Edit Station';
-    document.getElementById('phase-id').value = phase.id;
-    document.getElementById('phase-name').value = phase.name;
-    document.getElementById('phase-description').value = phase.description || '';
-    document.getElementById('phase-start').value = phase.startDate;
-    document.getElementById('phase-end').value = phase.endDate;
-    document.getElementById('phase-color').value = phase.color;
-    document.getElementById('phase-priority').value = phase.priority;
-    
-    openModal('phase-modal');
-}
-
-document.getElementById('phase-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const phaseId = document.getElementById('phase-id').value;
-    const phaseData = {
-        name: document.getElementById('phase-name').value,
-        description: document.getElementById('phase-description').value,
-        startDate: document.getElementById('phase-start').value,
-        endDate: document.getElementById('phase-end').value,
-        color: document.getElementById('phase-color').value,
-        priority: document.getElementById('phase-priority').value
-    };
-    
-    if (phaseId) {
-        // Update existing
-        const idx = phases.findIndex(p => p.id === parseInt(phaseId));
-        if (idx !== -1) {
-            phases[idx] = { ...phases[idx], ...phaseData };
-        }
-    } else {
-        // Create new
-        const maxId = phases.reduce((max, p) => Math.max(max, p.id), 0);
-        phases.push({ id: maxId + 1, ...phaseData, tasks: [] });
-    }
-    
-    saveData();
-    closeModal('phase-modal');
-    renderGanttOverview();
-    renderDashboard();
-});
-
-function deletePhase(phaseId) {
-    const phase = phases.find(p => p.id === phaseId);
-    if (!phase) return;
-    
-    if (confirm(`Delete "${phase.name}" and all its ${phase.tasks.length} tasks?`)) {
-        phases = phases.filter(p => p.id !== phaseId);
-        saveData();
-        renderGanttOverview();
-        renderDashboard();
-    }
-}
-
-// ============================================
-// TASK MANAGEMENT
-// ============================================
-
-function populateAssignedDropdown() {
-    const select = document.getElementById('task-assigned');
-    select.innerHTML = teamMembers.map(m => 
-        `<option value="${m.name}">${m.name} (${m.role})</option>`
-    ).join('');
-}
-
-function addNewTask() {
-    if (!currentPhaseId) return;
-    
-    const phase = phases.find(p => p.id === currentPhaseId);
-    if (!phase) return;
-    
-    document.getElementById('task-modal-title').textContent = 'Add Task';
-    document.getElementById('task-form').reset();
-    document.getElementById('task-id').value = '';
-    document.getElementById('task-phase-id').value = currentPhaseId;
-    document.getElementById('task-start').value = phase.startDate;
-    document.getElementById('task-end').value = phase.endDate;
-    
-    populateAssignedDropdown();
-    openModal('task-modal');
-}
-
-function editTask(phaseId, taskId) {
-    const phase = phases.find(p => p.id === phaseId);
-    if (!phase) return;
-    
-    const task = phase.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    document.getElementById('task-modal-title').textContent = 'Edit Task';
-    document.getElementById('task-id').value = task.id;
-    document.getElementById('task-phase-id').value = phaseId;
-    document.getElementById('task-name').value = task.name;
-    document.getElementById('task-start').value = task.startDate;
-    document.getElementById('task-end').value = task.endDate;
-    document.getElementById('task-est-hours').value = task.estHours;
-    document.getElementById('task-actual-hours').value = task.actualHours;
-    document.getElementById('task-status').value = task.status;
-    document.getElementById('task-priority').value = task.priority;
-    document.getElementById('task-notes').value = task.notes || '';
-    
-    populateAssignedDropdown();
-    document.getElementById('task-assigned').value = task.assignedTo;
-    
-    openModal('task-modal');
-}
-
-document.getElementById('task-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const taskId = document.getElementById('task-id').value;
-    const phaseId = parseInt(document.getElementById('task-phase-id').value);
-    
-    const phase = phases.find(p => p.id === phaseId);
-    if (!phase) return;
-    
-    const taskData = {
-        name: document.getElementById('task-name').value,
-        assignedTo: document.getElementById('task-assigned').value,
-        startDate: document.getElementById('task-start').value,
-        endDate: document.getElementById('task-end').value,
-        estHours: parseFloat(document.getElementById('task-est-hours').value) || 0,
-        actualHours: parseFloat(document.getElementById('task-actual-hours').value) || 0,
-        status: document.getElementById('task-status').value,
-        priority: document.getElementById('task-priority').value,
-        notes: document.getElementById('task-notes').value
-    };
-    
-    if (taskId) {
-        // Update existing
-        const idx = phase.tasks.findIndex(t => t.id === parseInt(taskId));
-        if (idx !== -1) {
-            phase.tasks[idx] = { ...phase.tasks[idx], ...taskData };
-        }
-    } else {
-        // Create new
-        const maxId = phase.tasks.reduce((max, t) => Math.max(max, t.id), phaseId * 100);
-        phase.tasks.push({ id: maxId + 1, ...taskData });
-    }
-    
-    saveData();
-    closeModal('task-modal');
-    renderPhaseDetail(phase);
-    renderDashboard();
-});
-
-function deleteTask(phaseId, taskId) {
-    const phase = phases.find(p => p.id === phaseId);
-    if (!phase) return;
-    
-    const task = phase.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    if (confirm(`Delete task "${task.name}"?`)) {
-        phase.tasks = phase.tasks.filter(t => t.id !== taskId);
-        saveData();
-        renderPhaseDetail(phase);
-        renderDashboard();
-    }
-}
-
-// ============================================
-// TEAM MEMBER MANAGEMENT
-// ============================================
 
 function addNewTeamMember() {
     document.getElementById('team-modal-title').textContent = 'Add Team Member';
@@ -849,13 +756,12 @@ document.getElementById('team-form').addEventListener('submit', (e) => {
     } else {
         teamMembers[memberIndex] = memberData;
         
-        // Update tasks if name changed
         if (oldName && oldName !== memberData.name) {
-            phases.forEach(phase => {
-                phase.tasks.forEach(task => {
-                if (task.assignedTo === oldName) {
-                    task.assignedTo = memberData.name;
-                }
+            stations.forEach(station => {
+                station.tasks.forEach(task => {
+                    if (task.assignedTo === oldName) {
+                        task.assignedTo = memberData.name;
+                    }
                 });
             });
         }
@@ -892,7 +798,6 @@ function validateProject() {
     const issues = [];
     const allTasks = getAllTasks();
     
-    // Check tasks
     allTasks.forEach(task => {
         if (task.estHours > 16) {
             issues.push(`Task "${task.name}" exceeds 16 hours (${task.estHours} hrs)`);
@@ -901,18 +806,16 @@ function validateProject() {
             issues.push(`Task "${task.name}" has no assignment`);
         }
         if (task.startDate && task.endDate && parseDate(task.endDate) < parseDate(task.startDate)) {
-                issues.push(`Task "${task.name}" has end date before start date`);
+            issues.push(`Task "${task.name}" has end date before start date`);
         }
     });
     
-    // Check phases
-    phases.forEach(phase => {
-        if (phase.tasks.length === 0) {
-            issues.push(`Phase "${phase.name}" has no tasks`);
+    stations.forEach(station => {
+        if (station.tasks.length === 0) {
+            issues.push(`Station "${station.name}" has no tasks`);
         }
     });
     
-    // Check team workload
     teamMembers.forEach(member => {
         const assignedHours = getAssignedHours(member.name);
         if (assignedHours > member.targetHours) {
@@ -958,7 +861,7 @@ function exportToPDF() {
     const element = document.getElementById('gantt-export-area');
     const opt = {
         margin: 10,
-        filename: `LoopAutomation_ProjectOverview_${new Date().toISOString().split('T')[0]}.pdf`,
+        filename: `LoopAutomation_GanttChart_${new Date().toISOString().split('T')[0]}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1117' },
         jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' }
@@ -967,14 +870,14 @@ function exportToPDF() {
     html2pdf().set(opt).from(element).save();
 }
 
-function exportPhaseToPDF() {
-    const element = document.getElementById('phase-export-area');
-    const phase = phases.find(p => p.id === currentPhaseId);
-    const phaseName = phase ? phase.name.replace(/\s+/g, '_') : 'Phase';
+function exportStationToPDF() {
+    const element = document.getElementById('station-export-area');
+    const station = stations.find(s => s.id === currentStationId);
+    const stationName = station ? station.name.replace(/\s+/g, '_') : 'Station';
     
     const opt = {
         margin: 10,
-        filename: `LoopAutomation_${phaseName}_${new Date().toISOString().split('T')[0]}.pdf`,
+        filename: `LoopAutomation_${stationName}_${new Date().toISOString().split('T')[0]}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1117' },
         jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' }
@@ -984,11 +887,11 @@ function exportPhaseToPDF() {
 }
 
 function exportToCSV() {
-    let csv = 'Phase,Task,Assigned To,Role,Start Date,End Date,Est Hours,Actual Hours,Status,Priority\n';
+    let csv = 'Station,Task,Assigned To,Role,Start Date,End Date,Est Hours,Actual Hours,Status,Priority,Notes\n';
     
-    phases.forEach(phase => {
-        phase.tasks.forEach(task => {
-            csv += `"${phase.name}","${task.name}","${task.assignedTo}","${getMemberRole(task.assignedTo)}","${task.startDate}","${task.endDate}",${task.estHours},${task.actualHours},"${task.status}","${task.priority}"\n`;
+    stations.forEach(station => {
+        station.tasks.forEach(task => {
+            csv += `"${station.name}","${task.name}","${task.assignedTo}","${getMemberRole(task.assignedTo)}","${task.startDate}","${task.endDate}",${task.estHours},${task.actualHours},"${task.status}","${task.priority}","${task.notes || ''}"\n`;
         });
     });
     
@@ -1007,7 +910,7 @@ function exportToCSV() {
 
 function init() {
     renderDashboard();
-    renderGanttOverview();
+    renderGanttView();
     renderTeam();
 }
 

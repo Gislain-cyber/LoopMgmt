@@ -179,20 +179,18 @@
                 </div>
             </section>
 
-            <!-- Gantt Chart View (Project Overview) -->
+            <!-- Gantt Chart View (Station Overview) -->
             <section id="gantt-view" class="view">
                 <header class="view-header">
                     <div class="header-left">
                         <h1>Gantt Chart - Station Overview</h1>
-                        <p class="view-subtitle">Click on a station to view detailed tasks and assignments</p>
+                        <p class="view-subtitle">Click on a station row to view detailed task breakdown</p>
                     </div>
                     <div class="header-actions">
                         <button class="btn-secondary" onclick="exportToPDF()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
                                 <polyline points="14,2 14,8 20,8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
                             </svg>
                             Export PDF
                         </button>
@@ -204,7 +202,7 @@
                             </svg>
                             Export CSV
                         </button>
-                        <button class="btn-primary" onclick="addNewPhase()">
+                        <button class="btn-primary" onclick="addNewStation()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
                                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -214,33 +212,62 @@
                     </div>
                 </header>
 
-                <div class="gantt-container" id="gantt-export-area">
-                    <div class="gantt-phases" id="gantt-phases"></div>
+                <div class="gantt-container-full" id="gantt-export-area">
+                    <div class="gantt-table-wrapper">
+                        <!-- Station Table -->
+                        <div class="station-table-scroll">
+                            <table class="station-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">#</th>
+                                        <th style="width: 250px;">Station Name</th>
+                                        <th style="width: 200px;">Description</th>
+                                        <th style="width: 110px;">Start Date</th>
+                                        <th style="width: 110px;">End Date</th>
+                                        <th style="width: 70px;">Days</th>
+                                        <th style="width: 70px;">Tasks</th>
+                                        <th style="width: 80px;">Est Hrs</th>
+                                        <th style="width: 80px;">Progress</th>
+                                        <th style="width: 100px;">Priority</th>
+                                        <th style="width: 80px;">Color</th>
+                                        <th style="width: 100px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="station-tbody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Timeline -->
+                        <div class="gantt-timeline-scroll">
+                            <div class="gantt-timeline-header" id="gantt-timeline-header"></div>
+                            <div class="gantt-timeline-body" id="gantt-timeline-body"></div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <!-- Phase Detail View -->
-            <section id="phase-detail-view" class="view">
+            <!-- Station Detail View -->
+            <section id="station-detail-view" class="view">
                 <header class="view-header">
                     <div class="header-left">
-                        <button class="btn-back" onclick="backToOverview()">
+                        <button class="btn-back" onclick="backToGantt()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M19 12H5M12 19l-7-7 7-7"/>
                             </svg>
                             Back to Gantt Chart
                         </button>
-                        <h1 id="phase-detail-title">Station Name</h1>
-                        <p class="view-subtitle" id="phase-detail-subtitle">Station details and task breakdown</p>
+                        <h1 id="station-detail-title">Station Name</h1>
+                        <p class="view-subtitle" id="station-detail-subtitle">Edit tasks directly in the table below</p>
                     </div>
                     <div class="header-actions">
-                        <button class="btn-secondary" onclick="exportPhaseToPDF()">
+                        <button class="btn-secondary" onclick="exportStationToPDF()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
                                 <polyline points="14,2 14,8 20,8"/>
                             </svg>
                             Export PDF
                         </button>
-                        <button class="btn-primary" onclick="addNewTask()">
+                        <button class="btn-primary" onclick="addNewTaskToStation()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
                                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -250,42 +277,40 @@
                     </div>
                 </header>
 
-                <div class="phase-detail-content" id="phase-export-area">
-                    <!-- Phase Summary -->
-                    <div class="phase-summary" id="phase-summary"></div>
-                    
-                    <!-- Tasks Table -->
-                    <div class="phase-tasks-container">
-                        <h3>Task Breakdown</h3>
-                        <table class="tasks-detail-table">
+                <div class="station-detail-content" id="station-export-area">
+                    <!-- Tasks Table with Inline Editing -->
+                    <div class="tasks-detail-container">
+                        <table class="tasks-detail-table-editable">
                             <thead>
                                 <tr>
-                                    <th>Task</th>
-                                    <th>Assigned To</th>
-                                    <th>Role</th>
-                                    <th>Start</th>
-                                    <th>End</th>
-                                    <th>Est Hrs</th>
-                                    <th>Actual</th>
-                                    <th>Status</th>
-                                    <th>Priority</th>
-                                    <th>Actions</th>
+                                    <th style="width: 40px;">#</th>
+                                    <th style="width: 200px;">Task Name</th>
+                                    <th style="width: 150px;">Assigned To</th>
+                                    <th style="width: 80px;">Role</th>
+                                    <th style="width: 110px;">Start Date</th>
+                                    <th style="width: 110px;">End Date</th>
+                                    <th style="width: 70px;">Days</th>
+                                    <th style="width: 80px;">Est Hrs</th>
+                                    <th style="width: 80px;">Actual Hrs</th>
+                                    <th style="width: 80px;">Remaining</th>
+                                    <th style="width: 70px;">% Done</th>
+                                    <th style="width: 120px;">Status</th>
+                                    <th style="width: 100px;">Priority</th>
+                                    <th style="width: 150px;">Notes</th>
+                                    <th style="width: 80px;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="phase-tasks-tbody"></tbody>
+                            <tbody id="station-tasks-tbody"></tbody>
                         </table>
                     </div>
 
-                    <!-- Phase Timeline -->
-                    <div class="phase-timeline-container">
+                    <!-- Task Timeline -->
+                    <div class="task-timeline-section">
                         <h3>Task Timeline</h3>
-                        <div class="phase-timeline" id="phase-timeline"></div>
-                    </div>
-
-                    <!-- Team Assignments for this Phase -->
-                    <div class="phase-team-container">
-                        <h3>Team Assignments</h3>
-                        <div class="phase-team-grid" id="phase-team-grid"></div>
+                        <div class="task-timeline-gantt">
+                            <div class="task-timeline-header" id="task-timeline-header"></div>
+                            <div class="task-timeline-body" id="task-timeline-body"></div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -311,137 +336,6 @@
                 <div class="team-grid" id="team-grid"></div>
             </section>
         </main>
-    </div>
-
-    <!-- Phase Modal -->
-    <div class="modal-overlay" id="phase-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 id="phase-modal-title">Add Station</h2>
-                <button class="modal-close" onclick="closeModal('phase-modal')">&times;</button>
-            </div>
-            <form id="phase-form" class="modal-body">
-                <input type="hidden" id="phase-id">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="phase-name">Station Name</label>
-                        <input type="text" id="phase-name" required placeholder="e.g., Station 1 - Assembly">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="phase-description">Description</label>
-                        <textarea id="phase-description" rows="3" placeholder="Brief description of this station..."></textarea>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="phase-start">Start Date</label>
-                        <input type="date" id="phase-start" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="phase-end">End Date</label>
-                        <input type="date" id="phase-end" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="phase-color">Station Color</label>
-                        <input type="color" id="phase-color" value="#00d4aa">
-                    </div>
-                    <div class="form-group">
-                        <label for="phase-priority">Priority</label>
-                        <select id="phase-priority">
-                            <option value="Low">Low</option>
-                            <option value="Medium" selected>Medium</option>
-                            <option value="High">High</option>
-                            <option value="Critical">Critical</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="closeModal('phase-modal')">Cancel</button>
-                    <button type="submit" class="btn-primary">Save Station</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Task Modal -->
-    <div class="modal-overlay" id="task-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 id="task-modal-title">Add Task</h2>
-                <button class="modal-close" onclick="closeModal('task-modal')">&times;</button>
-            </div>
-            <form id="task-form" class="modal-body">
-                <input type="hidden" id="task-id">
-                <input type="hidden" id="task-phase-id">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="task-name">Task Name</label>
-                        <input type="text" id="task-name" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="task-assigned">Assigned To</label>
-                        <select id="task-assigned" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="task-priority">Priority</label>
-                        <select id="task-priority" required>
-                            <option value="Low">Low</option>
-                            <option value="Medium" selected>Medium</option>
-                            <option value="High">High</option>
-                            <option value="Critical">Critical</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="task-start">Start Date</label>
-                        <input type="date" id="task-start" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="task-end">End Date</label>
-                        <input type="date" id="task-end" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="task-est-hours">Estimated Hours</label>
-                        <input type="number" id="task-est-hours" min="0" step="0.5" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="task-actual-hours">Actual Hours</label>
-                        <input type="number" id="task-actual-hours" min="0" step="0.5" value="0">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="task-status">Status</label>
-                        <select id="task-status" required>
-                            <option value="Not Started">Not Started</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Complete">Complete</option>
-                            <option value="On Hold">On Hold</option>
-                            <option value="Delayed">Delayed</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="task-notes">Notes</label>
-                        <textarea id="task-notes" rows="2" placeholder="Additional notes..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="closeModal('task-modal')">Cancel</button>
-                    <button type="submit" class="btn-primary">Save Task</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- Team Member Modal -->

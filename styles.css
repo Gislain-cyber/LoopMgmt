@@ -553,265 +553,356 @@ body {
 .variance-negative { color: var(--status-delayed); }
 
 /* ============================================
-   GANTT CHART - PROJECT OVERVIEW
+   GANTT CHART - STATION OVERVIEW (EDITABLE TABLE)
    ============================================ */
-.gantt-container {
+.gantt-container-full {
     flex: 1;
-    overflow-y: auto;
-    padding: 24px 32px;
-}
-
-.gantt-phases {
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 16px;
 }
 
-/* Phase Card */
-.phase-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 16px;
+.gantt-table-wrapper {
+    flex: 1;
+    display: flex;
     overflow: hidden;
-    transition: var(--transition-normal);
+}
+
+.station-table-scroll {
+    width: 1290px;
+    min-width: 1290px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border-right: 2px solid var(--border-primary);
+    background: var(--bg-secondary);
+}
+
+.station-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.station-table th,
+.station-table td {
+    padding: 12px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.station-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-tertiary);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+    z-index: 10;
+}
+
+.station-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.station-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.station-table input[type="text"],
+.station-table input[type="date"],
+.station-table input[type="number"],
+.station-table select,
+.station-table textarea {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.station-table input:focus,
+.station-table select:focus,
+.station-table textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    background: var(--bg-elevated);
+}
+
+.station-table input[type="color"] {
+    width: 50px;
+    height: 32px;
+    padding: 2px;
     cursor: pointer;
 }
 
-.phase-card:hover {
-    border-color: var(--accent-primary);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+.editable-cell {
+    cursor: text;
 }
 
-.phase-card-header {
-    padding: 20px 24px;
+.editable-cell:hover {
+    background: rgba(0, 212, 170, 0.05);
+}
+
+.gantt-timeline-scroll {
+    flex: 1;
+    overflow: auto;
+    background: var(--bg-primary);
+}
+
+.gantt-timeline-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-tertiary);
+    height: 48px;
+}
+
+.gantt-timeline-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.gantt-timeline-row {
+    display: flex;
+    height: 61px;
     border-bottom: 1px solid var(--border-secondary);
     position: relative;
+    cursor: pointer;
 }
 
-.phase-card-header::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: var(--phase-color, var(--accent-primary));
-}
-
-.phase-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.phase-name {
-    font-size: 1.2rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.phase-dates {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.phase-dates svg {
-    width: 14px;
-    height: 14px;
-}
-
-.phase-meta {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.phase-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 8px 16px;
+.gantt-timeline-row:hover {
     background: var(--bg-tertiary);
-    border-radius: 8px;
 }
 
-.phase-stat-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.phase-stat-label {
+/* Timeline cells and bars */
+.timeline-day-cell {
+    width: 30px;
+    min-width: 30px;
+    height: 48px;
+    border-right: 1px solid var(--border-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
 }
 
-.phase-actions {
-    display: flex;
-    gap: 8px;
+.timeline-day-cell.weekend {
+    background: rgba(108, 117, 125, 0.1);
 }
 
-/* Phase Timeline Bar */
-.phase-timeline-bar {
-    padding: 16px 24px;
-    background: var(--bg-tertiary);
+.timeline-day-cell.today {
+    background: rgba(0, 212, 170, 0.2);
+    color: var(--accent-primary);
+    font-weight: 600;
 }
 
-.timeline-bar-container {
+.timeline-cell {
+    width: 30px;
+    min-width: 30px;
+    border-right: 1px solid var(--border-secondary);
     position: relative;
-    height: 40px;
-    background: var(--bg-primary);
-    border-radius: 8px;
+}
+
+.timeline-cell.weekend {
+    background: rgba(108, 117, 125, 0.05);
+}
+
+.timeline-cell.today {
+    background: rgba(0, 212, 170, 0.1);
+}
+
+.gantt-bar {
+    position: absolute;
+    top: 12px;
+    height: 36px;
+    border-radius: 6px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    padding: 0 8px;
+    white-space: nowrap;
     overflow: hidden;
 }
 
-.timeline-bar-fill {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    min-width: 60px;
-}
-
-.timeline-bar-progress {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    background: rgba(255,255,255,0.2);
-    border-radius: 8px 0 0 8px;
-}
-
-/* Phase Team Preview */
-.phase-team-preview {
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+.gantt-bar:hover {
+    transform: scaleY(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10;
 }
 
 .team-avatar-small {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     font-weight: 600;
     color: white;
     border: 2px solid var(--bg-secondary);
 }
 
-.team-count-badge {
-    padding: 4px 12px;
-    background: var(--bg-tertiary);
-    border-radius: 20px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-}
-
 /* ============================================
-   PHASE DETAIL VIEW
+   STATION DETAIL VIEW (EDITABLE TASKS)
    ============================================ */
-.phase-detail-content {
+.station-detail-content {
     flex: 1;
-    overflow-y: auto;
-    padding: 24px 32px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: 24px;
+    padding: 24px 32px;
 }
 
-.phase-summary {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
+.tasks-detail-container {
+    flex: 1;
+    overflow: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 16px;
 }
 
-.summary-card {
+.tasks-detail-table-editable {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.tasks-detail-table-editable th,
+.tasks-detail-table-editable td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.tasks-detail-table-editable th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-tertiary);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+    z-index: 5;
+}
+
+.tasks-detail-table-editable tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.tasks-detail-table-editable input[type="text"],
+.tasks-detail-table-editable input[type="date"],
+.tasks-detail-table-editable input[type="number"],
+.tasks-detail-table-editable select,
+.tasks-detail-table-editable textarea {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.tasks-detail-table-editable input:focus,
+.tasks-detail-table-editable select:focus,
+.tasks-detail-table-editable textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    background: var(--bg-elevated);
+}
+
+.tasks-detail-table-editable textarea {
+    resize: vertical;
+    min-height: 32px;
+}
+
+/* Task Timeline Section */
+.task-timeline-section {
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
     border-radius: 12px;
     padding: 20px;
-    text-align: center;
+    max-height: 400px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.summary-card-value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--accent-primary);
-}
-
-.summary-card-label {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-top: 4px;
-}
-
-/* Tasks Detail Table */
-.phase-tasks-container {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 12px;
-    padding: 24px;
-}
-
-.phase-tasks-container h3,
-.phase-timeline-container h3,
-.phase-team-container h3 {
+.task-timeline-section h3 {
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 16px;
     color: var(--text-secondary);
 }
 
-.tasks-detail-table {
-    width: 100%;
-    border-collapse: collapse;
+.task-timeline-gantt {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
 }
 
-.tasks-detail-table th,
-.tasks-detail-table td {
-    padding: 12px 16px;
-    text-align: left;
+.task-timeline-header {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg-tertiary);
+    height: 40px;
+}
+
+.task-timeline-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.task-timeline-row-gantt {
+    display: flex;
+    height: 44px;
     border-bottom: 1px solid var(--border-secondary);
+    position: relative;
+    align-items: center;
+    padding-left: 12px;
 }
 
-.tasks-detail-table th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-    font-weight: 600;
-    background: var(--bg-tertiary);
+.task-timeline-label {
+    width: 200px;
+    min-width: 200px;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 12px;
 }
 
-.tasks-detail-table tbody tr:hover {
-    background: var(--bg-tertiary);
-}
-
-.tasks-detail-table td {
-    font-size: 0.9rem;
+.task-timeline-bar-wrapper {
+    flex: 1;
+    position: relative;
+    height: 100%;
 }
 
 /* Status & Priority badges */
