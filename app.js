@@ -1103,6 +1103,12 @@ async function deleteTask(stationId, taskId) {
 function renderTeam() {
     const grid = document.getElementById('team-grid');
     
+    // Hide "Add Member" button if not admin
+    const addMemberBtn = document.querySelector('#team-view .header-actions .btn-primary');
+    if (addMemberBtn) {
+        addMemberBtn.style.display = isAdmin ? 'flex' : 'none';
+    }
+    
     grid.innerHTML = teamMembers.map((member, index) => {
         const assignedHours = getAssignedHours(member.name);
         const taskCount = getAllTasks().filter(t => t.assignedTo === member.name).length;
@@ -1111,6 +1117,24 @@ function renderTeam() {
         let loadColor = '#28a745';
         if (loadPercent > 80 && loadPercent <= 100) loadColor = '#00d4aa';
         if (loadPercent > 100) loadColor = '#dc3545';
+        
+        // Only show edit/delete buttons for admins
+        const actionsHTML = isAdmin ? `
+            <div class="team-card-actions">
+                <button onclick="editTeamMember(${index})">Edit</button>
+                <button class="delete" onclick="deleteTeamMember(${index})">Remove</button>
+            </div>
+        ` : `
+            <div class="team-card-actions" style="justify-content: center;">
+                <span style="color: var(--text-muted); font-size: 0.8rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                        <rect x="3" y="11" width="18" height="11" rx="2"/>
+                        <path d="M7 11V7a5 5 0 0110 0v4"/>
+                    </svg>
+                    Admin only
+                </span>
+            </div>
+        `;
         
         return `
             <div class="team-card" style="--member-color: ${member.color}">
@@ -1136,10 +1160,7 @@ function renderTeam() {
                         <div class="team-progress-fill" style="width: ${Math.min(loadPercent, 100)}%; background: ${loadColor}"></div>
                     </div>
                 </div>
-                <div class="team-card-actions">
-                    <button onclick="editTeamMember(${index})">Edit</button>
-                    <button class="delete" onclick="deleteTeamMember(${index})">Remove</button>
-                </div>
+                ${actionsHTML}
             </div>
         `;
     }).join('');
@@ -1162,6 +1183,11 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 });
 
 function addNewTeamMember() {
+    if (!isAdmin) {
+        showError('Admin access required');
+        return;
+    }
+    
     document.getElementById('team-modal-title').textContent = 'Add Team Member';
     document.getElementById('team-form').reset();
     document.getElementById('member-index').value = '';
@@ -1171,6 +1197,11 @@ function addNewTeamMember() {
 }
 
 function editTeamMember(index) {
+    if (!isAdmin) {
+        showError('Admin access required');
+        return;
+    }
+    
     const member = teamMembers[index];
     
     document.getElementById('team-modal-title').textContent = 'Edit Team Member';
@@ -1186,6 +1217,12 @@ function editTeamMember(index) {
 
 document.getElementById('team-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    if (!isAdmin) {
+        showError('Admin access required');
+        closeModal('team-modal');
+        return;
+    }
     
     const memberIndex = document.getElementById('member-index').value;
     const oldName = memberIndex !== '' ? teamMembers[memberIndex].name : null;
@@ -1221,6 +1258,11 @@ document.getElementById('team-form').addEventListener('submit', async (e) => {
 });
 
 async function deleteTeamMember(index) {
+    if (!isAdmin) {
+        showError('Admin access required');
+        return;
+    }
+    
     const member = teamMembers[index];
     const assignedTasks = getAllTasks().filter(t => t.assignedTo === member.name).length;
     
