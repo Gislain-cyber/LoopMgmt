@@ -705,6 +705,139 @@ body {
     background: rgba(0, 212, 170, 0.05);
 }
 
+/* Expand/Collapse Toggle Button */
+.expand-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin-right: 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+}
+
+.expand-toggle svg {
+    width: 14px;
+    height: 14px;
+    stroke: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+
+.expand-toggle:hover {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.expand-toggle:hover svg {
+    stroke: var(--bg-primary);
+}
+
+.expand-toggle.expanded svg {
+    transform: rotate(90deg);
+}
+
+/* Station Row Styling */
+.station-row {
+    background: var(--bg-secondary);
+    font-weight: 500;
+}
+
+.station-row.expanded {
+    background: var(--bg-tertiary);
+    border-bottom: 2px solid var(--accent-primary) !important;
+}
+
+/* Subtask Row Styling */
+.subtask-row {
+    background: var(--bg-primary);
+    font-size: 0.9rem;
+    border-left: 3px solid transparent;
+}
+
+.subtask-row:hover {
+    background: var(--bg-elevated) !important;
+    border-left-color: var(--accent-primary);
+}
+
+.subtask-row td {
+    padding: 8px 10px !important;
+}
+
+.subtask-row input,
+.subtask-row select {
+    font-size: 0.85rem;
+    padding: 4px 6px;
+}
+
+/* Subtask Timeline Row */
+.subtask-timeline-row {
+    height: 45px !important;
+    background: var(--bg-primary);
+}
+
+.subtask-timeline-row:hover {
+    background: var(--bg-elevated) !important;
+}
+
+.subtask-cell {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Subtask Gantt Bar */
+.subtask-bar {
+    height: 28px !important;
+    top: 8px !important;
+    font-size: 0.65rem !important;
+    border-radius: 4px !important;
+}
+
+/* Station Bar (parent) */
+.station-bar {
+    font-weight: 700;
+}
+
+.station-timeline-row.expanded {
+    border-bottom: 2px solid var(--accent-primary) !important;
+}
+
+/* Expand All / Collapse All Buttons */
+.expand-controls {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.btn-expand {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-expand:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.btn-expand svg {
+    width: 14px;
+    height: 14px;
+}
+
 .gantt-timeline-scroll {
     flex: 1;
     overflow: auto;

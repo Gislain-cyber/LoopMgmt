@@ -21,6 +21,9 @@ let isSyncing = false;
 let isAdmin = false;
 let currentUser = null;
 
+// Expanded stations state (for showing subtasks)
+let expandedStations = new Set();
+
 // Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyDyD7DzKLTAtncmRNhcgADGWOFQvj9F1Aw",
@@ -660,21 +663,62 @@ function renderGanttView() {
     renderGanttTimeline();
 }
 
+function toggleStationExpand(stationId, event) {
+    if (event) event.stopPropagation();
+    
+    if (expandedStations.has(stationId)) {
+        expandedStations.delete(stationId);
+    } else {
+        expandedStations.add(stationId);
+    }
+    
+    renderGanttView();
+}
+
+function expandAllStations() {
+    stations.forEach(s => expandedStations.add(s.id));
+    renderGanttView();
+}
+
+function collapseAllStations() {
+    expandedStations.clear();
+    renderGanttView();
+}
+
+window.toggleStationExpand = toggleStationExpand;
+window.expandAllStations = expandAllStations;
+window.collapseAllStations = collapseAllStations;
+
 function renderStationTable() {
     const tbody = document.getElementById('station-tbody');
+    let html = '';
     
-    if (!isAdmin) {
-        // Public view - clean, professional, read-only
-        tbody.innerHTML = stations.map((station, idx) => {
-            const days = daysBetween(station.startDate, station.endDate);
-            const totalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-            const actualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-            const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
-            
-            return `
-                <tr data-station-id="${station.id}" onclick="openStationDetail(${station.id})" class="public-view-row">
-                    <td style="color: ${station.color}; font-weight: 700;">${station.id}</td>
-                    <td style="font-weight: 600;">${station.name}</td>
+    stations.forEach((station, idx) => {
+        const days = daysBetween(station.startDate, station.endDate);
+        const totalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
+        const actualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+        const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
+        const isExpanded = expandedStations.has(station.id);
+        const hasSubtasks = station.tasks.length > 0;
+        
+        // Expand/collapse chevron
+        const chevron = hasSubtasks ? `
+            <button class="expand-toggle ${isExpanded ? 'expanded' : ''}" onclick="toggleStationExpand(${station.id}, event)" title="${isExpanded ? 'Collapse' : 'Expand'} tasks">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </button>
+        ` : '<span style="width: 28px; display: inline-block;"></span>';
+        
+        if (!isAdmin) {
+            // Public view - station row
+            html += `
+                <tr data-station-id="${station.id}" class="station-row ${isExpanded ? 'expanded' : ''}">
+                    <td style="color: ${station.color}; font-weight: 700;">
+                        ${chevron}
+                        ${station.id}
+                    </td>
+                    <td style="font-weight: 600; cursor: pointer;" onclick="openStationDetail(${station.id})">${station.name}</td>
                     <td style="color: var(--text-secondary);">${station.description}</td>
                     <td>${formatDateDisplay(station.startDate)}</td>
                     <td>${formatDateDisplay(station.endDate)}</td>
@@ -694,56 +738,47 @@ function renderStationTable() {
                     <td></td>
                 </tr>
             `;
-        }).join('');
-    } else {
-        // Admin view - editable
-        tbody.innerHTML = stations.map((station, idx) => {
-            const days = daysBetween(station.startDate, station.endDate);
-            const totalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-            const actualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-            const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
-            
-            return `
-                <tr data-station-id="${station.id}" onclick="openStationDetail(${station.id})">
-                    <td>${station.id}</td>
-                    <td class="editable-cell" onclick="event.stopPropagation()">
+        } else {
+            // Admin view - station row
+            html += `
+                <tr data-station-id="${station.id}" class="station-row ${isExpanded ? 'expanded' : ''}">
+                    <td>
+                        ${chevron}
+                        ${station.id}
+                    </td>
+                    <td class="editable-cell">
                         <input type="text" value="${station.name}" 
-                               onchange="updateStation(${station.id}, 'name', this.value)" 
-                               onclick="event.stopPropagation()">
+                               onchange="updateStation(${station.id}, 'name', this.value)">
                     </td>
-                    <td class="editable-cell" onclick="event.stopPropagation()">
+                    <td class="editable-cell">
                         <input type="text" value="${station.description}" 
-                               onchange="updateStation(${station.id}, 'description', this.value)"
-                               onclick="event.stopPropagation()">
+                               onchange="updateStation(${station.id}, 'description', this.value)">
                     </td>
-                    <td class="editable-cell" onclick="event.stopPropagation()">
+                    <td class="editable-cell">
                         <input type="date" value="${station.startDate}" 
-                               onchange="updateStation(${station.id}, 'startDate', this.value)"
-                               onclick="event.stopPropagation()">
+                               onchange="updateStation(${station.id}, 'startDate', this.value)">
                     </td>
-                    <td class="editable-cell" onclick="event.stopPropagation()">
+                    <td class="editable-cell">
                         <input type="date" value="${station.endDate}" 
-                               onchange="updateStation(${station.id}, 'endDate', this.value)"
-                               onclick="event.stopPropagation()">
+                               onchange="updateStation(${station.id}, 'endDate', this.value)">
                     </td>
                     <td>${days}</td>
                     <td>${station.tasks.length}</td>
                     <td>${totalHours}h</td>
                     <td>${progress}%</td>
-                    <td class="editable-cell" onclick="event.stopPropagation()">
-                        <select onchange="updateStation(${station.id}, 'priority', this.value)" onclick="event.stopPropagation()">
+                    <td class="editable-cell">
+                        <select onchange="updateStation(${station.id}, 'priority', this.value)">
                             <option value="Low" ${station.priority === 'Low' ? 'selected' : ''}>Low</option>
                             <option value="Medium" ${station.priority === 'Medium' ? 'selected' : ''}>Medium</option>
                             <option value="High" ${station.priority === 'High' ? 'selected' : ''}>High</option>
                             <option value="Critical" ${station.priority === 'Critical' ? 'selected' : ''}>Critical</option>
                         </select>
                     </td>
-                    <td class="editable-cell" onclick="event.stopPropagation()">
+                    <td class="editable-cell">
                         <input type="color" value="${station.color}" 
-                               onchange="updateStation(${station.id}, 'color', this.value)"
-                               onclick="event.stopPropagation()">
+                               onchange="updateStation(${station.id}, 'color', this.value)">
                     </td>
-                    <td onclick="event.stopPropagation()">
+                    <td>
                         <button class="btn-icon delete" onclick="deleteStation(${station.id})" title="Delete">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -752,8 +787,105 @@ function renderStationTable() {
                     </td>
                 </tr>
             `;
-        }).join('');
-    }
+        }
+        
+        // Subtask rows (shown when expanded)
+        if (isExpanded && hasSubtasks) {
+            station.tasks.forEach(task => {
+                const taskDays = daysBetween(task.startDate, task.endDate);
+                const memberColor = getMemberColor(task.assignedTo);
+                
+                if (!isAdmin) {
+                    // Public view - subtask row
+                    html += `
+                        <tr class="subtask-row" data-station-id="${station.id}" data-task-id="${task.id}">
+                            <td style="padding-left: 40px; color: var(--text-muted);">
+                                <span style="color: ${station.color};">└</span> ${task.id}
+                            </td>
+                            <td style="padding-left: 20px;">
+                                <span style="display: inline-block; width: 8px; height: 8px; background: ${memberColor}; border-radius: 50%; margin-right: 8px;"></span>
+                                ${task.name}
+                            </td>
+                            <td style="color: var(--text-muted);">${task.assignedTo || 'Unassigned'}</td>
+                            <td>${formatDateDisplay(task.startDate)}</td>
+                            <td>${formatDateDisplay(task.endDate)}</td>
+                            <td>${taskDays}</td>
+                            <td><span class="status-badge ${getStatusClass(task.status)}">${task.status}</span></td>
+                            <td style="font-family: 'JetBrains Mono', monospace;">${task.estHours || 0}h</td>
+                            <td style="font-family: 'JetBrains Mono', monospace;">${task.actualHours || 0}h</td>
+                            <td><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
+                            <td colspan="2" style="color: var(--text-muted); font-size: 0.85rem;">${task.notes || ''}</td>
+                        </tr>
+                    `;
+                } else {
+                    // Admin view - subtask row
+                    html += `
+                        <tr class="subtask-row" data-station-id="${station.id}" data-task-id="${task.id}">
+                            <td style="padding-left: 40px; color: var(--text-muted);">
+                                <span style="color: ${station.color};">└</span> ${task.id}
+                            </td>
+                            <td class="editable-cell" style="padding-left: 20px;">
+                                <input type="text" value="${task.name}" 
+                                       onchange="updateTask(${station.id}, ${task.id}, 'name', this.value)">
+                            </td>
+                            <td class="editable-cell">
+                                <select onchange="updateTask(${station.id}, ${task.id}, 'assignedTo', this.value)">
+                                    <option value="">Unassigned</option>
+                                    ${teamMembers.map(m => `<option value="${m.name}" ${task.assignedTo === m.name ? 'selected' : ''}>${m.name}</option>`).join('')}
+                                </select>
+                            </td>
+                            <td class="editable-cell">
+                                <input type="date" value="${task.startDate}" 
+                                       onchange="updateTask(${station.id}, ${task.id}, 'startDate', this.value)">
+                            </td>
+                            <td class="editable-cell">
+                                <input type="date" value="${task.endDate}" 
+                                       onchange="updateTask(${station.id}, ${task.id}, 'endDate', this.value)">
+                            </td>
+                            <td>${taskDays}</td>
+                            <td class="editable-cell">
+                                <select onchange="updateTask(${station.id}, ${task.id}, 'status', this.value)">
+                                    <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
+                                    <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
+                                    <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                                </select>
+                            </td>
+                            <td class="editable-cell">
+                                <input type="number" value="${task.estHours || 0}" min="0" 
+                                       onchange="updateTask(${station.id}, ${task.id}, 'estHours', parseFloat(this.value) || 0)" style="width: 60px;">
+                            </td>
+                            <td class="editable-cell">
+                                <input type="number" value="${task.actualHours || 0}" min="0" 
+                                       onchange="updateTask(${station.id}, ${task.id}, 'actualHours', parseFloat(this.value) || 0)" style="width: 60px;">
+                            </td>
+                            <td class="editable-cell">
+                                <select onchange="updateTask(${station.id}, ${task.id}, 'priority', this.value)">
+                                    <option value="Low" ${task.priority === 'Low' ? 'selected' : ''}>Low</option>
+                                    <option value="Medium" ${task.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                                    <option value="High" ${task.priority === 'High' ? 'selected' : ''}>High</option>
+                                    <option value="Critical" ${task.priority === 'Critical' ? 'selected' : ''}>Critical</option>
+                                </select>
+                            </td>
+                            <td class="editable-cell">
+                                <input type="text" value="${task.notes || ''}" 
+                                       onchange="updateTask(${station.id}, ${task.id}, 'notes', this.value)" placeholder="Notes...">
+                            </td>
+                            <td>
+                                <button class="btn-icon delete" onclick="deleteTask(${station.id}, ${task.id})" title="Delete">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+    });
+    
+    tbody.innerHTML = html;
 }
 
 function formatDateDisplay(dateStr) {
@@ -800,7 +932,10 @@ function renderGanttTimeline() {
     // Body
     let bodyHTML = '';
     stations.forEach(station => {
-        let rowHTML = '<div class="gantt-timeline-row" onclick="openStationDetail(' + station.id + ')">';
+        const isExpanded = expandedStations.has(station.id);
+        
+        // Station row
+        let rowHTML = `<div class="gantt-timeline-row station-timeline-row ${isExpanded ? 'expanded' : ''}">`;
         
         for (let i = 0; i < TIMELINE_DAYS; i++) {
             const date = new Date(timelineStart);
@@ -813,10 +948,8 @@ function renderGanttTimeline() {
             rowHTML += `<div class="timeline-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}"></div>`;
         }
         
-        // Add Gantt bar
+        // Add station Gantt bar
         const stationStart = parseDate(station.startDate);
-        const stationEnd = parseDate(station.endDate);
-        
         const startOffset = Math.floor((stationStart - timelineStart) / (1000 * 60 * 60 * 24));
         const duration = daysBetween(station.startDate, station.endDate);
         
@@ -825,7 +958,7 @@ function renderGanttTimeline() {
             const width = Math.min(duration, TIMELINE_DAYS - Math.max(0, startOffset)) * DAY_WIDTH - 4;
             
             rowHTML += `
-                <div class="gantt-bar" 
+                <div class="gantt-bar station-bar" 
                      style="left: ${left + 2}px; width: ${width}px; background: ${station.color};"
                      title="${station.name}">
                     ${width > 80 ? station.name.substring(0, 15) : ''}
@@ -835,6 +968,58 @@ function renderGanttTimeline() {
         
         rowHTML += '</div>';
         bodyHTML += rowHTML;
+        
+        // Task rows (when expanded)
+        if (isExpanded && station.tasks.length > 0) {
+            station.tasks.forEach(task => {
+                let taskRowHTML = '<div class="gantt-timeline-row subtask-timeline-row">';
+                
+                for (let i = 0; i < TIMELINE_DAYS; i++) {
+                    const date = new Date(timelineStart);
+                    date.setDate(date.getDate() + i);
+                    
+                    const dayOfWeek = date.getDay();
+                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                    const isToday = date.getTime() === today.getTime();
+                    
+                    taskRowHTML += `<div class="timeline-cell subtask-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}"></div>`;
+                }
+                
+                // Add task Gantt bar
+                const taskStart = parseDate(task.startDate);
+                const taskStartOffset = Math.floor((taskStart - timelineStart) / (1000 * 60 * 60 * 24));
+                const taskDuration = daysBetween(task.startDate, task.endDate);
+                const memberColor = getMemberColor(task.assignedTo);
+                
+                if (taskStartOffset < TIMELINE_DAYS && taskStartOffset + taskDuration > 0) {
+                    const left = Math.max(0, taskStartOffset) * DAY_WIDTH;
+                    const width = Math.min(taskDuration, TIMELINE_DAYS - Math.max(0, taskStartOffset)) * DAY_WIDTH - 4;
+                    
+                    // Get status color modifier
+                    let opacity = '1';
+                    let borderStyle = '';
+                    if (task.status === 'Complete') {
+                        borderStyle = 'border: 2px solid #28a745;';
+                    } else if (task.status === 'On Hold') {
+                        opacity = '0.5';
+                        borderStyle = 'border: 2px dashed #ffc107;';
+                    } else if (task.status === 'In Progress') {
+                        borderStyle = 'border-left: 4px solid #17a2b8;';
+                    }
+                    
+                    taskRowHTML += `
+                        <div class="gantt-bar subtask-bar" 
+                             style="left: ${left + 2}px; width: ${width}px; background: ${memberColor}; opacity: ${opacity}; ${borderStyle}"
+                             title="${task.name} (${task.assignedTo || 'Unassigned'})">
+                            ${width > 60 ? task.name.substring(0, 10) : ''}
+                        </div>
+                    `;
+                }
+                
+                taskRowHTML += '</div>';
+                bodyHTML += taskRowHTML;
+            });
+        }
     });
     
     bodyEl.innerHTML = bodyHTML;
@@ -1346,16 +1531,31 @@ function validateProject() {
 // ============================================
 
 function exportToPDF() {
-    const element = document.getElementById('gantt-export-area');
-    const opt = {
-        margin: 10,
-        filename: `LoopAutomation_GanttChart_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1117' },
-        jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' }
-    };
+    // Save current expanded state
+    const previousExpanded = new Set(expandedStations);
     
-    html2pdf().set(opt).from(element).save();
+    // Expand all stations for complete overview
+    stations.forEach(s => expandedStations.add(s.id));
+    renderGanttView();
+    
+    // Wait for render, then export
+    setTimeout(() => {
+        const element = document.getElementById('gantt-export-area');
+        const opt = {
+            margin: 10,
+            filename: `LoopAutomation_GanttChart_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1117' },
+            jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' }
+        };
+        
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Restore previous expanded state
+            expandedStations.clear();
+            previousExpanded.forEach(id => expandedStations.add(id));
+            renderGanttView();
+        });
+    }, 300);
 }
 
 function exportStationToPDF() {
