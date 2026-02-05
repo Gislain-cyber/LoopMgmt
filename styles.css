@@ -75,6 +75,9 @@ body {
 .app-container {
     display: flex;
     height: 100vh;
+    width: 100vw;
+    max-width: 100%;
+    overflow: hidden;
     background: 
         radial-gradient(ellipse at 0% 0%, rgba(0, 212, 170, 0.05) 0%, transparent 50%),
         radial-gradient(ellipse at 100% 100%, rgba(124, 58, 237, 0.05) 0%, transparent 50%),
@@ -86,6 +89,7 @@ body {
    ============================================ */
 .sidebar {
     width: var(--sidebar-width);
+    flex-shrink: 0;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-primary);
     display: flex;
@@ -93,6 +97,8 @@ body {
     padding: 24px 16px;
     position: relative;
     z-index: 100;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .logo {
@@ -265,13 +271,15 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-width: 0; /* Enable flex shrinking */
 }
 
 .view {
     display: none;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
+    overflow: auto;
+    min-height: 0; /* Enable flex shrinking */
 }
 
 .view.active {
@@ -602,24 +610,26 @@ body {
    ============================================ */
 .gantt-container-full {
     flex: 1;
-    overflow: hidden;
+    overflow: auto;
     display: flex;
     flex-direction: column;
+    min-height: 0; /* Enable flex shrinking */
 }
 
 .gantt-table-wrapper {
     flex: 1;
     display: flex;
-    overflow: hidden;
+    overflow: auto;
+    min-height: 0; /* Enable flex shrinking */
+    -webkit-overflow-scrolling: touch;
 }
 
 .station-table-scroll {
-    width: 1290px;
-    min-width: 1290px;
-    overflow-y: auto;
-    overflow-x: auto;
+    flex: 0 0 auto;
+    overflow: auto;
     border-right: 2px solid var(--border-primary);
     background: var(--bg-secondary);
+    -webkit-overflow-scrolling: touch;
 }
 
 .station-table {
@@ -1724,49 +1734,91 @@ body {
 }
 
 /* ============================================
-   RESPONSIVE
+   RESPONSIVE - COMPREHENSIVE MOBILE SUPPORT
    ============================================ */
+
+/* Base - make containers scrollable */
+.gantt-container-full,
+.gantt-table-wrapper {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Remove fixed widths - let content flow */
+.station-table-scroll {
+    width: auto !important;
+    min-width: unset !important;
+    flex-shrink: 0;
+}
+
+.station-table {
+    width: max-content;
+    min-width: 100%;
+}
+
+/* Large screens (1400px and below) */
 @media (max-width: 1400px) {
-    .station-table-scroll {
-        width: 1000px;
-        min-width: 1000px;
-    }
-    
     .station-table th,
     .station-table td {
         padding: 10px 8px;
         font-size: 0.8rem;
     }
+    
+    .station-table th:nth-child(3),
+    .station-table td:nth-child(3) {
+        max-width: 150px;
+    }
 }
 
+/* Medium screens (1200px and below) */
 @media (max-width: 1200px) {
     .stats-row {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .station-table-scroll {
-        width: 800px;
-        min-width: 800px;
+    .header-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .expand-controls {
+        order: -1;
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .view-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .header-actions {
+        width: 100%;
     }
 }
 
-@media (max-width: 768px) {
+/* Tablet screens (992px and below) */
+@media (max-width: 992px) {
     .sidebar {
-        width: 60px;
+        width: 70px;
         padding: 16px 8px;
     }
     
-    .logo-text,
-    .nav-item span,
-    .btn-validate span,
-    .btn-admin span,
-    .btn-logout span {
+    .logo-text {
         display: none;
     }
     
     .logo {
         justify-content: center;
         padding-bottom: 16px;
+    }
+    
+    .nav-item span,
+    .btn-validate span,
+    .btn-admin span,
+    .btn-logout span {
+        display: none;
     }
     
     .nav-item,
@@ -1777,44 +1829,130 @@ body {
         padding: 12px;
     }
     
-    .view-header {
-        padding: 16px;
+    .main-content {
+        margin-left: 70px;
+        width: calc(100% - 70px);
+    }
+    
+    /* Stack Gantt table and timeline vertically */
+    .gantt-table-wrapper {
         flex-direction: column;
-        align-items: flex-start;
     }
     
-    .header-actions {
-        width: 100%;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-    
-    .stats-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .dashboard-grid {
-        padding: 16px;
-    }
-    
-    /* Make Gantt scrollable on mobile */
     .station-table-scroll {
-        width: calc(100vw - 60px - 40px);
-        min-width: 600px;
+        max-height: 50vh;
+        border-right: none;
+        border-bottom: 2px solid var(--border-primary);
+        overflow: auto;
     }
     
     .gantt-timeline-scroll {
         width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        min-height: 200px;
     }
     
-    .gantt-table-wrapper {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Mobile screens (768px and below) */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 60px;
+        padding: 12px 6px;
     }
     
-    /* Stack table and timeline vertically on very small screens */
+    .main-content {
+        margin-left: 60px;
+        width: calc(100% - 60px);
+    }
+    
+    .view-header {
+        padding: 12px 16px;
+    }
+    
+    .view-header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .stats-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .stat-card {
+        padding: 16px;
+    }
+    
+    .dashboard-grid {
+        padding: 12px;
+    }
+    
+    /* Button text hidden, icon only */
+    .btn-primary span,
+    .btn-secondary span {
+        display: none;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        padding: 10px 12px;
+    }
+    
+    .btn-expand span {
+        display: none;
+    }
+    
+    .btn-expand {
+        padding: 8px;
+    }
+    
+    /* Gantt specific mobile */
+    .station-table-scroll {
+        max-height: 40vh;
+    }
+    
+    .station-table th,
+    .station-table td {
+        padding: 8px 6px;
+        font-size: 0.75rem;
+    }
+    
+    /* Hide description and progress columns on mobile */
+    .station-table th:nth-child(3),
+    .station-table td:nth-child(3),
+    .station-table th:nth-child(9),
+    .station-table td:nth-child(9) {
+        display: none;
+    }
+    
+    .subtask-row td {
+        padding: 6px !important;
+    }
+    
+    /* Team cards stack */
+    .team-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Modal responsive */
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        margin: 10px;
+        max-height: calc(100vh - 20px);
+    }
+    
+    .modal-body {
+        padding: 16px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+    }
+    
+    /* Task detail table */
     .tasks-detail-table-editable {
         font-size: 0.75rem;
     }
@@ -1823,50 +1961,228 @@ body {
     .tasks-detail-table-editable td {
         padding: 8px 6px;
     }
-}
-
-@media (max-width: 480px) {
-    .view-header h1 {
-        font-size: 1.3rem;
+    
+    /* Gantt bars smaller */
+    .gantt-bar {
+        height: 28px;
+        top: 16px;
+        font-size: 0.6rem;
     }
     
-    .stat-card {
-        padding: 16px;
+    .subtask-bar {
+        height: 20px !important;
+        top: 12px !important;
+    }
+    
+    .gantt-timeline-row {
+        height: 50px;
+    }
+    
+    .subtask-timeline-row {
+        height: 36px !important;
+    }
+    
+    /* Expand toggle smaller */
+    .expand-toggle {
+        width: 20px;
+        height: 20px;
+        margin-right: 4px;
+    }
+    
+    .expand-toggle svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    /* Zoom controls */
+    .gantt-zoom-controls {
+        padding: 6px 8px;
+    }
+    
+    .zoom-btn {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .zoom-level {
+        font-size: 0.75rem;
+        min-width: 45px;
+    }
+}
+
+/* Small mobile screens (480px and below) */
+@media (max-width: 480px) {
+    .sidebar {
+        width: 50px;
+        padding: 8px 4px;
+    }
+    
+    .main-content {
+        margin-left: 50px;
+        width: calc(100% - 50px);
+    }
+    
+    .nav-item,
+    .btn-validate,
+    .btn-admin,
+    .btn-logout {
+        padding: 10px;
+    }
+    
+    .nav-item svg,
+    .btn-validate svg,
+    .btn-admin svg,
+    .btn-logout svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .logo-icon {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .view-header {
+        padding: 10px 12px;
+    }
+    
+    .view-header h1 {
+        font-size: 1.1rem;
     }
     
     .stat-value {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
     }
     
     .hours-grid {
         grid-template-columns: 1fr;
     }
     
-    .btn-primary, .btn-secondary {
-        padding: 8px 14px;
-        font-size: 0.85rem;
+    /* Hide more columns on very small screens */
+    .station-table th:nth-child(6),
+    .station-table td:nth-child(6),
+    .station-table th:nth-child(8),
+    .station-table td:nth-child(8),
+    .station-table th:nth-child(11),
+    .station-table td:nth-child(11) {
+        display: none;
     }
     
-    /* Full width Gantt on very small screens */
-    .station-table-scroll {
-        width: calc(100vw - 60px - 20px);
+    .btn-primary, .btn-secondary {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Extra small screens (360px and below) */
+@media (max-width: 360px) {
+    .sidebar {
+        width: 45px;
+    }
+    
+    .main-content {
+        margin-left: 45px;
+        width: calc(100% - 45px);
+    }
+    
+    .header-actions {
+        gap: 4px;
+    }
+    
+    /* Hide even more columns */
+    .station-table th:nth-child(7),
+    .station-table td:nth-child(7),
+    .station-table th:nth-child(10),
+    .station-table td:nth-child(10) {
+        display: none;
+    }
+    
+    .view-header h1 {
+        font-size: 1rem;
     }
 }
 
 /* Touch-friendly enhancements */
 @media (hover: none) and (pointer: coarse) {
     .btn-icon {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
     }
     
     .station-table tbody tr,
-    .public-view-row {
+    .public-view-row,
+    .subtask-row {
         cursor: pointer;
         -webkit-tap-highlight-color: rgba(0, 212, 170, 0.1);
     }
     
+    .expand-toggle {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .station-table input,
+    .station-table select {
+        min-height: 38px;
+    }
+    
+    /* Larger tap targets */
     .nav-item {
-        min-height: 48px;
+        min-height: 44px;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        min-height: 44px;
+    }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .sidebar {
+        width: 50px;
+    }
+    
+    .main-content {
+        margin-left: 50px;
+        width: calc(100% - 50px);
+    }
+    
+    .view-header {
+        padding: 8px 12px;
+    }
+    
+    .station-table-scroll {
+        max-height: 60vh;
+    }
+}
+
+/* Print styles for PDF export */
+@media print {
+    .sidebar {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    
+    .header-actions {
+        display: none !important;
+    }
+    
+    .expand-toggle {
+        display: none !important;
+    }
+    
+    .station-table-scroll,
+    .gantt-timeline-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    
+    .gantt-table-wrapper {
+        flex-direction: row !important;
     }
 }
