@@ -1287,6 +1287,7 @@ async function deleteTask(stationId, taskId) {
 
 function renderTeam() {
     const grid = document.getElementById('team-grid');
+    console.log('renderTeam called, isAdmin:', isAdmin);
     
     // Hide "Add Member" button if not admin
     const addMemberBtn = document.querySelector('#team-view .header-actions .btn-primary');
@@ -1305,12 +1306,12 @@ function renderTeam() {
         
         // Only show edit/delete buttons for admins
         const actionsHTML = isAdmin ? `
-            <div class="team-card-actions">
+            <div class="team-card-actions admin-actions">
                 <button onclick="editTeamMember(${index})">Edit</button>
                 <button class="delete" onclick="deleteTeamMember(${index})">Remove</button>
             </div>
         ` : `
-            <div class="team-card-actions" style="justify-content: center;">
+            <div class="team-card-actions public-actions">
                 <span style="color: var(--text-muted); font-size: 0.8rem;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
                         <rect x="3" y="11" width="18" height="11" rx="2"/>
@@ -1531,6 +1532,8 @@ function validateProject() {
 // ============================================
 
 function exportToPDF() {
+    showSuccess('Preparing PDF export...');
+    
     // Save current expanded state
     const previousExpanded = new Set(expandedStations);
     
@@ -1541,37 +1544,154 @@ function exportToPDF() {
     // Wait for render, then export
     setTimeout(() => {
         const element = document.getElementById('gantt-export-area');
-        const opt = {
-            margin: 10,
-            filename: `LoopAutomation_GanttChart_${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1117' },
-            jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' }
+        const tableScroll = document.querySelector('.station-table-scroll');
+        const timelineScroll = document.querySelector('.gantt-timeline-scroll');
+        const wrapper = document.querySelector('.gantt-table-wrapper');
+        const view = document.getElementById('gantt-view');
+        
+        // Add export mode class
+        if (view) view.classList.add('pdf-export-mode');
+        
+        // Save original styles
+        const originalStyles = {
+            tableScroll: tableScroll ? tableScroll.style.cssText : '',
+            timelineScroll: timelineScroll ? timelineScroll.style.cssText : '',
+            wrapper: wrapper ? wrapper.style.cssText : '',
+            element: element ? element.style.cssText : ''
         };
         
-        html2pdf().set(opt).from(element).save().then(() => {
+        // Temporarily make everything visible for PDF capture
+        if (element) {
+            element.style.overflow = 'visible';
+            element.style.height = 'auto';
+            element.style.maxHeight = 'none';
+        }
+        if (wrapper) {
+            wrapper.style.overflow = 'visible';
+            wrapper.style.height = 'auto';
+            wrapper.style.flexDirection = 'column'; // Stack vertically for PDF
+        }
+        if (tableScroll) {
+            tableScroll.style.overflow = 'visible';
+            tableScroll.style.height = 'auto';
+            tableScroll.style.maxHeight = 'none';
+            tableScroll.style.width = '100%';
+            tableScroll.style.borderRight = 'none';
+            tableScroll.style.borderBottom = '2px solid #30363d';
+        }
+        if (timelineScroll) {
+            timelineScroll.style.overflow = 'visible';
+            timelineScroll.style.height = 'auto';
+            timelineScroll.style.width = '100%';
+            timelineScroll.style.marginTop = '10px';
+        }
+        
+        // Calculate proper dimensions
+        const tableWidth = tableScroll ? tableScroll.scrollWidth : 1200;
+        const timelineWidth = timelineScroll ? timelineScroll.scrollWidth : 1200;
+        const totalWidth = Math.max(tableWidth, timelineWidth, 1400);
+        
+        const opt = {
+            margin: [5, 5, 5, 5],
+            filename: `LoopAutomation_GanttChart_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.92 },
+            html2canvas: { 
+                scale: 1.2, 
+                useCORS: true, 
+                backgroundColor: '#0d1117',
+                scrollX: 0,
+                scrollY: 0,
+                width: totalWidth,
+                windowWidth: totalWidth
+            },
+            jsPDF: { unit: 'mm', format: 'a1', orientation: 'landscape' }
+        };
+        
+        const restoreStyles = () => {
+            // Remove export mode class
+            if (view) view.classList.remove('pdf-export-mode');
+            
+            // Restore original styles
+            if (element) element.style.cssText = originalStyles.element;
+            if (wrapper) wrapper.style.cssText = originalStyles.wrapper;
+            if (tableScroll) tableScroll.style.cssText = originalStyles.tableScroll;
+            if (timelineScroll) timelineScroll.style.cssText = originalStyles.timelineScroll;
+            
             // Restore previous expanded state
             expandedStations.clear();
             previousExpanded.forEach(id => expandedStations.add(id));
             renderGanttView();
+        };
+        
+        html2pdf().set(opt).from(element).save().then(() => {
+            restoreStyles();
+            showSuccess('PDF exported successfully!');
+        }).catch(err => {
+            console.error('PDF export error:', err);
+            showError('PDF export failed');
+            restoreStyles();
         });
-    }, 300);
+    }, 500);
 }
 
 function exportStationToPDF() {
+    showSuccess('Preparing PDF export...');
+    
     const element = document.getElementById('station-export-area');
     const station = stations.find(s => s.id === currentStationId);
     const stationName = station ? station.name.replace(/\s+/g, '_') : 'Station';
     
+    // Get scrollable elements
+    const tableWrapper = element.querySelector('.tasks-table-wrapper');
+    const timelineWrapper = element.querySelector('.task-timeline-wrapper');
+    
+    // Save original styles
+    const originalTableStyle = tableWrapper ? tableWrapper.style.cssText : '';
+    const originalTimelineStyle = timelineWrapper ? timelineWrapper.style.cssText : '';
+    const originalElementStyle = element.style.cssText;
+    
+    // Make everything visible
+    if (element) {
+        element.style.overflow = 'visible';
+        element.style.height = 'auto';
+    }
+    if (tableWrapper) {
+        tableWrapper.style.overflow = 'visible';
+        tableWrapper.style.height = 'auto';
+        tableWrapper.style.maxHeight = 'none';
+    }
+    if (timelineWrapper) {
+        timelineWrapper.style.overflow = 'visible';
+        timelineWrapper.style.height = 'auto';
+    }
+    
     const opt = {
-        margin: 10,
+        margin: 5,
         filename: `LoopAutomation_${stationName}_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1117' },
-        jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' }
+        image: { type: 'jpeg', quality: 0.92 },
+        html2canvas: { 
+            scale: 1.5, 
+            useCORS: true, 
+            backgroundColor: '#0d1117',
+            scrollX: 0,
+            scrollY: 0
+        },
+        jsPDF: { unit: 'mm', format: 'a2', orientation: 'landscape' }
     };
     
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set(opt).from(element).save().then(() => {
+        // Restore styles
+        element.style.cssText = originalElementStyle;
+        if (tableWrapper) tableWrapper.style.cssText = originalTableStyle;
+        if (timelineWrapper) timelineWrapper.style.cssText = originalTimelineStyle;
+        showSuccess('PDF exported!');
+    }).catch(err => {
+        console.error('PDF export error:', err);
+        element.style.cssText = originalElementStyle;
+        if (tableWrapper) tableWrapper.style.cssText = originalTableStyle;
+        if (timelineWrapper) timelineWrapper.style.cssText = originalTimelineStyle;
+        showError('Export failed');
+    });
 }
 
 function exportToCSV() {
