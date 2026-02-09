@@ -1167,9 +1167,9 @@ function renderTeam() {
         
         // Only show edit/delete buttons for admins
         const actionsHTML = isAdmin ? `
-            <div class="team-card-actions admin-actions">
-                <button onclick="editTeamMember(${index})">Edit</button>
-                <button class="delete" onclick="deleteTeamMember(${index})">Remove</button>
+            <div class="team-card-actions admin-actions" onclick="event.stopPropagation()">
+                <button onclick="editTeamMember(${index}); event.stopPropagation();">Edit</button>
+                <button class="delete" onclick="deleteTeamMember(${index}); event.stopPropagation();">Remove</button>
             </div>
         ` : `
             <div class="team-card-actions public-actions">
@@ -1184,7 +1184,7 @@ function renderTeam() {
         `;
         
         return `
-            <div class="team-card" style="--member-color: ${member.color}">
+            <div class="team-card" style="--member-color: ${member.color}" onclick="openMemberTasks('${member.name.replace(/'/g, "\\'")}', ${index})">
                 <div class="team-card-header">
                     <div class="team-avatar" style="background: ${member.color}">${getInitials(member.name)}</div>
                     <div class="team-info">
@@ -1207,6 +1207,12 @@ function renderTeam() {
                         <div class="team-progress-fill" style="width: ${Math.min(loadPercent, 100)}%; background: ${loadColor}"></div>
                     </div>
                 </div>
+                <div class="team-card-click-hint">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                    </svg>
+                    Click to view tasks
+                </div>
                 ${actionsHTML}
             </div>
         `;
@@ -1220,6 +1226,197 @@ function openModal(modalId) {
 function closeModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
 }
+
+// Member Tasks View
+let currentMemberName = null;
+
+function openMemberTasks(memberName, memberIndex) {
+    currentMemberName = memberName;
+    const member = teamMembers[memberIndex];
+    
+    // Get all tasks assigned to this member
+    const memberTasks = [];
+    stations.forEach(station => {
+        station.tasks.forEach(task => {
+            if (task.assignedTo === memberName) {
+                memberTasks.push({
+                    ...task,
+                    stationId: station.id,
+                    stationName: station.name,
+                    stationColor: station.color
+                });
+            }
+        });
+    });
+    
+    // Calculate stats
+    const totalTasks = memberTasks.length;
+    const completedTasks = memberTasks.filter(t => t.status === 'Complete').length;
+    const inProgressTasks = memberTasks.filter(t => t.status === 'In Progress').length;
+    const totalHours = memberTasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
+    const actualHours = memberTasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+    const progressPercent = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
+    
+    // Build tasks table
+    let tasksHTML = '';
+    if (memberTasks.length === 0) {
+        tasksHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:48px;height:48px;margin-bottom:16px;opacity:0.5">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+            </svg>
+            <p>No tasks assigned to this member</p>
+        </div>`;
+    } else {
+        tasksHTML = `
+        <div class="member-tasks-list">
+            ${memberTasks.map(task => {
+                const statusClass = getStatusClass(task.status);
+                const taskProgress = task.estHours > 0 ? Math.round((task.actualHours / task.estHours) * 100) : 0;
+                
+                return `
+                <div class="member-task-card" data-station="${task.stationId}" data-task="${task.id}">
+                    <div class="member-task-header">
+                        <div class="member-task-station" style="color: ${task.stationColor}">
+                            <span style="display:inline-block;width:8px;height:8px;background:${task.stationColor};border-radius:2px;margin-right:6px"></span>
+                            ${task.stationName}
+                        </div>
+                        <span class="status-badge ${statusClass}">${task.status}</span>
+                    </div>
+                    <h4 class="member-task-name">${task.name}</h4>
+                    <div class="member-task-dates">
+                        <span>${formatDateDisplay(task.startDate)}</span>
+                        <span>→</span>
+                        <span>${formatDateDisplay(task.endDate)}</span>
+                    </div>
+                    <div class="member-task-progress-section">
+                        <div class="member-task-hours">
+                            <label>Hours: </label>
+                            <input type="number" min="0" value="${task.actualHours || 0}" 
+                                onchange="updateMemberTaskHours(${task.stationId}, ${task.id}, this.value)"
+                                style="width:60px"> / ${task.estHours || 0}h
+                        </div>
+                        <div class="member-task-progress-bar">
+                            <div class="progress-fill" style="width:${Math.min(taskProgress, 100)}%;background:${task.stationColor}"></div>
+                        </div>
+                        <span class="progress-percent">${taskProgress}%</span>
+                    </div>
+                    <div class="member-task-status-update">
+                        <label>Status:</label>
+                        <select onchange="updateMemberTaskStatus(${task.stationId}, ${task.id}, this.value)">
+                            <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
+                            <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
+                            <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                            <option value="Delayed" ${task.status === 'Delayed' ? 'selected' : ''}>Delayed</option>
+                        </select>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+    
+    // Create modal content
+    const modalContent = `
+        <div class="member-tasks-modal-content">
+            <div class="member-tasks-header" style="border-left: 4px solid ${member.color}">
+                <div class="member-avatar-large" style="background: ${member.color}">${getInitials(memberName)}</div>
+                <div class="member-header-info">
+                    <h2>${memberName}</h2>
+                    <span class="member-role-badge">${member.role}</span>
+                </div>
+                <button class="modal-close" onclick="closeModal('member-tasks-modal')">&times;</button>
+            </div>
+            
+            <div class="member-tasks-stats">
+                <div class="member-stat-card">
+                    <div class="member-stat-value">${totalTasks}</div>
+                    <div class="member-stat-label">Total Tasks</div>
+                </div>
+                <div class="member-stat-card complete">
+                    <div class="member-stat-value">${completedTasks}</div>
+                    <div class="member-stat-label">Completed</div>
+                </div>
+                <div class="member-stat-card in-progress">
+                    <div class="member-stat-value">${inProgressTasks}</div>
+                    <div class="member-stat-label">In Progress</div>
+                </div>
+                <div class="member-stat-card">
+                    <div class="member-stat-value">${actualHours}/${totalHours}h</div>
+                    <div class="member-stat-label">Hours</div>
+                </div>
+                <div class="member-stat-card">
+                    <div class="member-stat-value" style="color: ${member.color}">${progressPercent}%</div>
+                    <div class="member-stat-label">Progress</div>
+                </div>
+            </div>
+            
+            <div class="member-tasks-body">
+                <h3>Assigned Tasks</h3>
+                ${tasksHTML}
+            </div>
+        </div>
+    `;
+    
+    // Get or create modal
+    let modal = document.getElementById('member-tasks-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'member-tasks-modal';
+        modal.className = 'modal-overlay member-tasks-overlay';
+        modal.onclick = (e) => {
+            if (e.target === modal) closeModal('member-tasks-modal');
+        };
+        document.body.appendChild(modal);
+    }
+    
+    modal.innerHTML = `<div class="modal member-tasks-modal-wrapper">${modalContent}</div>`;
+    openModal('member-tasks-modal');
+}
+
+async function updateMemberTaskStatus(stationId, taskId, newStatus) {
+    const station = stations.find(s => s.id === stationId);
+    if (!station) return;
+    
+    const task = station.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    task.status = newStatus;
+    await saveStations(stations);
+    showSuccess(`Task status updated to "${newStatus}"`);
+    
+    // Refresh the modal
+    if (currentMemberName) {
+        const memberIndex = teamMembers.findIndex(m => m.name === currentMemberName);
+        if (memberIndex >= 0) {
+            openMemberTasks(currentMemberName, memberIndex);
+        }
+    }
+}
+
+async function updateMemberTaskHours(stationId, taskId, newHours) {
+    const station = stations.find(s => s.id === stationId);
+    if (!station) return;
+    
+    const task = station.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    task.actualHours = parseFloat(newHours) || 0;
+    await saveStations(stations);
+    showSuccess('Hours updated');
+    
+    // Refresh the modal
+    if (currentMemberName) {
+        const memberIndex = teamMembers.findIndex(m => m.name === currentMemberName);
+        if (memberIndex >= 0) {
+            openMemberTasks(currentMemberName, memberIndex);
+        }
+    }
+}
+
+window.openMemberTasks = openMemberTasks;
+window.updateMemberTaskStatus = updateMemberTaskStatus;
+window.updateMemberTaskHours = updateMemberTaskHours;
 
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {

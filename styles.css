@@ -1989,6 +1989,284 @@ body {
     border-color: var(--status-delayed);
 }
 
+/* Team card clickable */
+.team-card {
+    cursor: pointer;
+}
+
+.team-card-click-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    margin-top: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.team-card:hover .team-card-click-hint {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+.team-card-click-hint svg {
+    opacity: 0.7;
+}
+
+.team-card:hover .team-card-click-hint svg {
+    opacity: 1;
+}
+
+/* ============================================
+   MEMBER TASKS MODAL
+   ============================================ */
+.member-tasks-overlay {
+    padding: 20px;
+}
+
+.member-tasks-modal-wrapper {
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.member-tasks-modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.member-tasks-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: var(--bg-tertiary);
+    border-radius: 12px 12px 0 0;
+    position: relative;
+}
+
+.member-avatar-large {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.member-header-info h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.member-role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.member-tasks-header .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+}
+
+.member-tasks-stats {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    flex-wrap: wrap;
+}
+
+.member-stat-card {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 16px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.member-stat-card .member-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.member-stat-card.complete .member-stat-value {
+    color: var(--status-complete);
+}
+
+.member-stat-card.in-progress .member-stat-value {
+    color: var(--status-in-progress);
+}
+
+.member-stat-card .member-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.member-tasks-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    background: var(--bg-primary);
+}
+
+.member-tasks-body h3 {
+    margin: 0 0 16px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.member-tasks-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.member-task-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 10px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.member-task-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.member-task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.member-task-station {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.member-task-name {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.member-task-dates {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.member-task-progress-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.member-task-hours {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.member-task-hours input {
+    width: 50px;
+    padding: 4px 6px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.member-task-hours input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.member-task-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.member-task-progress-bar .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.member-task-progress-section .progress-percent {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 35px;
+    text-align: right;
+}
+
+.member-task-status-update {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.member-task-status-update label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.member-task-status-update select {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.member-task-status-update select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
 /* ============================================
    MODALS
    ============================================ */
