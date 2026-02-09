@@ -294,38 +294,58 @@ let zoomLevel = 100; // percentage
 // ============================================
 
 async function initializeFirebase() {
+    // Set a timeout - if Firebase takes too long, use localStorage
+    const FIREBASE_TIMEOUT = 8000; // 8 seconds max
+    let timeoutId;
+    
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+            reject(new Error('Firebase connection timeout - using offline mode'));
+        }, FIREBASE_TIMEOUT);
+    });
+    
     try {
         showLoadingState();
         
-        // Try to initialize Firebase SDK
-        const firebaseLoaded = await initFirebaseSDK();
-        
-        if (!firebaseLoaded) {
-            throw new Error('Firebase SDK failed to load');
-        }
-        
-        // Set up auth state listener
-        window.firebaseOnAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            isAdmin = !!user;
-            updateUIForAuthState();
-        });
-        
-        // Set up real-time listeners
-        setupTeamMembersListener();
-        setupStationsListener();
-        
-        // Check if data exists, if not, initialize with defaults
-        const teamDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project'));
-        if (!teamDoc.exists()) {
-            console.log('Initializing project with default data...');
-            await saveTeamMembers([...defaultTeamMembers]);
-            await saveStations(JSON.parse(JSON.stringify(defaultStations)));
-        }
+        // Race between Firebase init and timeout
+        await Promise.race([
+            (async () => {
+                // Try to initialize Firebase SDK
+                const firebaseLoaded = await initFirebaseSDK();
+                
+                if (!firebaseLoaded) {
+                    throw new Error('Firebase SDK failed to load');
+                }
+                
+                // Set up auth state listener
+                window.firebaseOnAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    isAdmin = !!user;
+                    updateUIForAuthState();
+                });
+                
+                // Set up real-time listeners
+                setupTeamMembersListener();
+                setupStationsListener();
+                
+                // Check if data exists, if not, initialize with defaults
+                const teamDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project'));
+                if (!teamDoc.exists()) {
+                    console.log('Initializing project with default data...');
+                    await saveTeamMembers([...defaultTeamMembers]);
+                    await saveStations(JSON.parse(JSON.stringify(defaultStations)));
+                }
+                
+                clearTimeout(timeoutId);
+                console.log('Firebase connected successfully');
+            })(),
+            timeoutPromise
+        ]);
         
     } catch (error) {
+        clearTimeout(timeoutId);
         console.error('Firebase initialization error:', error);
-        showError('Using offline mode');
+        showError('Using offline mode - changes saved locally');
         // Fallback to localStorage
         teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
         stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
@@ -507,6 +527,9 @@ async function saveStations(stationsData) {
 }
 
 function showLoadingState() {
+    // Don't show if already visible
+    if (document.getElementById('firebase-loader')) return;
+    
     const loader = document.createElement('div');
     loader.id = 'firebase-loader';
     loader.style.cssText = `
@@ -514,15 +537,16 @@ function showLoadingState() {
         inset: 0;
         background: rgba(13, 17, 23, 0.95);
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        z-index: 10000;
-        flex-direction: column;
         gap: 20px;
+        z-index: 10000;
     `;
     loader.innerHTML = `
         <div style="width: 50px; height: 50px; border: 3px solid #30363d; border-top-color: #00d4aa; border-radius: 50%; animation: spin 1s linear infinite;"></div>
         <div style="color: #8b949e; font-size: 1rem;">Connecting to database...</div>
+        <div style="color: #6e7681; font-size: 0.8rem;">This may take a few seconds</div>
         <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     `;
     document.body.appendChild(loader);
