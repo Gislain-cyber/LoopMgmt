@@ -68,6 +68,18 @@
             </nav>
 
             <div class="sidebar-footer">
+                <!-- Group Lead Login Button -->
+                <button class="btn-group-lead" id="groupLead-login-btn" onclick="showGroupLeadLoginModal()" style="display: flex;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="7" r="4"/>
+                        <path d="M5 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/>
+                    </svg>
+                    Group Lead Login
+                </button>
+                
+                <!-- Group Lead Indicator (shown when a group lead is logged in) -->
+                <div id="groupLead-indicator" style="display: none;"></div>
+
                 <!-- Admin Login Button -->
                 <button class="btn-admin" id="admin-login-btn" onclick="showAdminLoginModal()" style="display: flex;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -85,6 +97,15 @@
                         </svg>
                         <span style="color: #00d4aa; font-size: 0.85rem; font-weight: 600;">ADMIN MODE</span>
                     </div>
+                    <button class="btn-manage-leads admin-only" onclick="showManageGroupLeadsModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 010 7.75"/>
+                        </svg>
+                        Manage Group Leads
+                    </button>
                     <button class="btn-logout" id="admin-logout-btn" onclick="adminLogout()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>

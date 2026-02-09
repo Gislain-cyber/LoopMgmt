@@ -184,6 +184,27 @@ const defaultStations = [
 let teamMembers = [];
 let stations = [];
 
+// Group Leads Data Structure
+const defaultGroupLeads = [
+    // Mechanical Group Leads (one per station)
+    { id: 'mech-lead-1', username: 'mech1', password: 'mech1pass', name: '', category: 'mechanical', stationNum: 1, active: false },
+    { id: 'mech-lead-2', username: 'mech2', password: 'mech2pass', name: '', category: 'mechanical', stationNum: 2, active: false },
+    { id: 'mech-lead-3', username: 'mech3', password: 'mech3pass', name: '', category: 'mechanical', stationNum: 3, active: false },
+    { id: 'mech-lead-4', username: 'mech4', password: 'mech4pass', name: '', category: 'mechanical', stationNum: 4, active: false },
+    { id: 'mech-lead-5', username: 'mech5', password: 'mech5pass', name: '', category: 'mechanical', stationNum: 5, active: false },
+    { id: 'mech-lead-6', username: 'mech6', password: 'mech6pass', name: '', category: 'mechanical', stationNum: 6, active: false },
+    // Controls Group Leads (one per station)
+    { id: 'ctrl-lead-1', username: 'ctrl1', password: 'ctrl1pass', name: '', category: 'controls', stationNum: 1, active: false },
+    { id: 'ctrl-lead-2', username: 'ctrl2', password: 'ctrl2pass', name: '', category: 'controls', stationNum: 2, active: false },
+    { id: 'ctrl-lead-3', username: 'ctrl3', password: 'ctrl3pass', name: '', category: 'controls', stationNum: 3, active: false },
+    { id: 'ctrl-lead-4', username: 'ctrl4', password: 'ctrl4pass', name: '', category: 'controls', stationNum: 4, active: false },
+    { id: 'ctrl-lead-5', username: 'ctrl5', password: 'ctrl5pass', name: '', category: 'controls', stationNum: 5, active: false },
+    { id: 'ctrl-lead-6', username: 'ctrl6', password: 'ctrl6pass', name: '', category: 'controls', stationNum: 6, active: false }
+];
+
+let groupLeads = JSON.parse(localStorage.getItem('loopGroupLeads')) || JSON.parse(JSON.stringify(defaultGroupLeads));
+let currentGroupLead = null; // Currently logged in group lead
+
 // Project Phases Data (for Project Timeline view)
 const defaultPhases = [
     {
@@ -203,6 +224,7 @@ const defaultPhases = [
                     name: `STATION ${stationNum} MECHANICAL DESIGN`,
                     color: '#60a5fa',
                     expanded: false,
+                    groupLeadId: `mech-lead-${stationNum}`,
                     tasks: [
                         { id: `mech-${stationNum}-1`, name: 'Create Station Ideas', status: 'Not Started', progress: 0 },
                         { id: `mech-${stationNum}-2`, name: 'Evaluation of Ideas', status: 'Not Started', progress: 0 },
@@ -223,6 +245,7 @@ const defaultPhases = [
                     name: `STATION ${stationNum} CONTROLS DESIGN`,
                     color: '#34d399',
                     expanded: false,
+                    groupLeadId: `ctrl-lead-${stationNum}`,
                     tasks: [
                         { id: `ctrl-${stationNum}-1`, name: 'Control System Architecture', status: 'Not Started', progress: 0 },
                         { id: `ctrl-${stationNum}-2`, name: 'I/O Mapping', status: 'Not Started', progress: 0 },
@@ -291,16 +314,26 @@ function updateUIForAuthState() {
     const adminBtn = document.getElementById('admin-login-btn');
     const logoutBtn = document.getElementById('admin-logout-btn');
     const adminIndicator = document.getElementById('admin-indicator');
+    const groupLeadBtn = document.getElementById('groupLead-login-btn');
     
     if (isAdmin) {
         adminBtn.style.display = 'none';
         logoutBtn.style.display = 'flex';
         adminIndicator.style.display = 'flex';
+        // Hide group lead login when admin is logged in
+        if (groupLeadBtn) groupLeadBtn.style.display = 'none';
+        // Clear any group lead session when admin logs in
+        currentGroupLead = null;
+        updateGroupLeadUI();
         console.log('Admin mode enabled');
     } else {
         adminBtn.style.display = 'flex';
         logoutBtn.style.display = 'none';
         adminIndicator.style.display = 'none';
+        // Show group lead login only if not logged in as group lead
+        if (groupLeadBtn && !currentGroupLead) {
+            groupLeadBtn.style.display = 'flex';
+        }
         console.log('Public view mode');
     }
     
@@ -940,116 +973,205 @@ window.toggleColumnGroup = toggleColumnGroup;
 // PROJECT TIMELINE VIEW (Phase-based Gantt)
 // ============================================
 
+const PHASE_DAY_WIDTH = 24;
+const PHASE_TIMELINE_WEEKS = 16; // 16 weeks = ~4 months
+
 function renderProjectTimeline() {
     const container = document.getElementById('timeline-container');
     if (!container) return;
     
-    let html = '<div class="phase-timeline">';
+    // Calculate timeline range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const timelineStart = new Date(today);
+    timelineStart.setDate(timelineStart.getDate() - 7); // Start 1 week before today
     
+    let html = '<div class="phase-gantt-container">';
+    
+    // Build unified table like the task tracking view
+    html += '<div class="phase-gantt-unified">';
+    
+    // Header row
+    html += '<div class="phase-gantt-header-row">';
+    html += '<div class="phase-gantt-info-header">';
+    html += '<div class="pg-col pg-col-name">Phase / Category / Task</div>';
+    html += '<div class="pg-col pg-col-status">Status</div>';
+    html += '<div class="pg-col pg-col-progress">Progress</div>';
+    html += '</div>';
+    
+    // Timeline header with weeks
+    html += '<div class="phase-gantt-timeline-header">';
+    for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
+        const weekStart = new Date(timelineStart);
+        weekStart.setDate(weekStart.getDate() + (w * 7));
+        const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const isCurrentWeek = w === 1;
+        
+        html += `<div class="pg-week-header ${isCurrentWeek ? 'current' : ''}">
+            <span class="pg-week-label">W${w + 1}</span>
+            <span class="pg-week-date">${weekLabel}</span>
+        </div>`;
+    }
+    html += '</div></div>';
+    
+    // Data rows
     projectPhases.forEach(phase => {
         const phaseProgress = calculatePhaseProgress(phase);
         
-        html += `
-        <div class="phase-block" data-phase="${phase.id}">
-            <div class="phase-header ${phase.expanded ? 'expanded' : ''}" onclick="togglePhase('${phase.id}')">
-                <button class="phase-expand-btn ${phase.expanded ? 'expanded' : ''}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                </button>
-                <div class="phase-title" style="color: ${phase.color}">
-                    <span class="phase-icon">◆</span>
-                    ${phase.name}
-                </div>
-                <div class="phase-progress-indicator">
-                    <div class="phase-progress-bar">
-                        <div class="phase-progress-fill" style="width: ${phaseProgress}%; background: ${phase.color}"></div>
-                    </div>
-                    <span class="phase-progress-text">${phaseProgress}%</span>
-                </div>
-            </div>
-            
-            ${phase.expanded ? `
-            <div class="phase-content">
-                ${phase.categories.map(category => {
-                    const categoryProgress = calculateCategoryProgress(category);
-                    
-                    return `
-                    <div class="category-block" data-category="${category.id}">
-                        <div class="category-header ${category.expanded ? 'expanded' : ''}" onclick="toggleCategory('${phase.id}', '${category.id}')">
-                            <button class="category-expand-btn ${category.expanded ? 'expanded' : ''}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                            </button>
-                            <div class="category-title" style="color: ${category.color}">
-                                <span class="category-icon">▸</span>
-                                ${category.name}
-                            </div>
-                            <div class="category-progress-indicator">
-                                <span class="category-progress-text">${categoryProgress}%</span>
-                            </div>
-                        </div>
+        // Phase row
+        html += `<div class="phase-gantt-row phase-row ${phase.expanded ? 'expanded' : ''}" data-phase="${phase.id}">`;
+        html += '<div class="phase-gantt-info-cells">';
+        html += `<div class="pg-col pg-col-name pg-phase-name" onclick="togglePhase('${phase.id}')">
+            <button class="pg-expand-btn ${phase.expanded ? 'expanded' : ''}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <span class="pg-phase-icon" style="color: ${phase.color}">◆</span>
+            <strong style="color: ${phase.color}">${phase.name}</strong>
+        </div>`;
+        html += `<div class="pg-col pg-col-status"><span class="phase-badge" style="background: ${phase.color}20; color: ${phase.color}">PHASE</span></div>`;
+        html += `<div class="pg-col pg-col-progress">
+            <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${phaseProgress}%; background: ${phase.color}"></div></div>
+            <span class="pg-progress-text">${phaseProgress}%</span>
+        </div>`;
+        html += '</div>';
+        
+        // Phase timeline bar
+        html += '<div class="phase-gantt-timeline-cells">';
+        for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
+            html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+        }
+        // Phase bar spans entire timeline
+        html += `<div class="pg-gantt-bar pg-phase-bar" style="left: 0; width: ${PHASE_TIMELINE_WEEKS * 7 * PHASE_DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${phase.color}, ${phase.color}88);">${phase.name}</div>`;
+        html += '</div></div>';
+        
+        // Categories and stations
+        if (phase.expanded) {
+            phase.categories.forEach((category, catIndex) => {
+                const categoryProgress = calculateCategoryProgress(category);
+                const catStartWeek = catIndex === 0 ? 0 : 8; // Mechanical starts week 0, Controls starts week 8
+                const catDurationWeeks = 8;
+                
+                // Category row
+                html += `<div class="phase-gantt-row category-row ${category.expanded ? 'expanded' : ''}" data-category="${category.id}">`;
+                html += '<div class="phase-gantt-info-cells">';
+                html += `<div class="pg-col pg-col-name pg-category-name" onclick="toggleCategory('${phase.id}', '${category.id}')">
+                    <button class="pg-expand-btn ${category.expanded ? 'expanded' : ''}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+                    <span class="pg-category-icon" style="color: ${category.color}">▸</span>
+                    <span style="color: ${category.color}">${category.name}</span>
+                </div>`;
+                html += `<div class="pg-col pg-col-status"><span class="category-badge" style="background: ${category.color}20; color: ${category.color}">CATEGORY</span></div>`;
+                html += `<div class="pg-col pg-col-progress">
+                    <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${categoryProgress}%; background: ${category.color}"></div></div>
+                    <span class="pg-progress-text">${categoryProgress}%</span>
+                </div>`;
+                html += '</div>';
+                
+                // Category timeline bar
+                html += '<div class="phase-gantt-timeline-cells">';
+                for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
+                    html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+                }
+                html += `<div class="pg-gantt-bar pg-category-bar" style="left: ${catStartWeek * 7 * PHASE_DAY_WIDTH}px; width: ${catDurationWeeks * 7 * PHASE_DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${category.color}, ${category.color}88);">${category.name}</div>`;
+                html += '</div></div>';
+                
+                // Stations
+                                if (category.expanded) {
+                                    category.stations.forEach((station, stationIndex) => {
+                                        const stationProgress = calculateStationTasksProgress(station);
+                                        const stationStartWeek = catStartWeek + Math.floor(stationIndex * 1.2);
+                                        const stationDurationWeeks = 2;
+                                        
+                                        // Get group lead for this station
+                                        const groupLead = groupLeads.find(gl => gl.id === station.groupLeadId);
+                                        const hasGroupLead = groupLead && groupLead.active && groupLead.name;
+                                        const isCurrentLeadStation = currentGroupLead && currentGroupLead.id === station.groupLeadId;
+                                        
+                                        // Station row
+                                        html += `<div class="phase-gantt-row station-row ${station.expanded ? 'expanded' : ''} ${isCurrentLeadStation ? 'my-station' : ''}" data-station="${station.id}">`;
+                                        html += '<div class="phase-gantt-info-cells">';
+                                        html += `<div class="pg-col pg-col-name pg-station-name" onclick="toggleTimelineStation('${phase.id}', '${category.id}', '${station.id}')">
+                                            <button class="pg-expand-btn ${station.expanded ? 'expanded' : ''}">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                                            </button>
+                                            <span class="pg-station-number" style="background: ${station.color}">S${station.stationNum}</span>
+                                            <span>${station.name}</span>
+                                            ${hasGroupLead ? `<span class="pg-group-lead-badge" title="Group Lead: ${groupLead.name}">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
+                                                    <circle cx="12" cy="7" r="4"/>
+                                                    <path d="M5 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/>
+                                                </svg>
+                                                ${groupLead.name}
+                                            </span>` : ''}
+                                            ${isCurrentLeadStation ? '<span class="pg-my-station-badge">Your Station</span>' : ''}
+                                        </div>`;
+                                        html += `<div class="pg-col pg-col-status">
+                                            <span class="status-badge ${getStatusClass(stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started')}">${stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started'}</span>
+                                        </div>`;
+                                        html += `<div class="pg-col pg-col-progress">
+                                            <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${stationProgress}%; background: ${station.color}"></div></div>
+                                            <span class="pg-progress-text">${stationProgress}%</span>
+                                        </div>`;
+                                        html += '</div>';
                         
-                        ${category.expanded ? `
-                        <div class="category-content">
-                            ${category.stations.map(station => {
-                                const stationProgress = calculateStationTasksProgress(station);
+                        // Station timeline bar
+                        html += '<div class="phase-gantt-timeline-cells">';
+                        for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
+                            html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+                        }
+                        html += `<div class="pg-gantt-bar pg-station-bar" style="left: ${stationStartWeek * 7 * PHASE_DAY_WIDTH}px; width: ${stationDurationWeeks * 7 * PHASE_DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${station.color}, ${station.color}aa);">${station.name}</div>`;
+                        html += '</div></div>';
+                        
+                        // Tasks
+                        if (station.expanded) {
+                            station.tasks.forEach((task, taskIndex) => {
+                                const taskStartWeek = stationStartWeek + Math.floor(taskIndex * 0.3);
+                                const taskDurationDays = 5;
                                 
-                                return `
-                                <div class="timeline-station-block" data-station="${station.id}">
-                                    <div class="timeline-station-header ${station.expanded ? 'expanded' : ''}" onclick="toggleTimelineStation('${phase.id}', '${category.id}', '${station.id}')">
-                                        <button class="station-expand-btn ${station.expanded ? 'expanded' : ''}">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                                        </button>
-                                        <div class="timeline-station-title" style="color: ${station.color}">
-                                            <span class="station-number">S${station.stationNum}</span>
-                                            ${station.name}
-                                        </div>
-                                        <div class="timeline-station-progress">
-                                            <div class="mini-progress-bar">
-                                                <div class="mini-progress-fill" style="width: ${stationProgress}%; background: ${station.color}"></div>
-                                            </div>
-                                            <span>${stationProgress}%</span>
-                                        </div>
-                                    </div>
-                                    
-                                    ${station.expanded ? `
-                                    <div class="timeline-station-tasks">
-                                        ${station.tasks.map(task => `
-                                        <div class="timeline-task-row" data-task="${task.id}">
-                                            <div class="timeline-task-name">
-                                                <span class="task-bullet" style="background: ${station.color}"></span>
-                                                ${task.name}
-                                            </div>
-                                            <div class="timeline-task-controls">
-                                                <select class="task-status-select" onchange="updatePhaseTaskStatus('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)">
-                                                    <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
-                                                    <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                                                    <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
-                                                    <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
-                                                </select>
-                                                <input type="range" min="0" max="100" value="${task.progress}" 
-                                                    class="task-progress-slider"
-                                                    onchange="updatePhaseTaskProgress('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)"
-                                                    style="--progress-color: ${station.color}">
-                                                <span class="task-progress-value">${task.progress}%</span>
-                                            </div>
-                                        </div>
-                                        `).join('')}
-                                    </div>
-                                    ` : ''}
-                                </div>
-                                `;
-                            }).join('')}
-                        </div>
-                        ` : ''}
-                    </div>
-                    `;
-                }).join('')}
-            </div>
-            ` : ''}
-        </div>
-        `;
+                                // Check if current user can edit this station
+                                const canEdit = canEditStation(category.id, station.id);
+                                
+                                // Task row
+                                html += `<div class="phase-gantt-row task-row ${canEdit ? 'editable' : ''}" data-task="${task.id}">`;
+                                html += '<div class="phase-gantt-info-cells">';
+                                html += `<div class="pg-col pg-col-name pg-task-name">
+                                    <span class="pg-task-bullet" style="background: ${station.color}"></span>
+                                    <span>${task.name}</span>
+                                </div>`;
+                                html += `<div class="pg-col pg-col-status">
+                                    <select class="pg-status-select" onchange="updatePhaseTaskStatus('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEdit ? '' : 'disabled'}>
+                                        <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
+                                        <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                        <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
+                                        <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                                    </select>
+                                </div>`;
+                                html += `<div class="pg-col pg-col-progress">
+                                    <input type="range" min="0" max="100" value="${task.progress}" class="pg-progress-slider" 
+                                        onchange="updatePhaseTaskProgress('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEdit ? '' : 'disabled'}>
+                                    <span class="pg-progress-text">${task.progress}%</span>
+                                </div>`;
+                                html += '</div>';
+                                
+                                // Task timeline bar
+                                html += '<div class="phase-gantt-timeline-cells">';
+                                for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
+                                    html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+                                }
+                                const taskBarWidth = Math.max(taskDurationDays * PHASE_DAY_WIDTH, 60);
+                                const taskOpacity = task.status === 'Complete' ? '1' : task.status === 'In Progress' ? '0.85' : '0.5';
+                                html += `<div class="pg-gantt-bar pg-task-bar" style="left: ${taskStartWeek * 7 * PHASE_DAY_WIDTH + (taskIndex * 20)}px; width: ${taskBarWidth}px; background: ${station.color}; opacity: ${taskOpacity};" title="${task.name} - ${task.progress}%">${task.progress}%</div>`;
+                                html += '</div></div>';
+                            });
+                        }
+                    });
+                }
+            });
+        }
     });
     
-    html += '</div>';
+    html += '</div></div>';
     container.innerHTML = html;
 }
 
@@ -1126,6 +1248,13 @@ function toggleTimelineStation(phaseId, categoryId, stationId) {
 }
 
 function updatePhaseTaskStatus(phaseId, categoryId, stationId, taskId, newStatus) {
+    // Check permissions
+    if (!canEditStation(categoryId, stationId)) {
+        showError('You do not have permission to edit this task');
+        renderProjectTimeline(); // Re-render to reset the dropdown
+        return;
+    }
+    
     const phase = projectPhases.find(p => p.id === phaseId);
     if (phase) {
         const category = phase.categories.find(c => c.id === categoryId);
@@ -1148,6 +1277,13 @@ function updatePhaseTaskStatus(phaseId, categoryId, stationId, taskId, newStatus
 }
 
 function updatePhaseTaskProgress(phaseId, categoryId, stationId, taskId, newProgress) {
+    // Check permissions
+    if (!canEditStation(categoryId, stationId)) {
+        showError('You do not have permission to edit this task');
+        renderProjectTimeline(); // Re-render to reset the slider
+        return;
+    }
+    
     const phase = projectPhases.find(p => p.id === phaseId);
     if (phase) {
         const category = phase.categories.find(c => c.id === categoryId);
@@ -1224,6 +1360,266 @@ window.updatePhaseTaskProgress = updatePhaseTaskProgress;
 window.expandAllPhases = expandAllPhases;
 window.collapseAllPhases = collapseAllPhases;
 window.exportTimelinePDF = exportTimelinePDF;
+
+// ============================================
+// GROUP LEAD MANAGEMENT
+// ============================================
+
+function saveGroupLeads() {
+    localStorage.setItem('loopGroupLeads', JSON.stringify(groupLeads));
+}
+
+function canEditStation(categoryId, stationId) {
+    // Admin can edit everything
+    if (isAdmin) return true;
+    
+    // Group lead can only edit their assigned station
+    if (currentGroupLead) {
+        const station = findStationInPhases(categoryId, stationId);
+        if (station && station.groupLeadId === currentGroupLead.id) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+function findStationInPhases(categoryId, stationId) {
+    for (const phase of projectPhases) {
+        for (const category of phase.categories) {
+            if (category.id === categoryId) {
+                return category.stations.find(s => s.id === stationId);
+            }
+        }
+    }
+    return null;
+}
+
+function showGroupLeadLoginModal() {
+    let modal = document.getElementById('groupLead-login-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'groupLead-login-modal';
+        modal.className = 'modal-overlay';
+        modal.onclick = (e) => {
+            if (e.target === modal) closeModal('groupLead-login-modal');
+        };
+        document.body.appendChild(modal);
+    }
+    
+    modal.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Group Lead Login</h2>
+                <button class="modal-close" onclick="closeModal('groupLead-login-modal')">&times;</button>
+            </div>
+            <form id="groupLead-login-form" class="modal-body" onsubmit="groupLeadLogin(event)">
+                <div class="form-group">
+                    <label for="gl-username">Username</label>
+                    <input type="text" id="gl-username" required placeholder="Enter your username">
+                </div>
+                <div class="form-group">
+                    <label for="gl-password">Password</label>
+                    <input type="password" id="gl-password" required placeholder="Enter your password">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('groupLead-login-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Login</button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    openModal('groupLead-login-modal');
+}
+
+function groupLeadLogin(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('gl-username').value;
+    const password = document.getElementById('gl-password').value;
+    
+    const lead = groupLeads.find(gl => gl.username === username && gl.password === password && gl.active);
+    
+    if (lead) {
+        currentGroupLead = lead;
+        closeModal('groupLead-login-modal');
+        updateGroupLeadUI();
+        renderProjectTimeline();
+        showSuccess(`Welcome, ${lead.name || lead.username}! You can now update Station ${lead.stationNum} ${lead.category === 'mechanical' ? 'Mechanical' : 'Controls'} tasks.`);
+    } else {
+        showError('Invalid credentials or account not active');
+    }
+}
+
+function groupLeadLogout() {
+    currentGroupLead = null;
+    updateGroupLeadUI();
+    renderProjectTimeline();
+    showSuccess('Logged out successfully');
+}
+
+function updateGroupLeadUI() {
+    const loginBtn = document.getElementById('groupLead-login-btn');
+    const indicator = document.getElementById('groupLead-indicator');
+    
+    if (currentGroupLead) {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (indicator) {
+            indicator.style.display = 'flex';
+            indicator.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="width: 16px; height: 16px;">
+                        <circle cx="12" cy="7" r="4"/>
+                        <path d="M5 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/>
+                    </svg>
+                    <span style="color: #3b82f6; font-size: 0.8rem; font-weight: 600;">${currentGroupLead.name || currentGroupLead.username}</span>
+                </div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+                    ${currentGroupLead.category === 'mechanical' ? 'Mechanical' : 'Controls'} - Station ${currentGroupLead.stationNum}
+                </div>
+                <button class="btn-logout" onclick="groupLeadLogout()" style="margin-top: 8px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Logout
+                </button>
+            `;
+        }
+    } else {
+        if (loginBtn) loginBtn.style.display = isAdmin ? 'none' : 'flex';
+        if (indicator) indicator.style.display = 'none';
+    }
+}
+
+// Admin function to manage group leads
+function showManageGroupLeadsModal() {
+    if (!isAdmin) {
+        showError('Admin access required');
+        return;
+    }
+    
+    let modal = document.getElementById('manage-leads-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'manage-leads-modal';
+        modal.className = 'modal-overlay';
+        modal.onclick = (e) => {
+            if (e.target === modal) closeModal('manage-leads-modal');
+        };
+        document.body.appendChild(modal);
+    }
+    
+    const mechLeads = groupLeads.filter(gl => gl.category === 'mechanical');
+    const ctrlLeads = groupLeads.filter(gl => gl.category === 'controls');
+    
+    modal.innerHTML = `
+        <div class="modal manage-leads-modal">
+            <div class="modal-header">
+                <h2>Manage Group Leads</h2>
+                <button class="modal-close" onclick="closeModal('manage-leads-modal')">&times;</button>
+            </div>
+            <div class="modal-body manage-leads-body">
+                <div class="leads-section">
+                    <h3 style="color: #3b82f6; margin-bottom: 12px;">
+                        <span style="margin-right: 8px;">⚙️</span> Mechanical Design Leads
+                    </h3>
+                    <div class="leads-grid">
+                        ${mechLeads.map(lead => `
+                            <div class="lead-card ${lead.active ? 'active' : ''}" data-lead="${lead.id}">
+                                <div class="lead-card-header">
+                                    <span class="lead-station-badge" style="background: #3b82f6;">S${lead.stationNum}</span>
+                                    <label class="lead-toggle">
+                                        <input type="checkbox" ${lead.active ? 'checked' : ''} onchange="toggleGroupLead('${lead.id}', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="lead-card-body">
+                                    <div class="lead-field">
+                                        <label>Name</label>
+                                        <input type="text" value="${lead.name}" placeholder="Lead name" onchange="updateGroupLead('${lead.id}', 'name', this.value)">
+                                    </div>
+                                    <div class="lead-field">
+                                        <label>Username</label>
+                                        <input type="text" value="${lead.username}" onchange="updateGroupLead('${lead.id}', 'username', this.value)">
+                                    </div>
+                                    <div class="lead-field">
+                                        <label>Password</label>
+                                        <input type="text" value="${lead.password}" onchange="updateGroupLead('${lead.id}', 'password', this.value)">
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="leads-section" style="margin-top: 24px;">
+                    <h3 style="color: #10b981; margin-bottom: 12px;">
+                        <span style="margin-right: 8px;">🔌</span> Controls Design Leads
+                    </h3>
+                    <div class="leads-grid">
+                        ${ctrlLeads.map(lead => `
+                            <div class="lead-card ${lead.active ? 'active' : ''}" data-lead="${lead.id}">
+                                <div class="lead-card-header">
+                                    <span class="lead-station-badge" style="background: #10b981;">S${lead.stationNum}</span>
+                                    <label class="lead-toggle">
+                                        <input type="checkbox" ${lead.active ? 'checked' : ''} onchange="toggleGroupLead('${lead.id}', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="lead-card-body">
+                                    <div class="lead-field">
+                                        <label>Name</label>
+                                        <input type="text" value="${lead.name}" placeholder="Lead name" onchange="updateGroupLead('${lead.id}', 'name', this.value)">
+                                    </div>
+                                    <div class="lead-field">
+                                        <label>Username</label>
+                                        <input type="text" value="${lead.username}" onchange="updateGroupLead('${lead.id}', 'username', this.value)">
+                                    </div>
+                                    <div class="lead-field">
+                                        <label>Password</label>
+                                        <input type="text" value="${lead.password}" onchange="updateGroupLead('${lead.id}', 'password', this.value)">
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="closeModal('manage-leads-modal')">Done</button>
+            </div>
+        </div>
+    `;
+    
+    openModal('manage-leads-modal');
+}
+
+function toggleGroupLead(leadId, active) {
+    const lead = groupLeads.find(gl => gl.id === leadId);
+    if (lead) {
+        lead.active = active;
+        saveGroupLeads();
+        showSuccess(`Group lead ${active ? 'activated' : 'deactivated'}`);
+    }
+}
+
+function updateGroupLead(leadId, field, value) {
+    const lead = groupLeads.find(gl => gl.id === leadId);
+    if (lead) {
+        lead[field] = value;
+        saveGroupLeads();
+    }
+}
+
+window.showGroupLeadLoginModal = showGroupLeadLoginModal;
+window.groupLeadLogin = groupLeadLogin;
+window.groupLeadLogout = groupLeadLogout;
+window.showManageGroupLeadsModal = showManageGroupLeadsModal;
+window.toggleGroupLead = toggleGroupLead;
+window.updateGroupLead = updateGroupLead;
 
 function formatDateDisplay(dateStr) {
     if (!dateStr) return '';
@@ -1590,10 +1986,10 @@ function openMemberTasks(memberName, memberIndex) {
                     stationName: station.name,
                     stationColor: station.color
                 });
-            }
-        });
+        }
     });
-    
+});
+
     // Calculate stats
     const totalTasks = memberTasks.length;
     const completedTasks = memberTasks.filter(t => t.status === 'Complete').length;
@@ -2344,9 +2740,15 @@ function init() {
         teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
         stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
         
+        // Load group leads
+        groupLeads = JSON.parse(localStorage.getItem('loopGroupLeads')) || JSON.parse(JSON.stringify(defaultGroupLeads));
+        
         // Render initial views
         renderAllViews();
         console.log('Initial render complete');
+        
+        // Initialize group lead UI
+        updateGroupLeadUI();
         
         // Then try Firebase (this can fail without breaking the app)
         initializeFirebase().catch(err => {
