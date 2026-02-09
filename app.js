@@ -316,7 +316,7 @@ let zoomLevel = 100; // percentage
 async function initializeFirebase() {
     // Set a timeout - if Firebase takes too long, use localStorage
     // GitHub Pages can be slower, so give it more time
-    const FIREBASE_TIMEOUT = 15000; // 15 seconds max
+    const FIREBASE_TIMEOUT = 30000; // 30 seconds max for slow connections
     let timeoutId;
     
     const timeoutPromise = new Promise((_, reject) => {
@@ -575,7 +575,7 @@ function showLoadingState() {
     loader.innerHTML = `
         <div style="width: 50px; height: 50px; border: 3px solid #30363d; border-top-color: #00d4aa; border-radius: 50%; animation: spin 1s linear infinite;"></div>
         <div style="color: #8b949e; font-size: 1rem;">Connecting to database...</div>
-        <div style="color: #6e7681; font-size: 0.8rem;">This may take a few seconds</div>
+        <div style="color: #6e7681; font-size: 0.8rem;">First load may take up to 30 seconds</div>
         <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     `;
     document.body.appendChild(loader);
