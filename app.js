@@ -1544,11 +1544,33 @@ function exportToPDF() {
 <head>
     <title>Loop Automation - Project Report</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            color: #333;
+        }
+        /* Force background colors to print */
+        div, span, td, th, tr, table {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
         @media print {
-            body { padding: 0; }
+            body { padding: 10px; }
             .no-print { display: none; }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
         }
     </style>
 </head>
@@ -1603,9 +1625,15 @@ function exportToPDF() {
         <p>Loop Automation Project Management System</p>
     </div>
     
+    <div class="no-print" style="position:fixed;top:0;left:0;right:0;background:#ffe066;color:#333;padding:10px;text-align:center;font-size:12px;z-index:9999;border-bottom:2px solid #cc9900">
+        <strong>⚠️ Print Tip:</strong> In the print dialog, expand "More settings" and enable <strong>"Background graphics"</strong> to see timeline colors in your PDF.
+    </div>
     <script>
         window.onload = function() {
-            window.print();
+            // Small delay to ensure styles are loaded
+            setTimeout(function() {
+                window.print();
+            }, 300);
         };
     </script>
 </body>
