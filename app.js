@@ -710,8 +710,8 @@ function renderGanttView() {
         const monthLabel = dayNum === 1 ? date.toLocaleDateString('en-US', {month: 'short'}) : '';
         
         html += `<div class="gantt-day-header ${dayClass}">`;
-        html += monthLabel ? `<div style="font-size:0.55rem;color:var(--accent-primary)">${monthLabel}</div>` : '';
-        html += `<div>${dayNum}</div>`;
+        html += monthLabel ? `<div style="font-size:0.55rem;color:var(--accent-primary);font-weight:600;">${monthLabel}</div>` : '';
+        html += `<div style="font-weight:${isToday ? '700' : '400'};">${dayNum}</div>`;
         html += '</div>';
     }
     html += '</div></div>';
@@ -739,13 +739,16 @@ function renderGanttView() {
         html += `${station.id}</div>`;
         
         html += `<div class="col col-name" style="cursor: pointer;" onclick="openStationDetail(${station.id})">`;
-        html += `<strong>${station.name}</strong>`;
-        html += `<div style="font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${station.description}</div>`;
-        html += '</div>';
+        html += `<div class="station-name-cell">`;
+        html += `<strong style="color: ${station.color};">${station.name}</strong>`;
+        html += `<span class="description">${station.description || ''}</span>`;
+        html += `</div></div>`;
         
         html += '<div class="col col-progress">';
-        html += `<div class="progress-mini"><div class="progress-mini-bar"><div class="progress-mini-fill" style="width: ${progress}%; background: ${station.color};"></div></div><span class="progress-mini-text">${progress}%</span></div>`;
-        html += '</div>';
+        html += `<div class="progress-mini">`;
+        html += `<div class="progress-mini-bar"><div class="progress-mini-fill" style="width: ${progress}%; background: linear-gradient(90deg, ${station.color}, ${station.color}dd);"></div></div>`;
+        html += `<span class="progress-mini-text">${progress}%</span>`;
+        html += `</div></div>`;
         
         html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${formatDateDisplay(station.startDate)}</div>`;
         html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${formatDateDisplay(station.endDate)}</div>`;
@@ -771,7 +774,7 @@ function renderGanttView() {
         const duration = Math.ceil((stationEnd - stationStart) / (1000 * 60 * 60 * 24)) + 1;
         
         if (startOffset >= 0 && startOffset < TIMELINE_DAYS) {
-            html += `<div class="gantt-bar" style="left: ${startOffset * DAY_WIDTH}px; width: ${duration * DAY_WIDTH - 4}px; background: ${station.color};" onclick="openStationDetail(${station.id})">${station.name}</div>`;
+            html += `<div class="gantt-bar" style="left: ${startOffset * DAY_WIDTH}px; width: ${duration * DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${station.color}, ${station.color}cc);" onclick="openStationDetail(${station.id})">${station.name}</div>`;
         }
         html += '</div></div>';
         
@@ -787,11 +790,14 @@ function renderGanttView() {
                 html += '<div class="gantt-info-cells">';
                 html += `<div class="col col-id" style="padding-left: 25px; color: var(--text-muted);"><span style="color: ${station.color};">└</span> ${task.id}</div>`;
                 
-                html += '<div class="col col-name">';
-                html += `<span style="display: inline-block; width: 8px; height: 8px; background: ${memberColor}; border-radius: 50%; margin-right: 6px;"></span>`;
-                html += `${task.name}`;
-                html += `<div style="font-size: 0.65rem; color: var(--text-muted);">${task.assignedTo || 'Unassigned'}</div>`;
-                html += '</div>';
+                html += '<div class="col col-name" style="padding-left: 20px;">';
+                html += `<div class="station-name-cell">`;
+                html += `<span style="display: flex; align-items: center; gap: 6px;">`;
+                html += `<span class="assignee-dot" style="background: ${memberColor};"></span>`;
+                html += `<span>${task.name}</span>`;
+                html += `</span>`;
+                html += `<span class="description" style="padding-left: 18px;">${task.assignedTo || 'Unassigned'}</span>`;
+                html += `</div></div>`;
                 
                 html += '<div class="col col-progress">';
                 html += `<span class="status-badge ${getStatusClass(task.status)}" style="font-size: 0.65rem; padding: 2px 6px;">${task.status}</span>`;
@@ -821,7 +827,7 @@ function renderGanttView() {
                 const taskDuration = Math.ceil((taskEnd - taskStart) / (1000 * 60 * 60 * 24)) + 1;
                 
                 if (taskStartOffset >= 0 && taskStartOffset < TIMELINE_DAYS) {
-                    html += `<div class="gantt-bar subtask-bar" style="left: ${taskStartOffset * DAY_WIDTH}px; width: ${taskDuration * DAY_WIDTH - 4}px; background: ${memberColor};">${task.name}</div>`;
+                    html += `<div class="gantt-bar subtask-bar" style="left: ${taskStartOffset * DAY_WIDTH}px; width: ${taskDuration * DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${memberColor}, ${memberColor}bb);">${task.name}</div>`;
                 }
                 html += '</div></div>';
             });
@@ -1643,7 +1649,7 @@ function zoomOut() {
 }
 
 function applyZoom() {
-    const ganttContainer = document.querySelector('.gantt-table-wrapper');
+    const ganttContainer = document.querySelector('.gantt-unified');
     const stationDetailContainer = document.querySelector('.station-detail-content');
     
     if (ganttContainer) {
