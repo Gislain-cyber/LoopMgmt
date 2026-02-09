@@ -184,6 +184,60 @@ const defaultStations = [
 let teamMembers = [];
 let stations = [];
 
+// Project Phases Data (for Project Timeline view)
+const defaultPhases = [
+    {
+        id: 'phase2',
+        name: 'PHASE 2',
+        color: '#7c3aed',
+        expanded: true,
+        categories: [
+            {
+                id: 'mechanical',
+                name: 'MECHANICAL DESIGN',
+                color: '#3b82f6',
+                expanded: true,
+                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
+                    id: `mech-station-${stationNum}`,
+                    stationNum: stationNum,
+                    name: `STATION ${stationNum} MECHANICAL DESIGN`,
+                    color: '#60a5fa',
+                    expanded: false,
+                    tasks: [
+                        { id: `mech-${stationNum}-1`, name: 'Create Station Ideas', status: 'Not Started', progress: 0 },
+                        { id: `mech-${stationNum}-2`, name: 'Evaluation of Ideas', status: 'Not Started', progress: 0 },
+                        { id: `mech-${stationNum}-3`, name: 'Finalize', status: 'Not Started', progress: 0 },
+                        { id: `mech-${stationNum}-4`, name: 'Integrate into Overall', status: 'Not Started', progress: 0 },
+                        { id: `mech-${stationNum}-5`, name: 'Refine Concept', status: 'Not Started', progress: 0 }
+                    ]
+                }))
+            },
+            {
+                id: 'controls',
+                name: 'CONTROLS DESIGN',
+                color: '#10b981',
+                expanded: true,
+                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
+                    id: `ctrl-station-${stationNum}`,
+                    stationNum: stationNum,
+                    name: `STATION ${stationNum} CONTROLS DESIGN`,
+                    color: '#34d399',
+                    expanded: false,
+                    tasks: [
+                        { id: `ctrl-${stationNum}-1`, name: 'Control System Architecture', status: 'Not Started', progress: 0 },
+                        { id: `ctrl-${stationNum}-2`, name: 'I/O Mapping', status: 'Not Started', progress: 0 },
+                        { id: `ctrl-${stationNum}-3`, name: 'PLC Programming', status: 'Not Started', progress: 0 },
+                        { id: `ctrl-${stationNum}-4`, name: 'HMI Design', status: 'Not Started', progress: 0 },
+                        { id: `ctrl-${stationNum}-5`, name: 'Integration & Testing', status: 'Not Started', progress: 0 }
+                    ]
+                }))
+            }
+        ]
+    }
+];
+
+let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSON.parse(JSON.stringify(defaultPhases));
+
 // Current state
 let currentStationId = null;
 let zoomLevel = 100; // percentage
@@ -473,6 +527,7 @@ function renderAllViews() {
     const viewId = activeView.id;
     if (viewId === 'dashboard-view') renderDashboard();
     if (viewId === 'gantt-view') renderGanttView();
+    if (viewId === 'timeline-view') renderProjectTimeline();
     if (viewId === 'team-view') renderTeam();
     if (viewId === 'station-detail-view' && currentStationId) {
         const station = stations.find(s => s.id === currentStationId);
@@ -587,6 +642,7 @@ function switchToView(view) {
     
     if (view === 'dashboard') renderDashboard();
     if (view === 'gantt') renderGanttView();
+    if (view === 'timeline') renderProjectTimeline();
     if (view === 'team') renderTeam();
 }
 
@@ -879,6 +935,295 @@ window.toggleStationExpand = toggleStationExpand;
 window.expandAllStations = expandAllStations;
 window.collapseAllStations = collapseAllStations;
 window.toggleColumnGroup = toggleColumnGroup;
+
+// ============================================
+// PROJECT TIMELINE VIEW (Phase-based Gantt)
+// ============================================
+
+function renderProjectTimeline() {
+    const container = document.getElementById('timeline-container');
+    if (!container) return;
+    
+    let html = '<div class="phase-timeline">';
+    
+    projectPhases.forEach(phase => {
+        const phaseProgress = calculatePhaseProgress(phase);
+        
+        html += `
+        <div class="phase-block" data-phase="${phase.id}">
+            <div class="phase-header ${phase.expanded ? 'expanded' : ''}" onclick="togglePhase('${phase.id}')">
+                <button class="phase-expand-btn ${phase.expanded ? 'expanded' : ''}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+                <div class="phase-title" style="color: ${phase.color}">
+                    <span class="phase-icon">◆</span>
+                    ${phase.name}
+                </div>
+                <div class="phase-progress-indicator">
+                    <div class="phase-progress-bar">
+                        <div class="phase-progress-fill" style="width: ${phaseProgress}%; background: ${phase.color}"></div>
+                    </div>
+                    <span class="phase-progress-text">${phaseProgress}%</span>
+                </div>
+            </div>
+            
+            ${phase.expanded ? `
+            <div class="phase-content">
+                ${phase.categories.map(category => {
+                    const categoryProgress = calculateCategoryProgress(category);
+                    
+                    return `
+                    <div class="category-block" data-category="${category.id}">
+                        <div class="category-header ${category.expanded ? 'expanded' : ''}" onclick="toggleCategory('${phase.id}', '${category.id}')">
+                            <button class="category-expand-btn ${category.expanded ? 'expanded' : ''}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                            </button>
+                            <div class="category-title" style="color: ${category.color}">
+                                <span class="category-icon">▸</span>
+                                ${category.name}
+                            </div>
+                            <div class="category-progress-indicator">
+                                <span class="category-progress-text">${categoryProgress}%</span>
+                            </div>
+                        </div>
+                        
+                        ${category.expanded ? `
+                        <div class="category-content">
+                            ${category.stations.map(station => {
+                                const stationProgress = calculateStationTasksProgress(station);
+                                
+                                return `
+                                <div class="timeline-station-block" data-station="${station.id}">
+                                    <div class="timeline-station-header ${station.expanded ? 'expanded' : ''}" onclick="toggleTimelineStation('${phase.id}', '${category.id}', '${station.id}')">
+                                        <button class="station-expand-btn ${station.expanded ? 'expanded' : ''}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                                        </button>
+                                        <div class="timeline-station-title" style="color: ${station.color}">
+                                            <span class="station-number">S${station.stationNum}</span>
+                                            ${station.name}
+                                        </div>
+                                        <div class="timeline-station-progress">
+                                            <div class="mini-progress-bar">
+                                                <div class="mini-progress-fill" style="width: ${stationProgress}%; background: ${station.color}"></div>
+                                            </div>
+                                            <span>${stationProgress}%</span>
+                                        </div>
+                                    </div>
+                                    
+                                    ${station.expanded ? `
+                                    <div class="timeline-station-tasks">
+                                        ${station.tasks.map(task => `
+                                        <div class="timeline-task-row" data-task="${task.id}">
+                                            <div class="timeline-task-name">
+                                                <span class="task-bullet" style="background: ${station.color}"></span>
+                                                ${task.name}
+                                            </div>
+                                            <div class="timeline-task-controls">
+                                                <select class="task-status-select" onchange="updatePhaseTaskStatus('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)">
+                                                    <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
+                                                    <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                                    <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
+                                                    <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                                                </select>
+                                                <input type="range" min="0" max="100" value="${task.progress}" 
+                                                    class="task-progress-slider"
+                                                    onchange="updatePhaseTaskProgress('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)"
+                                                    style="--progress-color: ${station.color}">
+                                                <span class="task-progress-value">${task.progress}%</span>
+                                            </div>
+                                        </div>
+                                        `).join('')}
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        ` : ''}
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+            ` : ''}
+        </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function calculatePhaseProgress(phase) {
+    let totalProgress = 0;
+    let totalTasks = 0;
+    
+    phase.categories.forEach(cat => {
+        cat.stations.forEach(station => {
+            station.tasks.forEach(task => {
+                totalProgress += task.progress;
+                totalTasks++;
+            });
+        });
+    });
+    
+    return totalTasks > 0 ? Math.round(totalProgress / totalTasks) : 0;
+}
+
+function calculateCategoryProgress(category) {
+    let totalProgress = 0;
+    let totalTasks = 0;
+    
+    category.stations.forEach(station => {
+        station.tasks.forEach(task => {
+            totalProgress += task.progress;
+            totalTasks++;
+        });
+    });
+    
+    return totalTasks > 0 ? Math.round(totalProgress / totalTasks) : 0;
+}
+
+function calculateStationTasksProgress(station) {
+    if (!station.tasks || station.tasks.length === 0) return 0;
+    const total = station.tasks.reduce((sum, task) => sum + task.progress, 0);
+    return Math.round(total / station.tasks.length);
+}
+
+function togglePhase(phaseId) {
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        phase.expanded = !phase.expanded;
+        saveProjectPhases();
+        renderProjectTimeline();
+    }
+}
+
+function toggleCategory(phaseId, categoryId) {
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            category.expanded = !category.expanded;
+            saveProjectPhases();
+            renderProjectTimeline();
+        }
+    }
+}
+
+function toggleTimelineStation(phaseId, categoryId, stationId) {
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station) {
+                station.expanded = !station.expanded;
+                saveProjectPhases();
+                renderProjectTimeline();
+            }
+        }
+    }
+}
+
+function updatePhaseTaskStatus(phaseId, categoryId, stationId, taskId, newStatus) {
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station) {
+                const task = station.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.status = newStatus;
+                    // Auto-set progress based on status
+                    if (newStatus === 'Complete') task.progress = 100;
+                    else if (newStatus === 'Not Started') task.progress = 0;
+                    saveProjectPhases();
+                    renderProjectTimeline();
+                    showSuccess('Task status updated');
+                }
+            }
+        }
+    }
+}
+
+function updatePhaseTaskProgress(phaseId, categoryId, stationId, taskId, newProgress) {
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station) {
+                const task = station.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.progress = parseInt(newProgress);
+                    // Auto-update status based on progress
+                    if (task.progress === 100) task.status = 'Complete';
+                    else if (task.progress > 0) task.status = 'In Progress';
+                    else task.status = 'Not Started';
+                    saveProjectPhases();
+                    renderProjectTimeline();
+                }
+            }
+        }
+    }
+}
+
+function expandAllPhases() {
+    projectPhases.forEach(phase => {
+        phase.expanded = true;
+        phase.categories.forEach(cat => {
+            cat.expanded = true;
+            cat.stations.forEach(station => {
+                station.expanded = true;
+            });
+        });
+    });
+    saveProjectPhases();
+    renderProjectTimeline();
+}
+
+function collapseAllPhases() {
+    projectPhases.forEach(phase => {
+        phase.expanded = false;
+        phase.categories.forEach(cat => {
+            cat.expanded = false;
+            cat.stations.forEach(station => {
+                station.expanded = false;
+            });
+        });
+    });
+    saveProjectPhases();
+    renderProjectTimeline();
+}
+
+function saveProjectPhases() {
+    localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
+}
+
+function exportTimelinePDF() {
+    showSuccess('Generating timeline PDF...');
+    
+    // Expand all for export
+    const originalState = JSON.stringify(projectPhases);
+    expandAllPhases();
+    
+    setTimeout(() => {
+        window.print();
+        // Restore state
+        projectPhases = JSON.parse(originalState);
+        renderProjectTimeline();
+    }, 500);
+}
+
+window.togglePhase = togglePhase;
+window.toggleCategory = toggleCategory;
+window.toggleTimelineStation = toggleTimelineStation;
+window.updatePhaseTaskStatus = updatePhaseTaskStatus;
+window.updatePhaseTaskProgress = updatePhaseTaskProgress;
+window.expandAllPhases = expandAllPhases;
+window.collapseAllPhases = collapseAllPhases;
+window.exportTimelinePDF = exportTimelinePDF;
 
 function formatDateDisplay(dateStr) {
     if (!dateStr) return '';
