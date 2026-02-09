@@ -41,13 +41,30 @@ const firebaseConfig = {
 async function initFirebaseSDK() {
     try {
         console.log('Loading Firebase SDK...');
+        console.log('Step 1: Importing firebase-app.js...');
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js");
-        const { getFirestore, doc, setDoc, onSnapshot, getDoc } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js");
-        const { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js");
+        console.log('Step 1 DONE: firebase-app.js loaded');
         
+        console.log('Step 2: Importing firebase-firestore.js...');
+        const { getFirestore, doc, setDoc, onSnapshot, getDoc } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js");
+        console.log('Step 2 DONE: firebase-firestore.js loaded');
+        
+        console.log('Step 3: Importing firebase-auth.js...');
+        const { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js");
+        console.log('Step 3 DONE: firebase-auth.js loaded');
+        
+        console.log('Step 4: Initializing Firebase app...');
         app = initializeApp(firebaseConfig);
+        console.log('Step 4 DONE: Firebase app initialized');
+        
+        console.log('Step 5: Getting Firestore...');
         db = getFirestore(app);
+        console.log('Step 5 DONE: Firestore ready');
+        
+        console.log('Step 6: Getting Auth...');
         auth = getAuth(app);
+        console.log('Step 6 DONE: Auth ready');
+        
         firebaseEnabled = true;
         
         // Store Firebase functions globally
@@ -59,10 +76,13 @@ async function initFirebaseSDK() {
         window.firebaseSignOut = signOut;
         window.firebaseOnAuthStateChanged = onAuthStateChanged;
         
-        console.log('Firebase SDK loaded successfully');
+        console.log('Firebase SDK loaded successfully - ALL STEPS COMPLETE');
         return true;
     } catch (error) {
-        console.error('Failed to load Firebase SDK:', error);
+        console.error('❌ FIREBASE SDK LOAD FAILED:', error);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
         firebaseEnabled = false;
         return false;
     }
@@ -295,7 +315,8 @@ let zoomLevel = 100; // percentage
 
 async function initializeFirebase() {
     // Set a timeout - if Firebase takes too long, use localStorage
-    const FIREBASE_TIMEOUT = 8000; // 8 seconds max
+    // GitHub Pages can be slower, so give it more time
+    const FIREBASE_TIMEOUT = 15000; // 15 seconds max
     let timeoutId;
     
     const timeoutPromise = new Promise((_, reject) => {
@@ -344,8 +365,16 @@ async function initializeFirebase() {
         
     } catch (error) {
         clearTimeout(timeoutId);
-        console.error('Firebase initialization error:', error);
-        showError('Using offline mode - changes saved locally');
+        console.error('❌ FIREBASE INIT ERROR:', error);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        
+        // Show specific error to user
+        if (error.message.includes('timeout')) {
+            showError('Connection timeout - using offline mode');
+        } else {
+            showError('Firebase error: ' + error.message);
+        }
         // Fallback to localStorage
         teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
         stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
