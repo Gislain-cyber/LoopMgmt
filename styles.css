@@ -2786,6 +2786,81 @@ body {
     flex-shrink: 0;
 }
 
+/* Editable names */
+.editable-name {
+    outline: none;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.editable-name[contenteditable="true"]:hover {
+    background: rgba(0, 212, 170, 0.1);
+}
+
+.editable-name[contenteditable="true"]:focus {
+    background: rgba(0, 212, 170, 0.2);
+    box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.3);
+}
+
+/* Add/Delete buttons for admin */
+.pg-add-btn, .pg-delete-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+
+.pg-add-btn {
+    background: rgba(0, 212, 170, 0.2);
+    color: var(--accent-primary);
+}
+
+.pg-add-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+    opacity: 1 !important;
+}
+
+.pg-delete-btn {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+.pg-delete-btn:hover {
+    background: #dc3545;
+    color: white;
+    opacity: 1 !important;
+}
+
+.pg-delete-btn.small {
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+}
+
+/* Show buttons on row hover */
+.phase-gantt-row:hover .pg-add-btn,
+.phase-gantt-row:hover .pg-delete-btn {
+    opacity: 0.7;
+}
+
+.pg-col-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* Badges */
 .phase-badge, .category-badge {
     padding: 4px 8px;

@@ -1098,12 +1098,13 @@ function renderProjectTimeline() {
         // Phase row
         html += `<div class="phase-gantt-row phase-row ${phase.expanded ? 'expanded' : ''}" data-phase="${phase.id}">`;
         html += '<div class="phase-gantt-info-cells">';
-        html += `<div class="pg-col pg-col-name pg-phase-name" onclick="togglePhase('${phase.id}')">
-            <button class="pg-expand-btn ${phase.expanded ? 'expanded' : ''}">
+        html += `<div class="pg-col pg-col-name pg-phase-name">
+            <button class="pg-expand-btn ${phase.expanded ? 'expanded' : ''}" onclick="togglePhase('${phase.id}')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </button>
             <span class="pg-phase-icon" style="color: ${phase.color}">◆</span>
-            <strong style="color: ${phase.color}">${phase.name}</strong>
+            <strong style="color: ${phase.color}" class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updatePhaseName('${phase.id}', this.textContent)"` : ''}>${phase.name}</strong>
+            ${isAdmin ? `<button class="pg-add-btn" onclick="addCategory('${phase.id}')" title="Add Category">+</button>` : ''}
         </div>`;
         html += `<div class="pg-col pg-col-status"><span class="phase-badge" style="background: ${phase.color}20; color: ${phase.color}">PHASE</span></div>`;
         html += `<div class="pg-col pg-col-progress">
@@ -1131,12 +1132,14 @@ function renderProjectTimeline() {
                 // Category row
                 html += `<div class="phase-gantt-row category-row ${category.expanded ? 'expanded' : ''}" data-category="${category.id}">`;
                 html += '<div class="phase-gantt-info-cells">';
-                html += `<div class="pg-col pg-col-name pg-category-name" onclick="toggleCategory('${phase.id}', '${category.id}')">
-                    <button class="pg-expand-btn ${category.expanded ? 'expanded' : ''}">
+                html += `<div class="pg-col pg-col-name pg-category-name">
+                    <button class="pg-expand-btn ${category.expanded ? 'expanded' : ''}" onclick="toggleCategory('${phase.id}', '${category.id}')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
                     </button>
                     <span class="pg-category-icon" style="color: ${category.color}">▸</span>
-                    <span style="color: ${category.color}">${category.name}</span>
+                    <span style="color: ${category.color}" class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateCategoryName('${phase.id}', '${category.id}', this.textContent)"` : ''}>${category.name}</span>
+                    ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineStation('${phase.id}', '${category.id}')" title="Add Station">+</button>` : ''}
+                    ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteCategory('${phase.id}', '${category.id}')" title="Delete Category">×</button>` : ''}
                 </div>`;
                 html += `<div class="pg-col pg-col-status"><span class="category-badge" style="background: ${category.color}20; color: ${category.color}">CATEGORY</span></div>`;
                 html += `<div class="pg-col pg-col-progress">
@@ -1168,12 +1171,12 @@ function renderProjectTimeline() {
                                         // Station row
                                         html += `<div class="phase-gantt-row station-row ${station.expanded ? 'expanded' : ''} ${isCurrentLeadStation ? 'my-station' : ''}" data-station="${station.id}">`;
                                         html += '<div class="phase-gantt-info-cells">';
-                                        html += `<div class="pg-col pg-col-name pg-station-name" onclick="toggleTimelineStation('${phase.id}', '${category.id}', '${station.id}')">
-                                            <button class="pg-expand-btn ${station.expanded ? 'expanded' : ''}">
+                                        html += `<div class="pg-col pg-col-name pg-station-name">
+                                            <button class="pg-expand-btn ${station.expanded ? 'expanded' : ''}" onclick="toggleTimelineStation('${phase.id}', '${category.id}', '${station.id}')">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
                                             </button>
                                             <span class="pg-station-number" style="background: ${station.color}">S${station.stationNum}</span>
-                                            <span>${station.name}</span>
+                                            <span class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateTimelineStationName('${phase.id}', '${category.id}', '${station.id}', this.textContent)"` : ''}>${station.name}</span>
                                             ${hasGroupLead ? `<span class="pg-group-lead-badge" title="Group Lead: ${groupLead.name}">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
                                                     <circle cx="12" cy="7" r="4"/>
@@ -1182,6 +1185,8 @@ function renderProjectTimeline() {
                                                 ${groupLead.name}
                                             </span>` : ''}
                                             ${isCurrentLeadStation ? '<span class="pg-my-station-badge">Your Station</span>' : ''}
+                                            ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineTask('${phase.id}', '${category.id}', '${station.id}')" title="Add Task">+</button>` : ''}
+                                            ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteTimelineStation('${phase.id}', '${category.id}', '${station.id}')" title="Delete Station">×</button>` : ''}
                                         </div>`;
                                         html += `<div class="pg-col pg-col-status">
                                             <span class="status-badge ${getStatusClass(stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started')}">${stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started'}</span>
@@ -1214,7 +1219,8 @@ function renderProjectTimeline() {
                                 html += '<div class="phase-gantt-info-cells">';
                                 html += `<div class="pg-col pg-col-name pg-task-name">
                                     <span class="pg-task-bullet" style="background: ${station.color}"></span>
-                                    <span>${task.name}</span>
+                                    <span class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateTimelineTaskName('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.textContent)"` : ''}>${task.name}</span>
+                                    ${isAdmin ? `<button class="pg-delete-btn small" onclick="deleteTimelineTask('${phase.id}', '${category.id}', '${station.id}', '${task.id}')" title="Delete Task">×</button>` : ''}
                                 </div>`;
                                 html += `<div class="pg-col pg-col-status">
                                     <select class="pg-status-select" onchange="updatePhaseTaskStatus('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEdit ? '' : 'disabled'}>
@@ -1413,6 +1419,197 @@ function collapseAllPhases() {
 function saveProjectPhases() {
     localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
 }
+
+// ============================================
+// PROJECT TIMELINE EDITING FUNCTIONS (Admin Only)
+// ============================================
+
+function updatePhaseName(phaseId, newName) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase && newName.trim()) {
+        phase.name = newName.trim();
+        saveProjectPhases();
+        showSuccess('Phase name updated');
+    }
+}
+
+function updateCategoryName(phaseId, categoryId, newName) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category && newName.trim()) {
+            category.name = newName.trim();
+            saveProjectPhases();
+            showSuccess('Category name updated');
+        }
+    }
+}
+
+function updateTimelineStationName(phaseId, categoryId, stationId, newName) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station && newName.trim()) {
+                station.name = newName.trim();
+                saveProjectPhases();
+                showSuccess('Station name updated');
+            }
+        }
+    }
+}
+
+function updateTimelineTaskName(phaseId, categoryId, stationId, taskId, newName) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station) {
+                const task = station.tasks.find(t => t.id === taskId);
+                if (task && newName.trim()) {
+                    task.name = newName.trim();
+                    saveProjectPhases();
+                    showSuccess('Task name updated');
+                }
+            }
+        }
+    }
+}
+
+function addCategory(phaseId) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const newId = 'cat-' + Date.now();
+        phase.categories.push({
+            id: newId,
+            name: 'New Category',
+            color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
+            expanded: true,
+            stations: []
+        });
+        saveProjectPhases();
+        renderProjectTimeline();
+        showSuccess('Category added');
+    }
+}
+
+function deleteCategory(phaseId, categoryId) {
+    if (!isAdmin) return;
+    if (!confirm('Delete this category and all its stations/tasks?')) return;
+    
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        phase.categories = phase.categories.filter(c => c.id !== categoryId);
+        saveProjectPhases();
+        renderProjectTimeline();
+        showSuccess('Category deleted');
+    }
+}
+
+function addTimelineStation(phaseId, categoryId) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const newStationNum = category.stations.length + 1;
+            const newId = 'station-' + Date.now();
+            category.stations.push({
+                id: newId,
+                stationNum: newStationNum,
+                name: `Station ${newStationNum}`,
+                color: category.color,
+                expanded: true,
+                groupLeadId: null,
+                tasks: [
+                    { id: newId + '-t1', name: 'Task 1', status: 'Not Started', progress: 0 }
+                ]
+            });
+            saveProjectPhases();
+            renderProjectTimeline();
+            showSuccess('Station added');
+        }
+    }
+}
+
+function deleteTimelineStation(phaseId, categoryId, stationId) {
+    if (!isAdmin) return;
+    if (!confirm('Delete this station and all its tasks?')) return;
+    
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            category.stations = category.stations.filter(s => s.id !== stationId);
+            // Renumber remaining stations
+            category.stations.forEach((s, i) => s.stationNum = i + 1);
+            saveProjectPhases();
+            renderProjectTimeline();
+            showSuccess('Station deleted');
+        }
+    }
+}
+
+function addTimelineTask(phaseId, categoryId, stationId) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station) {
+                const newId = 'task-' + Date.now();
+                station.tasks.push({
+                    id: newId,
+                    name: 'New Task',
+                    status: 'Not Started',
+                    progress: 0
+                });
+                saveProjectPhases();
+                renderProjectTimeline();
+                showSuccess('Task added');
+            }
+        }
+    }
+}
+
+function deleteTimelineTask(phaseId, categoryId, stationId, taskId) {
+    if (!isAdmin) return;
+    if (!confirm('Delete this task?')) return;
+    
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station) {
+                station.tasks = station.tasks.filter(t => t.id !== taskId);
+                saveProjectPhases();
+                renderProjectTimeline();
+                showSuccess('Task deleted');
+            }
+        }
+    }
+}
+
+// Expose editing functions to window
+window.updatePhaseName = updatePhaseName;
+window.updateCategoryName = updateCategoryName;
+window.updateTimelineStationName = updateTimelineStationName;
+window.updateTimelineTaskName = updateTimelineTaskName;
+window.addCategory = addCategory;
+window.deleteCategory = deleteCategory;
+window.addTimelineStation = addTimelineStation;
+window.deleteTimelineStation = deleteTimelineStation;
+window.addTimelineTask = addTimelineTask;
+window.deleteTimelineTask = deleteTimelineTask;
 
 function exportTimelinePDF() {
     showSuccess('Generating timeline PDF...');
