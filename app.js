@@ -261,6 +261,30 @@ const defaultPhases = [
 
 let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSON.parse(JSON.stringify(defaultPhases));
 
+// Migration: Ensure all stations have groupLeadId
+(function migrateProjectPhases() {
+    let needsSave = false;
+    projectPhases.forEach(phase => {
+        phase.categories.forEach(category => {
+            category.stations.forEach(station => {
+                if (!station.groupLeadId) {
+                    // Assign groupLeadId based on category and station number
+                    if (category.id === 'mechanical') {
+                        station.groupLeadId = `mech-lead-${station.stationNum}`;
+                    } else if (category.id === 'controls') {
+                        station.groupLeadId = `ctrl-lead-${station.stationNum}`;
+                    }
+                    needsSave = true;
+                }
+            });
+        });
+    });
+    if (needsSave) {
+        localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
+        console.log('Migrated projectPhases to include groupLeadId');
+    }
+})();
+
 // Current state
 let currentStationId = null;
 let zoomLevel = 100; // percentage
@@ -1371,11 +1395,22 @@ function saveGroupLeads() {
 
 function canEditStation(categoryId, stationId) {
     // Admin can edit everything
-    if (isAdmin) return true;
+    if (isAdmin) {
+        console.log('canEditStation: Admin has full access');
+        return true;
+    }
     
     // Group lead can only edit their assigned station
     if (currentGroupLead) {
         const station = findStationInPhases(categoryId, stationId);
+        console.log('canEditStation check:', {
+            categoryId,
+            stationId,
+            stationFound: !!station,
+            stationGroupLeadId: station?.groupLeadId,
+            currentGroupLeadId: currentGroupLead.id,
+            match: station?.groupLeadId === currentGroupLead.id
+        });
         if (station && station.groupLeadId === currentGroupLead.id) {
             return true;
         }
@@ -1439,15 +1474,20 @@ function groupLeadLogin(event) {
     const username = document.getElementById('gl-username').value;
     const password = document.getElementById('gl-password').value;
     
+    console.log('Group Lead Login attempt:', { username, groupLeadsCount: groupLeads.length });
+    console.log('Available group leads:', groupLeads.map(gl => ({ id: gl.id, username: gl.username, active: gl.active })));
+    
     const lead = groupLeads.find(gl => gl.username === username && gl.password === password && gl.active);
     
     if (lead) {
         currentGroupLead = lead;
+        console.log('Group Lead logged in:', lead);
         closeModal('groupLead-login-modal');
         updateGroupLeadUI();
         renderProjectTimeline();
         showSuccess(`Welcome, ${lead.name || lead.username}! You can now update Station ${lead.stationNum} ${lead.category === 'mechanical' ? 'Mechanical' : 'Controls'} tasks.`);
     } else {
+        console.log('Group Lead login failed - no matching active account');
         showError('Invalid credentials or account not active');
     }
 }
