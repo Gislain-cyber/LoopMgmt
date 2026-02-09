@@ -24,6 +24,9 @@ let currentUser = null;
 // Expanded stations state (for showing subtasks)
 let expandedStations = new Set();
 
+// Column visibility state
+let visibleColumnGroup = 'core';
+
 // Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyDyD7DzKLTAtncmRNhcgADGWOFQvj9F1Aw",
@@ -661,6 +664,9 @@ function renderDashboard() {
 function renderGanttView() {
     renderStationTable();
     renderGanttTimeline();
+    
+    // Apply current column visibility state
+    toggleColumnGroup(visibleColumnGroup);
 }
 
 function toggleStationExpand(stationId, event) {
@@ -685,9 +691,50 @@ function collapseAllStations() {
     renderGanttView();
 }
 
+// Column group toggle for compact/expanded view
+function toggleColumnGroup(group) {
+    visibleColumnGroup = group;
+    
+    // Update toggle button states
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.columns === group) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Get all column elements
+    const datesCols = document.querySelectorAll('.col-dates');
+    const metricsCols = document.querySelectorAll('.col-metrics');
+    const tableScroll = document.querySelector('.station-table-scroll');
+    
+    // Reset all
+    datesCols.forEach(col => col.classList.add('col-hidden'));
+    metricsCols.forEach(col => col.classList.add('col-hidden'));
+    
+    // Show based on selection
+    if (group === 'dates' || group === 'all') {
+        datesCols.forEach(col => col.classList.remove('col-hidden'));
+    }
+    if (group === 'metrics' || group === 'all') {
+        metricsCols.forEach(col => col.classList.remove('col-hidden'));
+    }
+    
+    // Adjust table width
+    if (tableScroll) {
+        tableScroll.classList.remove('compact-view', 'expanded-view');
+        if (group === 'core') {
+            tableScroll.classList.add('compact-view');
+        } else if (group === 'all') {
+            tableScroll.classList.add('expanded-view');
+        }
+    }
+}
+
 window.toggleStationExpand = toggleStationExpand;
 window.expandAllStations = expandAllStations;
 window.collapseAllStations = collapseAllStations;
+window.toggleColumnGroup = toggleColumnGroup;
 
 function renderStationTable() {
     const tbody = document.getElementById('station-tbody');
@@ -711,62 +758,59 @@ function renderStationTable() {
         ` : '<span style="width: 28px; display: inline-block;"></span>';
         
         if (!isAdmin) {
-            // Public view - station row
+            // Public view - station row (compact with column classes)
             html += `
                 <tr data-station-id="${station.id}" class="station-row ${isExpanded ? 'expanded' : ''}">
-                    <td style="color: ${station.color}; font-weight: 700;">
-                        ${chevron}
-                        ${station.id}
+                    <td class="col-core" style="color: ${station.color}; font-weight: 700;">
+                        ${chevron}${station.id}
                     </td>
-                    <td style="font-weight: 600; cursor: pointer;" onclick="openStationDetail(${station.id})">${station.name}</td>
-                    <td style="color: var(--text-secondary);">${station.description}</td>
-                    <td>${formatDateDisplay(station.startDate)}</td>
-                    <td>${formatDateDisplay(station.endDate)}</td>
-                    <td>${days}</td>
-                    <td>${station.tasks.length}</td>
-                    <td style="font-family: 'JetBrains Mono', monospace;">${totalHours}h</td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="flex: 1; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
-                                <div style="height: 100%; width: ${progress}%; background: ${station.color};"></div>
-                            </div>
-                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${progress}%</span>
+                    <td class="col-core" style="font-weight: 600; cursor: pointer;" onclick="openStationDetail(${station.id})">
+                        <div style="display: flex; flex-direction: column;">
+                            <span>${station.name}</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${station.description.substring(0, 40)}${station.description.length > 40 ? '...' : ''}</span>
                         </div>
                     </td>
-                    <td><span class="priority-badge ${getPriorityClass(station.priority)}">${station.priority}</span></td>
-                    <td><div style="width: 24px; height: 24px; background: ${station.color}; border-radius: 6px;"></div></td>
-                    <td></td>
+                    <td class="col-dates col-hidden">${formatDateDisplay(station.startDate)}</td>
+                    <td class="col-dates col-hidden">${formatDateDisplay(station.endDate)}</td>
+                    <td class="col-metrics col-hidden">${days}</td>
+                    <td class="col-metrics col-hidden">${station.tasks.length}</td>
+                    <td class="col-metrics col-hidden">${totalHours}h</td>
+                    <td class="col-core">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="flex: 1; min-width: 40px; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: ${progress}%; background: ${station.color};"></div>
+                            </div>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">${progress}%</span>
+                        </div>
+                    </td>
+                    <td class="col-metrics col-hidden"><span class="priority-badge ${getPriorityClass(station.priority)}">${station.priority}</span></td>
+                    <td class="col-metrics col-hidden"></td>
                 </tr>
             `;
         } else {
-            // Admin view - station row
+            // Admin view - station row (compact with column classes)
             html += `
                 <tr data-station-id="${station.id}" class="station-row ${isExpanded ? 'expanded' : ''}">
-                    <td>
-                        ${chevron}
-                        ${station.id}
+                    <td class="col-core">
+                        ${chevron}${station.id}
                     </td>
-                    <td class="editable-cell">
-                        <input type="text" value="${station.name}" 
+                    <td class="col-core editable-cell">
+                        <input type="text" value="${station.name}" style="font-weight: 600;"
                                onchange="updateStation(${station.id}, 'name', this.value)">
                     </td>
-                    <td class="editable-cell">
-                        <input type="text" value="${station.description}" 
-                               onchange="updateStation(${station.id}, 'description', this.value)">
-                    </td>
-                    <td class="editable-cell">
+                    <td class="col-dates col-hidden editable-cell">
                         <input type="date" value="${station.startDate}" 
                                onchange="updateStation(${station.id}, 'startDate', this.value)">
                     </td>
-                    <td class="editable-cell">
+                    <td class="col-dates col-hidden editable-cell">
                         <input type="date" value="${station.endDate}" 
                                onchange="updateStation(${station.id}, 'endDate', this.value)">
                     </td>
-                    <td>${days}</td>
-                    <td>${station.tasks.length}</td>
-                    <td>${totalHours}h</td>
-                    <td>${progress}%</td>
-                    <td class="editable-cell">
+                    <td class="col-metrics col-hidden">${days}</td>
+                    <td class="col-metrics col-hidden">${station.tasks.length}</td>
+                    <td class="col-metrics col-hidden">${totalHours}h</td>
+                    <td class="col-core">${progress}%</td>
+                    <td class="col-metrics col-hidden editable-cell">
                         <select onchange="updateStation(${station.id}, 'priority', this.value)">
                             <option value="Low" ${station.priority === 'Low' ? 'selected' : ''}>Low</option>
                             <option value="Medium" ${station.priority === 'Medium' ? 'selected' : ''}>Medium</option>
@@ -774,11 +818,7 @@ function renderStationTable() {
                             <option value="Critical" ${station.priority === 'Critical' ? 'selected' : ''}>Critical</option>
                         </select>
                     </td>
-                    <td class="editable-cell">
-                        <input type="color" value="${station.color}" 
-                               onchange="updateStation(${station.id}, 'color', this.value)">
-                    </td>
-                    <td>
+                    <td class="col-metrics col-hidden">
                         <button class="btn-icon delete" onclick="deleteStation(${station.id})" title="Delete">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -796,70 +836,62 @@ function renderStationTable() {
                 const memberColor = getMemberColor(task.assignedTo);
                 
                 if (!isAdmin) {
-                    // Public view - subtask row
+                    // Public view - subtask row (compact with column classes)
                     html += `
                         <tr class="subtask-row" data-station-id="${station.id}" data-task-id="${task.id}">
-                            <td style="padding-left: 40px; color: var(--text-muted);">
+                            <td class="col-core" style="padding-left: 30px; color: var(--text-muted);">
                                 <span style="color: ${station.color};">└</span> ${task.id}
                             </td>
-                            <td style="padding-left: 20px;">
-                                <span style="display: inline-block; width: 8px; height: 8px; background: ${memberColor}; border-radius: 50%; margin-right: 8px;"></span>
-                                ${task.name}
+                            <td class="col-core">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="display: inline-block; width: 8px; height: 8px; background: ${memberColor}; border-radius: 50%; flex-shrink: 0;"></span>
+                                    <div>
+                                        <div style="font-weight: 500;">${task.name}</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-muted);">${task.assignedTo || 'Unassigned'}</div>
+                                    </div>
+                                </div>
                             </td>
-                            <td style="color: var(--text-muted);">${task.assignedTo || 'Unassigned'}</td>
-                            <td>${formatDateDisplay(task.startDate)}</td>
-                            <td>${formatDateDisplay(task.endDate)}</td>
-                            <td>${taskDays}</td>
-                            <td><span class="status-badge ${getStatusClass(task.status)}">${task.status}</span></td>
-                            <td style="font-family: 'JetBrains Mono', monospace;">${task.estHours || 0}h</td>
-                            <td style="font-family: 'JetBrains Mono', monospace;">${task.actualHours || 0}h</td>
-                            <td><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
-                            <td colspan="2" style="color: var(--text-muted); font-size: 0.85rem;">${task.notes || ''}</td>
+                            <td class="col-dates col-hidden">${formatDateDisplay(task.startDate)}</td>
+                            <td class="col-dates col-hidden">${formatDateDisplay(task.endDate)}</td>
+                            <td class="col-metrics col-hidden">${taskDays}</td>
+                            <td class="col-metrics col-hidden">${task.estHours || 0}h</td>
+                            <td class="col-metrics col-hidden">${task.actualHours || 0}h</td>
+                            <td class="col-core"><span class="status-badge ${getStatusClass(task.status)}" style="font-size: 0.65rem; padding: 2px 6px;">${task.status}</span></td>
+                            <td class="col-metrics col-hidden"><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
+                            <td class="col-metrics col-hidden"></td>
                         </tr>
                     `;
                 } else {
-                    // Admin view - subtask row
+                    // Admin view - subtask row (compact with column classes)
                     html += `
                         <tr class="subtask-row" data-station-id="${station.id}" data-task-id="${task.id}">
-                            <td style="padding-left: 40px; color: var(--text-muted);">
+                            <td class="col-core" style="padding-left: 30px; color: var(--text-muted);">
                                 <span style="color: ${station.color};">└</span> ${task.id}
                             </td>
-                            <td class="editable-cell" style="padding-left: 20px;">
-                                <input type="text" value="${task.name}" 
+                            <td class="col-core editable-cell">
+                                <input type="text" value="${task.name}" style="font-size: 0.85rem;"
                                        onchange="updateTask(${station.id}, ${task.id}, 'name', this.value)">
                             </td>
-                            <td class="editable-cell">
-                                <select onchange="updateTask(${station.id}, ${task.id}, 'assignedTo', this.value)">
-                                    <option value="">Unassigned</option>
-                                    ${teamMembers.map(m => `<option value="${m.name}" ${task.assignedTo === m.name ? 'selected' : ''}>${m.name}</option>`).join('')}
-                                </select>
-                            </td>
-                            <td class="editable-cell">
+                            <td class="col-dates col-hidden editable-cell">
                                 <input type="date" value="${task.startDate}" 
                                        onchange="updateTask(${station.id}, ${task.id}, 'startDate', this.value)">
                             </td>
-                            <td class="editable-cell">
+                            <td class="col-dates col-hidden editable-cell">
                                 <input type="date" value="${task.endDate}" 
                                        onchange="updateTask(${station.id}, ${task.id}, 'endDate', this.value)">
                             </td>
-                            <td>${taskDays}</td>
-                            <td class="editable-cell">
-                                <select onchange="updateTask(${station.id}, ${task.id}, 'status', this.value)">
+                            <td class="col-metrics col-hidden">${taskDays}</td>
+                            <td class="col-metrics col-hidden">${task.estHours || 0}h</td>
+                            <td class="col-metrics col-hidden">${task.actualHours || 0}h</td>
+                            <td class="col-core editable-cell">
+                                <select onchange="updateTask(${station.id}, ${task.id}, 'status', this.value)" style="font-size: 0.75rem; padding: 4px;">
                                     <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
                                     <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                                     <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
                                     <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
                                 </select>
                             </td>
-                            <td class="editable-cell">
-                                <input type="number" value="${task.estHours || 0}" min="0" 
-                                       onchange="updateTask(${station.id}, ${task.id}, 'estHours', parseFloat(this.value) || 0)" style="width: 60px;">
-                            </td>
-                            <td class="editable-cell">
-                                <input type="number" value="${task.actualHours || 0}" min="0" 
-                                       onchange="updateTask(${station.id}, ${task.id}, 'actualHours', parseFloat(this.value) || 0)" style="width: 60px;">
-                            </td>
-                            <td class="editable-cell">
+                            <td class="col-metrics col-hidden editable-cell">
                                 <select onchange="updateTask(${station.id}, ${task.id}, 'priority', this.value)">
                                     <option value="Low" ${task.priority === 'Low' ? 'selected' : ''}>Low</option>
                                     <option value="Medium" ${task.priority === 'Medium' ? 'selected' : ''}>Medium</option>
@@ -867,11 +899,7 @@ function renderStationTable() {
                                     <option value="Critical" ${task.priority === 'Critical' ? 'selected' : ''}>Critical</option>
                                 </select>
                             </td>
-                            <td class="editable-cell">
-                                <input type="text" value="${task.notes || ''}" 
-                                       onchange="updateTask(${station.id}, ${task.id}, 'notes', this.value)" placeholder="Notes...">
-                            </td>
-                            <td>
+                            <td class="col-metrics col-hidden">
                                 <button class="btn-icon delete" onclick="deleteTask(${station.id}, ${task.id})" title="Delete">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -1532,106 +1560,207 @@ function validateProject() {
 // ============================================
 
 function exportToPDF() {
-    showSuccess('Preparing PDF export...');
+    showSuccess('Generating professional report...');
     
-    // Save current expanded state
-    const previousExpanded = new Set(expandedStations);
+    // Calculate project metrics
+    const totalTasks = stations.reduce((sum, s) => sum + s.tasks.length, 0);
+    const completedTasks = stations.reduce((sum, s) => sum + s.tasks.filter(t => t.status === 'Complete').length, 0);
+    const inProgressTasks = stations.reduce((sum, s) => sum + s.tasks.filter(t => t.status === 'In Progress').length, 0);
+    const totalHours = stations.reduce((sum, s) => sum + s.tasks.reduce((h, t) => h + (t.estHours || 0), 0), 0);
+    const actualHours = stations.reduce((sum, s) => sum + s.tasks.reduce((h, t) => h + (t.actualHours || 0), 0), 0);
+    const overallProgress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
     
-    // Expand all stations for complete overview
-    stations.forEach(s => expandedStations.add(s.id));
-    renderGanttView();
+    // Find date range
+    const allDates = stations.flatMap(s => [parseDate(s.startDate), parseDate(s.endDate)]);
+    const projectStart = new Date(Math.min(...allDates));
+    const projectEnd = new Date(Math.max(...allDates));
     
-    // Wait for render, then export
-    setTimeout(() => {
-        const element = document.getElementById('gantt-export-area');
-        const tableScroll = document.querySelector('.station-table-scroll');
-        const timelineScroll = document.querySelector('.gantt-timeline-scroll');
-        const wrapper = document.querySelector('.gantt-table-wrapper');
-        const view = document.getElementById('gantt-view');
-        
-        // Add export mode class
-        if (view) view.classList.add('pdf-export-mode');
-        
-        // Save original styles
-        const originalStyles = {
-            tableScroll: tableScroll ? tableScroll.style.cssText : '',
-            timelineScroll: timelineScroll ? timelineScroll.style.cssText : '',
-            wrapper: wrapper ? wrapper.style.cssText : '',
-            element: element ? element.style.cssText : ''
-        };
-        
-        // Temporarily make everything visible for PDF capture
-        if (element) {
-            element.style.overflow = 'visible';
-            element.style.height = 'auto';
-            element.style.maxHeight = 'none';
-        }
-        if (wrapper) {
-            wrapper.style.overflow = 'visible';
-            wrapper.style.height = 'auto';
-            wrapper.style.flexDirection = 'column'; // Stack vertically for PDF
-        }
-        if (tableScroll) {
-            tableScroll.style.overflow = 'visible';
-            tableScroll.style.height = 'auto';
-            tableScroll.style.maxHeight = 'none';
-            tableScroll.style.width = '100%';
-            tableScroll.style.borderRight = 'none';
-            tableScroll.style.borderBottom = '2px solid #30363d';
-        }
-        if (timelineScroll) {
-            timelineScroll.style.overflow = 'visible';
-            timelineScroll.style.height = 'auto';
-            timelineScroll.style.width = '100%';
-            timelineScroll.style.marginTop = '10px';
-        }
-        
-        // Calculate proper dimensions
-        const tableWidth = tableScroll ? tableScroll.scrollWidth : 1200;
-        const timelineWidth = timelineScroll ? timelineScroll.scrollWidth : 1200;
-        const totalWidth = Math.max(tableWidth, timelineWidth, 1400);
-        
-        const opt = {
-            margin: [5, 5, 5, 5],
-            filename: `LoopAutomation_GanttChart_${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 0.92 },
-            html2canvas: { 
-                scale: 1.2, 
-                useCORS: true, 
-                backgroundColor: '#0d1117',
-                scrollX: 0,
-                scrollY: 0,
-                width: totalWidth,
-                windowWidth: totalWidth
-            },
-            jsPDF: { unit: 'mm', format: 'a1', orientation: 'landscape' }
-        };
-        
-        const restoreStyles = () => {
-            // Remove export mode class
-            if (view) view.classList.remove('pdf-export-mode');
+    // Generate PDF content as structured HTML
+    const reportHTML = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #f0f6fc; padding: 40px; min-height: 100%;">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 40px; padding-bottom: 30px; border-bottom: 3px solid #00d4aa;">
+                <h1 style="font-size: 36px; margin: 0; color: #00d4aa; letter-spacing: 2px;">LOOP AUTOMATION</h1>
+                <p style="font-size: 14px; color: #8b949e; margin-top: 10px;">PROJECT MANAGEMENT REPORT</p>
+                <p style="font-size: 12px; color: #6e7681; margin-top: 5px;">Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
             
-            // Restore original styles
-            if (element) element.style.cssText = originalStyles.element;
-            if (wrapper) wrapper.style.cssText = originalStyles.wrapper;
-            if (tableScroll) tableScroll.style.cssText = originalStyles.tableScroll;
-            if (timelineScroll) timelineScroll.style.cssText = originalStyles.timelineScroll;
+            <!-- Executive Summary -->
+            <div style="background: #161b22; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                <h2 style="font-size: 18px; color: #00d4aa; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #30363d;">📊 EXECUTIVE SUMMARY</h2>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #00d4aa;">${stations.length}</div>
+                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Stations</div>
+                    </div>
+                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #17a2b8;">${totalTasks}</div>
+                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Total Tasks</div>
+                    </div>
+                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #28a745;">${completedTasks}</div>
+                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Completed</div>
+                    </div>
+                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #f59e0b;">${inProgressTasks}</div>
+                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">In Progress</div>
+                    </div>
+                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #7c3aed;">${overallProgress}%</div>
+                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Progress</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #21262d; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #8b949e; font-size: 12px;">PROJECT TIMELINE</span>
+                        <span style="color: #f0f6fc; font-size: 12px;">${formatDateDisplay(projectStart.toISOString().split('T')[0])} → ${formatDateDisplay(projectEnd.toISOString().split('T')[0])}</span>
+                    </div>
+                    <div style="height: 8px; background: #30363d; border-radius: 4px; overflow: hidden;">
+                        <div style="height: 100%; width: ${overallProgress}%; background: linear-gradient(90deg, #00d4aa, #7c3aed);"></div>
+                    </div>
+                </div>
+            </div>
             
-            // Restore previous expanded state
-            expandedStations.clear();
-            previousExpanded.forEach(id => expandedStations.add(id));
-            renderGanttView();
-        };
-        
-        html2pdf().set(opt).from(element).save().then(() => {
-            restoreStyles();
-            showSuccess('PDF exported successfully!');
-        }).catch(err => {
-            console.error('PDF export error:', err);
-            showError('PDF export failed');
-            restoreStyles();
-        });
-    }, 500);
+            <!-- Station Details -->
+            ${stations.map((station, idx) => {
+                const stationTotalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
+                const stationActualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+                const stationProgress = stationTotalHours > 0 ? Math.round((stationActualHours / stationTotalHours) * 100) : 0;
+                const days = daysBetween(station.startDate, station.endDate);
+                
+                return `
+                <div style="background: #161b22; border-radius: 12px; padding: 25px; margin-bottom: 20px; border-left: 4px solid ${station.color};">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="font-size: 18px; color: #f0f6fc; margin: 0;">
+                                <span style="color: ${station.color}; font-weight: 700;">${station.id}.</span> ${station.name}
+                            </h3>
+                            <p style="font-size: 13px; color: #8b949e; margin: 8px 0 0 0;">${station.description}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 24px; font-weight: 700; color: ${station.color};">${stationProgress}%</div>
+                            <div style="font-size: 11px; color: #8b949e;">PROGRESS</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 30px; margin-bottom: 20px; padding: 15px; background: #21262d; border-radius: 8px;">
+                        <div>
+                            <span style="color: #6e7681; font-size: 11px;">DURATION</span>
+                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${days} days</div>
+                        </div>
+                        <div>
+                            <span style="color: #6e7681; font-size: 11px;">START</span>
+                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${formatDateDisplay(station.startDate)}</div>
+                        </div>
+                        <div>
+                            <span style="color: #6e7681; font-size: 11px;">END</span>
+                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${formatDateDisplay(station.endDate)}</div>
+                        </div>
+                        <div>
+                            <span style="color: #6e7681; font-size: 11px;">EST HOURS</span>
+                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${stationTotalHours}h</div>
+                        </div>
+                        <div>
+                            <span style="color: #6e7681; font-size: 11px;">PRIORITY</span>
+                            <div style="color: ${station.priority === 'Critical' ? '#dc3545' : station.priority === 'High' ? '#ffc107' : station.priority === 'Medium' ? '#17a2b8' : '#28a745'}; font-size: 13px; font-weight: 500;">${station.priority}</div>
+                        </div>
+                    </div>
+                    
+                    ${station.tasks.length > 0 ? `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: #21262d;">
+                                <th style="padding: 10px; text-align: left; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Task</th>
+                                <th style="padding: 10px; text-align: left; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Assigned To</th>
+                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Start</th>
+                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">End</th>
+                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Hours</th>
+                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Status</th>
+                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Priority</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${station.tasks.map(task => {
+                                const statusColor = task.status === 'Complete' ? '#28a745' : task.status === 'In Progress' ? '#17a2b8' : task.status === 'On Hold' ? '#fd7e14' : '#6c757d';
+                                const priorityColor = task.priority === 'Critical' ? '#dc3545' : task.priority === 'High' ? '#ffc107' : task.priority === 'Medium' ? '#17a2b8' : '#28a745';
+                                return `
+                                <tr style="border-bottom: 1px solid #21262d;">
+                                    <td style="padding: 12px 10px; color: #f0f6fc;">${task.name}</td>
+                                    <td style="padding: 12px 10px; color: #8b949e;">${task.assignedTo || 'Unassigned'}</td>
+                                    <td style="padding: 12px 10px; text-align: center; color: #8b949e;">${formatDateDisplay(task.startDate)}</td>
+                                    <td style="padding: 12px 10px; text-align: center; color: #8b949e;">${formatDateDisplay(task.endDate)}</td>
+                                    <td style="padding: 12px 10px; text-align: center; color: #f0f6fc; font-family: monospace;">${task.estHours || 0}h</td>
+                                    <td style="padding: 12px 10px; text-align: center;">
+                                        <span style="background: ${statusColor}22; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${task.status}</span>
+                                    </td>
+                                    <td style="padding: 12px 10px; text-align: center;">
+                                        <span style="color: ${priorityColor}; font-size: 11px; font-weight: 600;">${task.priority}</span>
+                                    </td>
+                                </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    ` : '<p style="color: #6e7681; font-style: italic; font-size: 12px;">No tasks assigned to this station.</p>'}
+                </div>
+                `;
+            }).join('')}
+            
+            <!-- Team Members -->
+            <div style="background: #161b22; border-radius: 12px; padding: 25px; margin-bottom: 30px; page-break-before: always;">
+                <h2 style="font-size: 18px; color: #00d4aa; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #30363d;">👥 TEAM MEMBERS (${teamMembers.length})</h2>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                    ${teamMembers.map(member => {
+                        const memberTasks = stations.flatMap(s => s.tasks.filter(t => t.assignedTo === member.name));
+                        const completedMemberTasks = memberTasks.filter(t => t.status === 'Complete').length;
+                        return `
+                        <div style="flex: 0 0 calc(33% - 10px); background: #21262d; padding: 15px; border-radius: 8px; border-left: 3px solid ${member.color};">
+                            <div style="font-weight: 600; color: #f0f6fc; margin-bottom: 5px;">${member.name}</div>
+                            <div style="font-size: 12px; color: #8b949e;">${member.role}</div>
+                            <div style="font-size: 11px; color: #6e7681; margin-top: 8px;">${memberTasks.length} tasks (${completedMemberTasks} complete)</div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="text-align: center; padding-top: 30px; border-top: 1px solid #30363d; color: #6e7681; font-size: 11px;">
+                <p>Loop Automation Project Management System</p>
+                <p>Confidential - For Internal Use Only</p>
+            </div>
+        </div>
+    `;
+    
+    // Create a temporary container for the PDF
+    const container = document.createElement('div');
+    container.innerHTML = reportHTML;
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.width = '1100px';
+    document.body.appendChild(container);
+    
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `LoopAutomation_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            backgroundColor: '#0d1117'
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    
+    html2pdf().set(opt).from(container).save().then(() => {
+        document.body.removeChild(container);
+        showSuccess('Report exported successfully!');
+    }).catch(err => {
+        console.error('PDF export error:', err);
+        document.body.removeChild(container);
+        showError('Export failed');
+    });
 }
 
 function exportStationToPDF() {

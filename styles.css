@@ -816,6 +816,101 @@ body {
     border-bottom: 2px solid var(--accent-primary) !important;
 }
 
+/* ============================================
+   COLUMN TOGGLE CONTROLS
+   ============================================ */
+.column-toggles {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    flex-wrap: wrap;
+}
+
+.toggle-label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-right: 8px;
+}
+
+.toggle-btn {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid var(--border-primary);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toggle-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.toggle-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+/* Hidden columns */
+.col-hidden {
+    display: none !important;
+}
+
+/* Compact Station Table */
+.station-table.compact {
+    font-size: 0.85rem;
+}
+
+.station-table.compact th,
+.station-table.compact td {
+    padding: 8px 10px;
+}
+
+/* Timeline takes priority in compact mode */
+.gantt-table-wrapper {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.station-table-scroll {
+    flex: 0 0 auto;
+    min-width: 350px;
+    max-width: 50%;
+    overflow-x: auto;
+    overflow-y: auto;
+    border-right: 2px solid var(--border-primary);
+    transition: min-width 0.3s ease, max-width 0.3s ease;
+}
+
+/* When showing only core columns */
+.station-table-scroll.compact-view {
+    min-width: 350px;
+    max-width: 380px;
+}
+
+/* When showing all columns */
+.station-table-scroll.expanded-view {
+    min-width: 800px;
+    max-width: 60%;
+}
+
+.gantt-timeline-scroll {
+    flex: 1;
+    min-width: 400px;
+    overflow-x: auto;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+}
+
 /* Expand All / Collapse All Buttons */
 .expand-controls {
     display: flex;
@@ -1912,6 +2007,22 @@ body {
         padding: 12px;
     }
     
+    /* Column toggles wrap nicely */
+    .column-toggles {
+        padding: 10px 12px;
+        gap: 6px;
+    }
+    
+    .toggle-btn {
+        padding: 5px 10px;
+        font-size: 0.7rem;
+    }
+    
+    .toggle-label {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+    
     /* Button text hidden, icon only */
     .btn-primary span,
     .btn-secondary span {
@@ -1931,23 +2042,32 @@ body {
         padding: 8px;
     }
     
-    /* Gantt specific mobile */
+    /* Gantt specific mobile - horizontal scroll enabled */
+    .gantt-table-wrapper {
+        flex-direction: row !important;
+    }
+    
     .station-table-scroll {
-        max-height: 40vh;
+        min-width: 280px !important;
+        max-width: 300px !important;
+        max-height: none;
+        border-right: 2px solid var(--border-primary);
+        border-bottom: none;
+    }
+    
+    .station-table-scroll.compact-view {
+        min-width: 280px !important;
+        max-width: 280px !important;
+    }
+    
+    .gantt-timeline-scroll {
+        min-width: 300px;
     }
     
     .station-table th,
     .station-table td {
         padding: 8px 6px;
         font-size: 0.75rem;
-    }
-    
-    /* Hide description and progress columns on mobile */
-    .station-table th:nth-child(3),
-    .station-table td:nth-child(3),
-    .station-table th:nth-child(9),
-    .station-table td:nth-child(9) {
-        display: none;
     }
     
     .subtask-row td {
