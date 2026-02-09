@@ -2074,7 +2074,7 @@ function openMemberTasks(memberName, memberIndex) {
                         <div class="member-task-hours">
                             <label>Hours: </label>
                             <input type="number" min="0" value="${task.actualHours || 0}" 
-                                onchange="updateMemberTaskHours(${task.stationId}, ${task.id}, this.value)"
+                                onchange="updateMemberTaskHours('${task.stationId}', '${task.id}', this.value)"
                                 style="width:60px"> / ${task.estHours || 0}h
                         </div>
                         <div class="member-task-progress-bar">
@@ -2084,7 +2084,7 @@ function openMemberTasks(memberName, memberIndex) {
                     </div>
                     <div class="member-task-status-update">
                         <label>Status:</label>
-                        <select onchange="updateMemberTaskStatus(${task.stationId}, ${task.id}, this.value)">
+                        <select onchange="updateMemberTaskStatus('${task.stationId}', '${task.id}', this.value)">
                             <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
                             <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                             <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
@@ -2156,15 +2156,29 @@ function openMemberTasks(memberName, memberIndex) {
 }
 
 async function updateMemberTaskStatus(stationId, taskId, newStatus) {
+    console.log('updateMemberTaskStatus called:', { stationId, taskId, newStatus });
+    
     const station = stations.find(s => s.id === stationId);
-    if (!station) return;
+    if (!station) {
+        console.error('Station not found:', stationId);
+        console.log('Available stations:', stations.map(s => s.id));
+        return;
+    }
     
     const task = station.tasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+        console.error('Task not found:', taskId);
+        console.log('Available tasks in station:', station.tasks.map(t => t.id));
+        return;
+    }
     
     task.status = newStatus;
+    console.log('Task updated:', task);
     await saveStations(stations);
     showSuccess(`Task status updated to "${newStatus}"`);
+    
+    // Also refresh the Gantt view
+    renderGanttView();
     
     // Refresh the modal
     if (currentMemberName) {
@@ -2176,15 +2190,29 @@ async function updateMemberTaskStatus(stationId, taskId, newStatus) {
 }
 
 async function updateMemberTaskHours(stationId, taskId, newHours) {
+    console.log('updateMemberTaskHours called:', { stationId, taskId, newHours });
+    
     const station = stations.find(s => s.id === stationId);
-    if (!station) return;
+    if (!station) {
+        console.error('Station not found:', stationId);
+        console.log('Available stations:', stations.map(s => s.id));
+        return;
+    }
     
     const task = station.tasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+        console.error('Task not found:', taskId);
+        console.log('Available tasks in station:', station.tasks.map(t => t.id));
+        return;
+    }
     
     task.actualHours = parseFloat(newHours) || 0;
+    console.log('Task hours updated:', task);
     await saveStations(stations);
     showSuccess('Hours updated');
+    
+    // Also refresh the Gantt view
+    renderGanttView();
     
     // Refresh the modal
     if (currentMemberName) {
