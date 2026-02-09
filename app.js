@@ -1560,7 +1560,7 @@ function validateProject() {
 // ============================================
 
 function exportToPDF() {
-    showSuccess('Generating professional report...');
+    showSuccess('Generating report...');
     
     // Calculate project metrics
     const totalTasks = stations.reduce((sum, s) => sum + s.tasks.length, 0);
@@ -1571,196 +1571,158 @@ function exportToPDF() {
     const overallProgress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
     
     // Find date range
-    const allDates = stations.flatMap(s => [parseDate(s.startDate), parseDate(s.endDate)]);
-    const projectStart = new Date(Math.min(...allDates));
-    const projectEnd = new Date(Math.max(...allDates));
+    let projectStartStr = '', projectEndStr = '';
+    if (stations.length > 0) {
+        const allDates = stations.flatMap(s => [parseDate(s.startDate), parseDate(s.endDate)]);
+        const projectStart = new Date(Math.min(...allDates));
+        const projectEnd = new Date(Math.max(...allDates));
+        projectStartStr = formatDateDisplay(projectStart.toISOString().split('T')[0]);
+        projectEndStr = formatDateDisplay(projectEnd.toISOString().split('T')[0]);
+    }
     
-    // Generate PDF content as structured HTML
-    const reportHTML = `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #f0f6fc; padding: 40px; min-height: 100%;">
-            <!-- Header -->
-            <div style="text-align: center; margin-bottom: 40px; padding-bottom: 30px; border-bottom: 3px solid #00d4aa;">
-                <h1 style="font-size: 36px; margin: 0; color: #00d4aa; letter-spacing: 2px;">LOOP AUTOMATION</h1>
-                <p style="font-size: 14px; color: #8b949e; margin-top: 10px;">PROJECT MANAGEMENT REPORT</p>
-                <p style="font-size: 12px; color: #6e7681; margin-top: 5px;">Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            </div>
-            
-            <!-- Executive Summary -->
-            <div style="background: #161b22; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
-                <h2 style="font-size: 18px; color: #00d4aa; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #30363d;">📊 EXECUTIVE SUMMARY</h2>
-                <div style="display: flex; flex-wrap: wrap; gap: 20px;">
-                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 32px; font-weight: 700; color: #00d4aa;">${stations.length}</div>
-                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Stations</div>
-                    </div>
-                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 32px; font-weight: 700; color: #17a2b8;">${totalTasks}</div>
-                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Total Tasks</div>
-                    </div>
-                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 32px; font-weight: 700; color: #28a745;">${completedTasks}</div>
-                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Completed</div>
-                    </div>
-                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 32px; font-weight: 700; color: #f59e0b;">${inProgressTasks}</div>
-                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">In Progress</div>
-                    </div>
-                    <div style="flex: 1; min-width: 150px; background: #21262d; padding: 20px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 32px; font-weight: 700; color: #7c3aed;">${overallProgress}%</div>
-                        <div style="font-size: 12px; color: #8b949e; text-transform: uppercase;">Progress</div>
-                    </div>
-                </div>
-                <div style="margin-top: 20px; padding: 15px; background: #21262d; border-radius: 8px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: #8b949e; font-size: 12px;">PROJECT TIMELINE</span>
-                        <span style="color: #f0f6fc; font-size: 12px;">${formatDateDisplay(projectStart.toISOString().split('T')[0])} → ${formatDateDisplay(projectEnd.toISOString().split('T')[0])}</span>
-                    </div>
-                    <div style="height: 8px; background: #30363d; border-radius: 4px; overflow: hidden;">
-                        <div style="height: 100%; width: ${overallProgress}%; background: linear-gradient(90deg, #00d4aa, #7c3aed);"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Station Details -->
-            ${stations.map((station, idx) => {
-                const stationTotalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-                const stationActualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-                const stationProgress = stationTotalHours > 0 ? Math.round((stationActualHours / stationTotalHours) * 100) : 0;
-                const days = daysBetween(station.startDate, station.endDate);
-                
-                return `
-                <div style="background: #161b22; border-radius: 12px; padding: 25px; margin-bottom: 20px; border-left: 4px solid ${station.color};">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                        <div>
-                            <h3 style="font-size: 18px; color: #f0f6fc; margin: 0;">
-                                <span style="color: ${station.color}; font-weight: 700;">${station.id}.</span> ${station.name}
-                            </h3>
-                            <p style="font-size: 13px; color: #8b949e; margin: 8px 0 0 0;">${station.description}</p>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 24px; font-weight: 700; color: ${station.color};">${stationProgress}%</div>
-                            <div style="font-size: 11px; color: #8b949e;">PROGRESS</div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 30px; margin-bottom: 20px; padding: 15px; background: #21262d; border-radius: 8px;">
-                        <div>
-                            <span style="color: #6e7681; font-size: 11px;">DURATION</span>
-                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${days} days</div>
-                        </div>
-                        <div>
-                            <span style="color: #6e7681; font-size: 11px;">START</span>
-                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${formatDateDisplay(station.startDate)}</div>
-                        </div>
-                        <div>
-                            <span style="color: #6e7681; font-size: 11px;">END</span>
-                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${formatDateDisplay(station.endDate)}</div>
-                        </div>
-                        <div>
-                            <span style="color: #6e7681; font-size: 11px;">EST HOURS</span>
-                            <div style="color: #f0f6fc; font-size: 13px; font-weight: 500;">${stationTotalHours}h</div>
-                        </div>
-                        <div>
-                            <span style="color: #6e7681; font-size: 11px;">PRIORITY</span>
-                            <div style="color: ${station.priority === 'Critical' ? '#dc3545' : station.priority === 'High' ? '#ffc107' : station.priority === 'Medium' ? '#17a2b8' : '#28a745'}; font-size: 13px; font-weight: 500;">${station.priority}</div>
-                        </div>
-                    </div>
-                    
-                    ${station.tasks.length > 0 ? `
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <thead>
-                            <tr style="background: #21262d;">
-                                <th style="padding: 10px; text-align: left; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Task</th>
-                                <th style="padding: 10px; text-align: left; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Assigned To</th>
-                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Start</th>
-                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">End</th>
-                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Hours</th>
-                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Status</th>
-                                <th style="padding: 10px; text-align: center; color: #8b949e; font-weight: 600; border-bottom: 1px solid #30363d;">Priority</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${station.tasks.map(task => {
-                                const statusColor = task.status === 'Complete' ? '#28a745' : task.status === 'In Progress' ? '#17a2b8' : task.status === 'On Hold' ? '#fd7e14' : '#6c757d';
-                                const priorityColor = task.priority === 'Critical' ? '#dc3545' : task.priority === 'High' ? '#ffc107' : task.priority === 'Medium' ? '#17a2b8' : '#28a745';
-                                return `
-                                <tr style="border-bottom: 1px solid #21262d;">
-                                    <td style="padding: 12px 10px; color: #f0f6fc;">${task.name}</td>
-                                    <td style="padding: 12px 10px; color: #8b949e;">${task.assignedTo || 'Unassigned'}</td>
-                                    <td style="padding: 12px 10px; text-align: center; color: #8b949e;">${formatDateDisplay(task.startDate)}</td>
-                                    <td style="padding: 12px 10px; text-align: center; color: #8b949e;">${formatDateDisplay(task.endDate)}</td>
-                                    <td style="padding: 12px 10px; text-align: center; color: #f0f6fc; font-family: monospace;">${task.estHours || 0}h</td>
-                                    <td style="padding: 12px 10px; text-align: center;">
-                                        <span style="background: ${statusColor}22; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">${task.status}</span>
-                                    </td>
-                                    <td style="padding: 12px 10px; text-align: center;">
-                                        <span style="color: ${priorityColor}; font-size: 11px; font-weight: 600;">${task.priority}</span>
-                                    </td>
-                                </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                    ` : '<p style="color: #6e7681; font-style: italic; font-size: 12px;">No tasks assigned to this station.</p>'}
-                </div>
-                `;
-            }).join('')}
-            
-            <!-- Team Members -->
-            <div style="background: #161b22; border-radius: 12px; padding: 25px; margin-bottom: 30px; page-break-before: always;">
-                <h2 style="font-size: 18px; color: #00d4aa; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #30363d;">👥 TEAM MEMBERS (${teamMembers.length})</h2>
-                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
-                    ${teamMembers.map(member => {
-                        const memberTasks = stations.flatMap(s => s.tasks.filter(t => t.assignedTo === member.name));
-                        const completedMemberTasks = memberTasks.filter(t => t.status === 'Complete').length;
-                        return `
-                        <div style="flex: 0 0 calc(33% - 10px); background: #21262d; padding: 15px; border-radius: 8px; border-left: 3px solid ${member.color};">
-                            <div style="font-weight: 600; color: #f0f6fc; margin-bottom: 5px;">${member.name}</div>
-                            <div style="font-size: 12px; color: #8b949e;">${member.role}</div>
-                            <div style="font-size: 11px; color: #6e7681; margin-top: 8px;">${memberTasks.length} tasks (${completedMemberTasks} complete)</div>
-                        </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-            
-            <!-- Footer -->
-            <div style="text-align: center; padding-top: 30px; border-top: 1px solid #30363d; color: #6e7681; font-size: 11px;">
-                <p>Loop Automation Project Management System</p>
-                <p>Confidential - For Internal Use Only</p>
-            </div>
-        </div>
-    `;
+    // Build station sections HTML
+    let stationSections = '';
+    stations.forEach(station => {
+        const stationTotalHours = station.tasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
+        const stationActualHours = station.tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+        const stationProgress = stationTotalHours > 0 ? Math.round((stationActualHours / stationTotalHours) * 100) : 0;
+        const days = daysBetween(station.startDate, station.endDate);
+        const priorityColor = station.priority === 'Critical' ? '#dc3545' : station.priority === 'High' ? '#ffc107' : station.priority === 'Medium' ? '#17a2b8' : '#28a745';
+        
+        let taskRows = '';
+        station.tasks.forEach(task => {
+            const statusColor = task.status === 'Complete' ? '#28a745' : task.status === 'In Progress' ? '#17a2b8' : task.status === 'On Hold' ? '#fd7e14' : '#6c757d';
+            const taskPriorityColor = task.priority === 'Critical' ? '#dc3545' : task.priority === 'High' ? '#ffc107' : task.priority === 'Medium' ? '#17a2b8' : '#28a745';
+            taskRows += '<tr style="border-bottom: 1px solid #21262d;">' +
+                '<td style="padding: 10px 8px; color: #f0f6fc;">' + task.name + '</td>' +
+                '<td style="padding: 10px 8px; color: #8b949e;">' + (task.assignedTo || 'Unassigned') + '</td>' +
+                '<td style="padding: 10px 8px; text-align: center; color: #8b949e;">' + formatDateDisplay(task.startDate) + '</td>' +
+                '<td style="padding: 10px 8px; text-align: center; color: #8b949e;">' + formatDateDisplay(task.endDate) + '</td>' +
+                '<td style="padding: 10px 8px; text-align: center; color: #f0f6fc;">' + (task.estHours || 0) + 'h</td>' +
+                '<td style="padding: 10px 8px; text-align: center; color: ' + statusColor + '; font-weight: 600;">' + task.status + '</td>' +
+                '<td style="padding: 10px 8px; text-align: center; color: ' + taskPriorityColor + ';">' + task.priority + '</td>' +
+                '</tr>';
+        });
+        
+        const taskTable = station.tasks.length > 0 ? 
+            '<table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 15px;">' +
+            '<thead><tr style="background: #21262d;">' +
+            '<th style="padding: 8px; text-align: left; color: #8b949e;">Task</th>' +
+            '<th style="padding: 8px; text-align: left; color: #8b949e;">Assigned</th>' +
+            '<th style="padding: 8px; text-align: center; color: #8b949e;">Start</th>' +
+            '<th style="padding: 8px; text-align: center; color: #8b949e;">End</th>' +
+            '<th style="padding: 8px; text-align: center; color: #8b949e;">Hours</th>' +
+            '<th style="padding: 8px; text-align: center; color: #8b949e;">Status</th>' +
+            '<th style="padding: 8px; text-align: center; color: #8b949e;">Priority</th>' +
+            '</tr></thead><tbody>' + taskRows + '</tbody></table>' 
+            : '<p style="color: #6e7681; font-size: 11px; margin-top: 10px;">No tasks assigned.</p>';
+        
+        stationSections += '<div style="background: #161b22; border-radius: 8px; padding: 20px; margin-bottom: 15px; border-left: 4px solid ' + station.color + ';">' +
+            '<table style="width: 100%; margin-bottom: 10px;"><tr>' +
+            '<td style="vertical-align: top;"><h3 style="font-size: 16px; color: #f0f6fc; margin: 0;"><span style="color: ' + station.color + ';">' + station.id + '.</span> ' + station.name + '</h3>' +
+            '<p style="font-size: 12px; color: #8b949e; margin: 5px 0 0 0;">' + station.description + '</p></td>' +
+            '<td style="text-align: right; width: 80px;"><div style="font-size: 22px; font-weight: 700; color: ' + station.color + ';">' + stationProgress + '%</div></td>' +
+            '</tr></table>' +
+            '<table style="width: 100%; font-size: 11px; color: #8b949e;"><tr>' +
+            '<td><strong>Duration:</strong> ' + days + ' days</td>' +
+            '<td><strong>Start:</strong> ' + formatDateDisplay(station.startDate) + '</td>' +
+            '<td><strong>End:</strong> ' + formatDateDisplay(station.endDate) + '</td>' +
+            '<td><strong>Hours:</strong> ' + stationTotalHours + 'h</td>' +
+            '<td><strong style="color: ' + priorityColor + ';">Priority:</strong> ' + station.priority + '</td>' +
+            '</tr></table>' +
+            taskTable +
+            '</div>';
+    });
     
-    // Create a temporary container for the PDF
+    // Build team members HTML
+    let teamSection = '';
+    teamMembers.forEach(member => {
+        const memberTasks = stations.flatMap(s => s.tasks.filter(t => t.assignedTo === member.name));
+        teamSection += '<div style="display: inline-block; width: 30%; background: #21262d; padding: 12px; margin: 5px; border-radius: 6px; border-left: 3px solid ' + member.color + '; vertical-align: top;">' +
+            '<div style="font-weight: 600; color: #f0f6fc;">' + member.name + '</div>' +
+            '<div style="font-size: 11px; color: #8b949e;">' + member.role + '</div>' +
+            '<div style="font-size: 10px; color: #6e7681; margin-top: 5px;">' + memberTasks.length + ' tasks</div>' +
+            '</div>';
+    });
+    
+    // Generate PDF content - using simple HTML, no flex
+    const reportHTML = '<div style="font-family: Arial, sans-serif; background: #0d1117; color: #f0f6fc; padding: 30px;">' +
+        
+        // Header
+        '<div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #00d4aa;">' +
+        '<h1 style="font-size: 28px; margin: 0; color: #00d4aa;">LOOP AUTOMATION</h1>' +
+        '<p style="font-size: 12px; color: #8b949e; margin-top: 8px;">PROJECT MANAGEMENT REPORT</p>' +
+        '<p style="font-size: 10px; color: #6e7681; margin-top: 5px;">Generated: ' + new Date().toLocaleDateString() + '</p>' +
+        '</div>' +
+        
+        // Summary Stats
+        '<div style="background: #161b22; border-radius: 8px; padding: 20px; margin-bottom: 20px;">' +
+        '<h2 style="font-size: 14px; color: #00d4aa; margin: 0 0 15px 0; border-bottom: 1px solid #30363d; padding-bottom: 8px;">EXECUTIVE SUMMARY</h2>' +
+        '<table style="width: 100%; text-align: center;"><tr>' +
+        '<td style="background: #21262d; padding: 15px; border-radius: 6px; margin: 5px;"><div style="font-size: 28px; font-weight: 700; color: #00d4aa;">' + stations.length + '</div><div style="font-size: 10px; color: #8b949e;">STATIONS</div></td>' +
+        '<td style="width: 10px;"></td>' +
+        '<td style="background: #21262d; padding: 15px; border-radius: 6px;"><div style="font-size: 28px; font-weight: 700; color: #17a2b8;">' + totalTasks + '</div><div style="font-size: 10px; color: #8b949e;">TOTAL TASKS</div></td>' +
+        '<td style="width: 10px;"></td>' +
+        '<td style="background: #21262d; padding: 15px; border-radius: 6px;"><div style="font-size: 28px; font-weight: 700; color: #28a745;">' + completedTasks + '</div><div style="font-size: 10px; color: #8b949e;">COMPLETED</div></td>' +
+        '<td style="width: 10px;"></td>' +
+        '<td style="background: #21262d; padding: 15px; border-radius: 6px;"><div style="font-size: 28px; font-weight: 700; color: #f59e0b;">' + inProgressTasks + '</div><div style="font-size: 10px; color: #8b949e;">IN PROGRESS</div></td>' +
+        '<td style="width: 10px;"></td>' +
+        '<td style="background: #21262d; padding: 15px; border-radius: 6px;"><div style="font-size: 28px; font-weight: 700; color: #7c3aed;">' + overallProgress + '%</div><div style="font-size: 10px; color: #8b949e;">PROGRESS</div></td>' +
+        '</tr></table>' +
+        '<div style="margin-top: 15px; padding: 10px; background: #21262d; border-radius: 6px;">' +
+        '<div style="font-size: 10px; color: #8b949e; margin-bottom: 5px;">PROJECT TIMELINE: ' + projectStartStr + ' → ' + projectEndStr + '</div>' +
+        '<div style="height: 8px; background: #30363d; border-radius: 4px; overflow: hidden;">' +
+        '<div style="height: 100%; width: ' + overallProgress + '%; background: linear-gradient(90deg, #00d4aa, #7c3aed);"></div>' +
+        '</div></div></div>' +
+        
+        // Stations
+        '<h2 style="font-size: 14px; color: #00d4aa; margin: 25px 0 15px 0;">STATION DETAILS</h2>' +
+        stationSections +
+        
+        // Team
+        '<div style="background: #161b22; border-radius: 8px; padding: 20px; margin-top: 20px;">' +
+        '<h2 style="font-size: 14px; color: #00d4aa; margin: 0 0 15px 0; border-bottom: 1px solid #30363d; padding-bottom: 8px;">TEAM MEMBERS (' + teamMembers.length + ')</h2>' +
+        teamSection +
+        '</div>' +
+        
+        // Footer
+        '<div style="text-align: center; padding-top: 20px; margin-top: 20px; border-top: 1px solid #30363d; color: #6e7681; font-size: 9px;">' +
+        '<p>Loop Automation Project Management System - Confidential</p>' +
+        '</div></div>';
+    
+    // Create container
     const container = document.createElement('div');
+    container.id = 'pdf-report-container';
     container.innerHTML = reportHTML;
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.width = '1100px';
+    container.style.cssText = 'position: fixed; top: 0; left: 0; width: 794px; background: #0d1117; z-index: 99999;';
+    
+    // Overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'pdf-overlay';
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(13,17,23,0.95); z-index: 99998; display: flex; align-items: center; justify-content: center;';
+    overlay.innerHTML = '<div style="color: #00d4aa; font-size: 20px; font-family: Arial;">Generating PDF Report...</div>';
+    
+    document.body.appendChild(overlay);
     document.body.appendChild(container);
     
-    const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `LoopAutomation_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { 
-            scale: 2, 
-            useCORS: true, 
-            backgroundColor: '#0d1117'
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-    
-    html2pdf().set(opt).from(container).save().then(() => {
-        document.body.removeChild(container);
-        showSuccess('Report exported successfully!');
-    }).catch(err => {
-        console.error('PDF export error:', err);
-        document.body.removeChild(container);
-        showError('Export failed');
-    });
+    setTimeout(function() {
+        html2pdf().set({
+            margin: 10,
+            filename: 'LoopAutomation_Report_' + new Date().toISOString().split('T')[0] + '.pdf',
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, backgroundColor: '#0d1117', useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).from(container).save().then(function() {
+            document.body.removeChild(container);
+            document.body.removeChild(overlay);
+            showSuccess('Report exported!');
+        }).catch(function(err) {
+            console.error('PDF Error:', err);
+            document.body.removeChild(container);
+            document.body.removeChild(overlay);
+            showError('Export failed');
+        });
+    }, 500);
 }
 
 function exportStationToPDF() {
