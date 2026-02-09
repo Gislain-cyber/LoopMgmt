@@ -752,10 +752,16 @@ body {
     transform: rotate(90deg);
 }
 
-/* Station Row Styling */
+/* Station Row Styling - MUST match gantt-timeline-row height (61px) */
 .station-row {
     background: var(--bg-secondary);
     font-weight: 500;
+    height: 61px;
+}
+
+.station-row td {
+    height: 60px;
+    vertical-align: middle;
 }
 
 .station-row.expanded {
@@ -763,20 +769,23 @@ body {
     border-bottom: 2px solid var(--accent-primary) !important;
 }
 
-/* Subtask Row Styling */
+/* Subtask Row Styling - MUST match subtask-timeline-row height (45px) */
 .subtask-row {
     background: var(--bg-primary);
     font-size: 0.9rem;
     border-left: 3px solid transparent;
+    height: 45px;
+}
+
+.subtask-row td {
+    height: 44px;
+    vertical-align: middle;
+    padding: 6px 10px !important;
 }
 
 .subtask-row:hover {
     background: var(--bg-elevated) !important;
     border-left-color: var(--accent-primary);
-}
-
-.subtask-row td {
-    padding: 8px 10px !important;
 }
 
 .subtask-row input,
@@ -785,10 +794,14 @@ body {
     padding: 4px 6px;
 }
 
-/* Subtask Timeline Row */
+/* Subtask Timeline Row - MUST match subtask-row height (45px) */
 .subtask-timeline-row {
     height: 45px !important;
     background: var(--bg-primary);
+}
+
+.subtask-timeline-row:hover {
+    background: var(--bg-elevated) !important;
 }
 
 .subtask-timeline-row:hover {
@@ -810,6 +823,11 @@ body {
 /* Station Bar (parent) */
 .station-bar {
     font-weight: 700;
+}
+
+/* Station Timeline Row - inherits gantt-timeline-row height (61px) */
+.station-timeline-row {
+    height: 61px;
 }
 
 .station-timeline-row.expanded {
