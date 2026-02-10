@@ -2610,7 +2610,7 @@ async function saveMemberTaskUpdate(stationId, taskId) {
         console.error('localStorage save error:', e);
     }
     
-    // Save to Firebase
+    // Save to Firebase (for all users - team members can update their tasks)
     if (firebaseEnabled && db) {
         try {
             await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-stations'), {
@@ -2618,15 +2618,14 @@ async function saveMemberTaskUpdate(stationId, taskId) {
                 lastUpdated: new Date().toISOString()
             });
             console.log('Saved to Firebase successfully');
+            showSuccess(`Task "${foundTask.name}" saved!`);
         } catch (error) {
             console.error('Firebase save error:', error);
-            showError('Firebase save failed: ' + error.message);
+            showError('Cloud sync failed - saved locally only');
         }
     } else {
-        console.log('Firebase not enabled, saved locally only');
+        showSuccess(`Task "${foundTask.name}" saved locally!`);
     }
-    
-    showSuccess(`Task "${foundTask.name}" updated!`);
     
     // Refresh all views
     renderGanttView();
