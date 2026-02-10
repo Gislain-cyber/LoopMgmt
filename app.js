@@ -2324,7 +2324,7 @@ function openMemberTasks(memberName, memberIndex) {
                         <div class="member-task-hours">
                             <label>Hours: </label>
                             <input type="number" min="0" value="${task.actualHours || 0}" 
-                                onchange="updateMemberTaskHours('${task.stationId}', '${task.id}', this.value)"
+                                id="hours-${task.stationId}-${task.id}"
                                 style="width:60px"> / ${task.estHours || 0}h
                         </div>
                         <div class="member-task-progress-bar">
@@ -2334,13 +2334,21 @@ function openMemberTasks(memberName, memberIndex) {
                     </div>
                     <div class="member-task-status-update">
                         <label>Status:</label>
-                        <select onchange="updateMemberTaskStatus('${task.stationId}', '${task.id}', this.value)">
+                        <select id="status-${task.stationId}-${task.id}">
                             <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
                             <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                             <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
                             <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
                             <option value="Delayed" ${task.status === 'Delayed' ? 'selected' : ''}>Delayed</option>
                         </select>
+                        <button class="btn-save-task" onclick="saveMemberTaskUpdate('${task.stationId}', '${task.id}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            Save
+                        </button>
                     </div>
                 </div>`;
             }).join('')}
@@ -2523,9 +2531,122 @@ async function updateMemberTaskHours(stationId, taskId, newHours) {
     }
 }
 
+async function saveMemberTaskUpdate(stationId, taskId) {
+    console.log('=== SAVE MEMBER TASK UPDATE ===');
+    console.log('Station ID:', stationId);
+    console.log('Task ID:', taskId);
+    
+    // Get values from the form
+    const statusSelect = document.getElementById(`status-${stationId}-${taskId}`);
+    const hoursInput = document.getElementById(`hours-${stationId}-${taskId}`);
+    
+    if (!statusSelect || !hoursInput) {
+        console.error('Could not find form elements');
+        showError('Error: Form elements not found');
+        return;
+    }
+    
+    const newStatus = statusSelect.value;
+    const newHours = parseFloat(hoursInput.value) || 0;
+    
+    console.log('New Status:', newStatus);
+    console.log('New Hours:', newHours);
+    console.log('All stations:', stations);
+    
+    // Find station
+    let foundStation = null;
+    let foundTask = null;
+    
+    for (let i = 0; i < stations.length; i++) {
+        if (String(stations[i].id) === String(stationId)) {
+            foundStation = stations[i];
+            console.log('Found station:', foundStation.name);
+            
+            for (let j = 0; j < foundStation.tasks.length; j++) {
+                if (String(foundStation.tasks[j].id) === String(taskId)) {
+                    foundTask = foundStation.tasks[j];
+                    console.log('Found task:', foundTask.name);
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    
+    if (!foundStation) {
+        console.error('Station not found! ID:', stationId);
+        console.log('Available stations:', stations.map(s => ({ id: s.id, type: typeof s.id })));
+        showError('Station not found');
+        return;
+    }
+    
+    if (!foundTask) {
+        console.error('Task not found! ID:', taskId);
+        console.log('Available tasks:', foundStation.tasks.map(t => ({ id: t.id, type: typeof t.id })));
+        showError('Task not found');
+        return;
+    }
+    
+    // Update the task
+    foundTask.status = newStatus;
+    foundTask.actualHours = newHours;
+    
+    // Auto-update progress
+    if (newStatus === 'Complete') {
+        foundTask.progress = 100;
+    } else if (newStatus === 'Not Started') {
+        foundTask.progress = 0;
+    } else if (newStatus === 'In Progress' && foundTask.progress === 0) {
+        foundTask.progress = 10; // Start with 10% if moving to in progress
+    }
+    
+    console.log('Updated task:', foundTask);
+    
+    // Save to localStorage
+    try {
+        localStorage.setItem('loopStations', JSON.stringify(stations));
+        console.log('Saved to localStorage');
+    } catch (e) {
+        console.error('localStorage save error:', e);
+    }
+    
+    // Save to Firebase
+    if (firebaseEnabled && db) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-stations'), {
+                stations: stations,
+                lastUpdated: new Date().toISOString()
+            });
+            console.log('Saved to Firebase successfully');
+        } catch (error) {
+            console.error('Firebase save error:', error);
+            showError('Firebase save failed: ' + error.message);
+        }
+    } else {
+        console.log('Firebase not enabled, saved locally only');
+    }
+    
+    showSuccess(`Task "${foundTask.name}" updated!`);
+    
+    // Refresh all views
+    renderGanttView();
+    renderDashboard();
+    
+    // Refresh the modal to show updated data
+    if (currentMemberName) {
+        const memberIndex = teamMembers.findIndex(m => m.name === currentMemberName);
+        if (memberIndex >= 0) {
+            setTimeout(() => {
+                openMemberTasks(currentMemberName, memberIndex);
+            }, 100);
+        }
+    }
+}
+
 window.openMemberTasks = openMemberTasks;
 window.updateMemberTaskStatus = updateMemberTaskStatus;
 window.updateMemberTaskHours = updateMemberTaskHours;
+window.saveMemberTaskUpdate = saveMemberTaskUpdate;
 
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {

@@ -2547,6 +2547,35 @@ body {
     border-color: var(--accent-primary);
 }
 
+.btn-save-task {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, var(--accent-primary), #00b894);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-save-task:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 212, 170, 0.4);
+}
+
+.btn-save-task:active {
+    transform: translateY(0);
+}
+
+.btn-save-task svg {
+    flex-shrink: 0;
+}
+
 /* ============================================
    PROJECT TIMELINE VIEW (Gantt Style)
    ============================================ */
