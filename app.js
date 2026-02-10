@@ -2407,28 +2407,58 @@ function openMemberTasks(memberName, memberIndex) {
 
 async function updateMemberTaskStatus(stationId, taskId, newStatus) {
     console.log('updateMemberTaskStatus called:', { stationId, taskId, newStatus });
+    console.log('Current stations:', JSON.stringify(stations.map(s => ({ id: s.id, name: s.name }))));
     
-    const station = stations.find(s => s.id === stationId);
+    // Find station - handle both string and number IDs
+    const station = stations.find(s => String(s.id) === String(stationId));
     if (!station) {
         console.error('Station not found:', stationId);
-        console.log('Available stations:', stations.map(s => s.id));
+        console.log('Available station IDs:', stations.map(s => s.id));
+        showError('Station not found');
         return;
     }
     
-    const task = station.tasks.find(t => t.id === taskId);
+    // Find task - handle both string and number IDs
+    const task = station.tasks.find(t => String(t.id) === String(taskId));
     if (!task) {
         console.error('Task not found:', taskId);
-        console.log('Available tasks in station:', station.tasks.map(t => t.id));
+        console.log('Available task IDs in station:', station.tasks.map(t => t.id));
+        showError('Task not found');
         return;
     }
     
+    // Update the task
     task.status = newStatus;
+    
+    // Auto-update progress based on status
+    if (newStatus === 'Complete') {
+        task.progress = 100;
+    } else if (newStatus === 'Not Started') {
+        task.progress = 0;
+    }
+    
     console.log('Task updated:', task);
-    await saveStations(stations);
+    
+    // Save to localStorage and Firebase
+    localStorage.setItem('loopStations', JSON.stringify(stations));
+    
+    if (firebaseEnabled && db) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-stations'), {
+                stations: stations,
+                lastUpdated: new Date().toISOString()
+            });
+            console.log('Saved to Firebase');
+        } catch (error) {
+            console.error('Firebase save error:', error);
+        }
+    }
+    
     showSuccess(`Task status updated to "${newStatus}"`);
     
-    // Also refresh the Gantt view
+    // Refresh views
     renderGanttView();
+    renderDashboard();
     
     // Refresh the modal
     if (currentMemberName) {
@@ -2442,27 +2472,47 @@ async function updateMemberTaskStatus(stationId, taskId, newStatus) {
 async function updateMemberTaskHours(stationId, taskId, newHours) {
     console.log('updateMemberTaskHours called:', { stationId, taskId, newHours });
     
-    const station = stations.find(s => s.id === stationId);
+    // Find station - handle both string and number IDs
+    const station = stations.find(s => String(s.id) === String(stationId));
     if (!station) {
         console.error('Station not found:', stationId);
-        console.log('Available stations:', stations.map(s => s.id));
+        console.log('Available station IDs:', stations.map(s => s.id));
+        showError('Station not found');
         return;
     }
     
-    const task = station.tasks.find(t => t.id === taskId);
+    // Find task - handle both string and number IDs
+    const task = station.tasks.find(t => String(t.id) === String(taskId));
     if (!task) {
         console.error('Task not found:', taskId);
-        console.log('Available tasks in station:', station.tasks.map(t => t.id));
+        console.log('Available task IDs in station:', station.tasks.map(t => t.id));
+        showError('Task not found');
         return;
     }
     
     task.actualHours = parseFloat(newHours) || 0;
     console.log('Task hours updated:', task);
-    await saveStations(stations);
+    
+    // Save to localStorage and Firebase
+    localStorage.setItem('loopStations', JSON.stringify(stations));
+    
+    if (firebaseEnabled && db) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-stations'), {
+                stations: stations,
+                lastUpdated: new Date().toISOString()
+            });
+            console.log('Saved to Firebase');
+        } catch (error) {
+            console.error('Firebase save error:', error);
+        }
+    }
+    
     showSuccess('Hours updated');
     
-    // Also refresh the Gantt view
+    // Refresh views
     renderGanttView();
+    renderDashboard();
     
     // Refresh the modal
     if (currentMemberName) {
