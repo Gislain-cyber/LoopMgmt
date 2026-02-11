@@ -226,54 +226,307 @@ let groupLeads = JSON.parse(localStorage.getItem('loopGroupLeads')) || JSON.pars
 let currentGroupLead = null; // Currently logged in group lead
 
 // Project Phases Data (for Project Timeline view)
+// Dates based on semester schedule - adjust as needed
 const defaultPhases = [
+    // PHASE 2 - Concept Design (existing)
     {
         id: 'phase2',
-        name: 'PHASE 2',
+        name: 'PHASE 2 - CONCEPT DESIGN',
         color: '#7c3aed',
-        expanded: true,
+        startDate: '2025-01-20',
+        endDate: '2025-03-02',
+        expanded: false,
         categories: [
             {
-                id: 'mechanical',
+                id: 'p2-mechanical',
                 name: 'MECHANICAL DESIGN',
                 color: '#3b82f6',
-                expanded: true,
+                expanded: false,
                 stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `mech-station-${stationNum}`,
+                    id: `p2-mech-station-${stationNum}`,
                     stationNum: stationNum,
                     name: `STATION ${stationNum} MECHANICAL DESIGN`,
                     color: '#60a5fa',
                     expanded: false,
                     groupLeadId: `mech-lead-${stationNum}`,
                     tasks: [
-                        { id: `mech-${stationNum}-1`, name: 'Create Station Ideas', status: 'Not Started', progress: 0 },
-                        { id: `mech-${stationNum}-2`, name: 'Evaluation of Ideas', status: 'Not Started', progress: 0 },
-                        { id: `mech-${stationNum}-3`, name: 'Finalize', status: 'Not Started', progress: 0 },
-                        { id: `mech-${stationNum}-4`, name: 'Integrate into Overall', status: 'Not Started', progress: 0 },
-                        { id: `mech-${stationNum}-5`, name: 'Refine Concept', status: 'Not Started', progress: 0 }
+                        { id: `p2-mech-${stationNum}-1`, name: 'Create Station Ideas', status: 'Not Started', progress: 0, startDate: '2025-01-20', endDate: '2025-01-24' },
+                        { id: `p2-mech-${stationNum}-2`, name: 'Evaluation of Ideas', status: 'Not Started', progress: 0, startDate: '2025-01-27', endDate: '2025-01-31' },
+                        { id: `p2-mech-${stationNum}-3`, name: 'Finalize', status: 'Not Started', progress: 0, startDate: '2025-02-03', endDate: '2025-02-07' },
+                        { id: `p2-mech-${stationNum}-4`, name: 'Integrate into Overall', status: 'Not Started', progress: 0, startDate: '2025-02-10', endDate: '2025-02-14' },
+                        { id: `p2-mech-${stationNum}-5`, name: 'Refine Concept', status: 'Not Started', progress: 0, startDate: '2025-02-17', endDate: '2025-02-21' }
                     ]
                 }))
             },
             {
-                id: 'controls',
+                id: 'p2-controls',
                 name: 'CONTROLS DESIGN',
                 color: '#10b981',
-                expanded: true,
+                expanded: false,
                 stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `ctrl-station-${stationNum}`,
+                    id: `p2-ctrl-station-${stationNum}`,
                     stationNum: stationNum,
                     name: `STATION ${stationNum} CONTROLS DESIGN`,
                     color: '#34d399',
                     expanded: false,
                     groupLeadId: `ctrl-lead-${stationNum}`,
                     tasks: [
-                        { id: `ctrl-${stationNum}-1`, name: 'Control System Architecture', status: 'Not Started', progress: 0 },
-                        { id: `ctrl-${stationNum}-2`, name: 'I/O Mapping', status: 'Not Started', progress: 0 },
-                        { id: `ctrl-${stationNum}-3`, name: 'PLC Programming', status: 'Not Started', progress: 0 },
-                        { id: `ctrl-${stationNum}-4`, name: 'HMI Design', status: 'Not Started', progress: 0 },
-                        { id: `ctrl-${stationNum}-5`, name: 'Integration & Testing', status: 'Not Started', progress: 0 }
+                        { id: `p2-ctrl-${stationNum}-1`, name: 'Control System Architecture', status: 'Not Started', progress: 0, startDate: '2025-01-20', endDate: '2025-01-24' },
+                        { id: `p2-ctrl-${stationNum}-2`, name: 'I/O Mapping', status: 'Not Started', progress: 0, startDate: '2025-01-27', endDate: '2025-01-31' },
+                        { id: `p2-ctrl-${stationNum}-3`, name: 'PLC Programming', status: 'Not Started', progress: 0, startDate: '2025-02-03', endDate: '2025-02-07' },
+                        { id: `p2-ctrl-${stationNum}-4`, name: 'HMI Design', status: 'Not Started', progress: 0, startDate: '2025-02-10', endDate: '2025-02-14' },
+                        { id: `p2-ctrl-${stationNum}-5`, name: 'Integration & Testing', status: 'Not Started', progress: 0, startDate: '2025-02-17', endDate: '2025-02-21' }
                     ]
                 }))
+            }
+        ]
+    },
+    
+    // PHASE 3 - Detail Design (Weeks 9-11, 3 weeks)
+    {
+        id: 'phase3',
+        name: 'PHASE 3 - DETAIL DESIGN (25%)',
+        color: '#f59e0b',
+        startDate: '2025-03-03',
+        endDate: '2025-03-21',
+        expanded: true,
+        categories: [
+            {
+                id: 'p3-mechanical',
+                name: 'MECHANICAL DETAIL DESIGN',
+                color: '#3b82f6',
+                expanded: true,
+                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
+                    id: `p3-mech-station-${stationNum}`,
+                    stationNum: stationNum,
+                    name: `STATION ${stationNum} MECHANICAL`,
+                    color: '#60a5fa',
+                    expanded: false,
+                    groupLeadId: `mech-lead-${stationNum}`,
+                    tasks: [
+                        { id: `p3-mech-${stationNum}-1`, name: 'Update concept based on feedback', status: 'Not Started', progress: 0, startDate: '2025-03-03', endDate: '2025-03-05' },
+                        { id: `p3-mech-${stationNum}-2`, name: 'Complete mechanical design', status: 'Not Started', progress: 0, startDate: '2025-03-03', endDate: '2025-03-14' },
+                        { id: `p3-mech-${stationNum}-3`, name: 'Complete Mechanical BOM', status: 'Not Started', progress: 0, startDate: '2025-03-10', endDate: '2025-03-14' },
+                        { id: `p3-mech-${stationNum}-4`, name: 'Update budgets with actual costs', status: 'Not Started', progress: 0, startDate: '2025-03-12', endDate: '2025-03-14' },
+                        { id: `p3-mech-${stationNum}-5`, name: 'Component list by power level', status: 'Not Started', progress: 0, startDate: '2025-03-10', endDate: '2025-03-12' },
+                        { id: `p3-mech-${stationNum}-6`, name: 'Safety Strategy to minimize risks', status: 'Not Started', progress: 0, startDate: '2025-03-14', endDate: '2025-03-19' }
+                    ]
+                }))
+            },
+            {
+                id: 'p3-controls',
+                name: 'CONTROLS DETAIL DESIGN',
+                color: '#10b981',
+                expanded: true,
+                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
+                    id: `p3-ctrl-station-${stationNum}`,
+                    stationNum: stationNum,
+                    name: `STATION ${stationNum} CONTROLS`,
+                    color: '#34d399',
+                    expanded: false,
+                    groupLeadId: `ctrl-lead-${stationNum}`,
+                    tasks: [
+                        { id: `p3-ctrl-${stationNum}-1`, name: 'Update concept based on feedback', status: 'Not Started', progress: 0, startDate: '2025-03-03', endDate: '2025-03-05' },
+                        { id: `p3-ctrl-${stationNum}-2`, name: 'Complete IO list (panel & field)', status: 'Not Started', progress: 0, startDate: '2025-03-03', endDate: '2025-03-10' },
+                        { id: `p3-ctrl-${stationNum}-3`, name: 'Complete Electrical BOM', status: 'Not Started', progress: 0, startDate: '2025-03-10', endDate: '2025-03-14' },
+                        { id: `p3-ctrl-${stationNum}-4`, name: 'Update budgets with actual costs', status: 'Not Started', progress: 0, startDate: '2025-03-12', endDate: '2025-03-14' },
+                        { id: `p3-ctrl-${stationNum}-5`, name: 'Safety Strategy to minimize risks', status: 'Not Started', progress: 0, startDate: '2025-03-14', endDate: '2025-03-19' }
+                    ]
+                }))
+            },
+            {
+                id: 'p3-project-mgmt',
+                name: 'PROJECT MANAGEMENT',
+                color: '#8b5cf6',
+                expanded: false,
+                stations: [{
+                    id: 'p3-pm-station-1',
+                    stationNum: 1,
+                    name: 'PROJECT COORDINATION',
+                    color: '#a78bfa',
+                    expanded: false,
+                    groupLeadId: null,
+                    tasks: [
+                        { id: 'p3-pm-1', name: 'Update project Gantt chart', status: 'Not Started', progress: 0, startDate: '2025-03-17', endDate: '2025-03-19' },
+                        { id: 'p3-pm-2', name: 'Update project costs', status: 'Not Started', progress: 0, startDate: '2025-03-17', endDate: '2025-03-19' },
+                        { id: 'p3-pm-3', name: 'Detailed Design Presentation', status: 'Not Started', progress: 0, startDate: '2025-03-19', endDate: '2025-03-21' }
+                    ]
+                }]
+            }
+        ]
+    },
+    
+    // PHASE 4A - Design Validation (Weeks 12-14, D&A students)
+    {
+        id: 'phase4a',
+        name: 'PHASE 4A - DESIGN VALIDATION (25%)',
+        color: '#ef4444',
+        startDate: '2025-03-24',
+        endDate: '2025-04-11',
+        expanded: true,
+        categories: [
+            {
+                id: 'p4a-analysis',
+                name: 'DESIGN ANALYSIS (D&A)',
+                color: '#f87171',
+                expanded: true,
+                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
+                    id: `p4a-analysis-station-${stationNum}`,
+                    stationNum: stationNum,
+                    name: `STATION ${stationNum} ANALYSIS`,
+                    color: '#fca5a5',
+                    expanded: false,
+                    groupLeadId: `mech-lead-${stationNum}`,
+                    tasks: [
+                        { id: `p4a-${stationNum}-1`, name: 'Cylinder load analysis', status: 'Not Started', progress: 0, startDate: '2025-03-24', endDate: '2025-03-28' },
+                        { id: `p4a-${stationNum}-2`, name: 'Moment of Inertia analysis', status: 'Not Started', progress: 0, startDate: '2025-03-28', endDate: '2025-04-02' },
+                        { id: `p4a-${stationNum}-3`, name: 'Normal and Shear Stress analysis', status: 'Not Started', progress: 0, startDate: '2025-04-02', endDate: '2025-04-07' },
+                        { id: `p4a-${stationNum}-4`, name: 'Static analysis', status: 'Not Started', progress: 0, startDate: '2025-04-02', endDate: '2025-04-07' },
+                        { id: `p4a-${stationNum}-5`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2025-04-07', endDate: '2025-04-09' },
+                        { id: `p4a-${stationNum}-6`, name: 'Design Analysis Report', status: 'Not Started', progress: 0, startDate: '2025-04-09', endDate: '2025-04-11' }
+                    ]
+                }))
+            }
+        ]
+    },
+    
+    // PHASE 4B - Detailed Drawings (Weeks 12-14, R&A Mechanical)
+    {
+        id: 'phase4b',
+        name: 'PHASE 4B - DETAILED DRAWINGS (25%)',
+        color: '#06b6d4',
+        startDate: '2025-03-24',
+        endDate: '2025-04-11',
+        expanded: true,
+        categories: [
+            {
+                id: 'p4b-mechanical-drawings',
+                name: 'MECHANICAL DRAWINGS (R&A)',
+                color: '#22d3ee',
+                expanded: true,
+                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
+                    id: `p4b-mech-station-${stationNum}`,
+                    stationNum: stationNum,
+                    name: `STATION ${stationNum} DRAWINGS`,
+                    color: '#67e8f9',
+                    expanded: false,
+                    groupLeadId: `mech-lead-${stationNum}`,
+                    tasks: [
+                        { id: `p4b-${stationNum}-1`, name: 'Complete part drawings (custom parts)', status: 'Not Started', progress: 0, startDate: '2025-03-24', endDate: '2025-04-02' },
+                        { id: `p4b-${stationNum}-2`, name: 'Complete assembly drawings', status: 'Not Started', progress: 0, startDate: '2025-04-02', endDate: '2025-04-07' },
+                        { id: `p4b-${stationNum}-3`, name: 'Create mechanical build package', status: 'Not Started', progress: 0, startDate: '2025-04-07', endDate: '2025-04-09' },
+                        { id: `p4b-${stationNum}-4`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2025-04-07', endDate: '2025-04-09' },
+                        { id: `p4b-${stationNum}-5`, name: 'Submit Mechanical Build Package', status: 'Not Started', progress: 0, startDate: '2025-04-09', endDate: '2025-04-11' }
+                    ]
+                }))
+            }
+        ]
+    },
+    
+    // PHASE 4C - Electrical/Pneumatic Drawings (Weeks 12-14, R&A Controls)
+    {
+        id: 'phase4c',
+        name: 'PHASE 4C - ELECTRICAL/PNEUMATIC DRAWINGS (25%)',
+        color: '#84cc16',
+        startDate: '2025-03-24',
+        endDate: '2025-04-11',
+        expanded: true,
+        categories: [
+            {
+                id: 'p4c-electrical',
+                name: 'ELECTRICAL/PNEUMATIC (R&A)',
+                color: '#a3e635',
+                expanded: true,
+                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
+                    id: `p4c-ctrl-station-${stationNum}`,
+                    stationNum: stationNum,
+                    name: `STATION ${stationNum} ELECTRICAL`,
+                    color: '#bef264',
+                    expanded: false,
+                    groupLeadId: `ctrl-lead-${stationNum}`,
+                    tasks: [
+                        { id: `p4c-${stationNum}-1`, name: 'Power consumption analysis', status: 'Not Started', progress: 0, startDate: '2025-03-24', endDate: '2025-03-28' },
+                        { id: `p4c-${stationNum}-2`, name: 'Develop detailed electrical drawings', status: 'Not Started', progress: 0, startDate: '2025-03-28', endDate: '2025-04-04' },
+                        { id: `p4c-${stationNum}-3`, name: 'Develop detailed pneumatic drawings', status: 'Not Started', progress: 0, startDate: '2025-04-02', endDate: '2025-04-07' },
+                        { id: `p4c-${stationNum}-4`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2025-04-07', endDate: '2025-04-09' },
+                        { id: `p4c-${stationNum}-5`, name: 'Submit Electrical/Pneumatic Drawings', status: 'Not Started', progress: 0, startDate: '2025-04-09', endDate: '2025-04-11' }
+                    ]
+                }))
+            }
+        ]
+    },
+    
+    // PHASE 5 - Final Design Consolidation (Week 15, 1 week)
+    {
+        id: 'phase5',
+        name: 'PHASE 5 - FINAL DESIGN CONSOLIDATION (10%)',
+        color: '#ec4899',
+        startDate: '2025-04-14',
+        endDate: '2025-04-18',
+        expanded: true,
+        categories: [
+            {
+                id: 'p5-build-package',
+                name: 'BUILD PACKAGE',
+                color: '#f472b6',
+                expanded: true,
+                stations: [{
+                    id: 'p5-build-station-1',
+                    stationNum: 1,
+                    name: 'DOCUMENTATION',
+                    color: '#f9a8d4',
+                    expanded: false,
+                    groupLeadId: null,
+                    tasks: [
+                        { id: 'p5-build-1', name: 'Update drawings based on feedback', status: 'Not Started', progress: 0, startDate: '2025-04-14', endDate: '2025-04-15' },
+                        { id: 'p5-build-2', name: 'Mechanical Assembly & Part Drawings (PDF)', status: 'Not Started', progress: 0, startDate: '2025-04-14', endDate: '2025-04-16' },
+                        { id: 'p5-build-3', name: 'Electrical Drawings', status: 'Not Started', progress: 0, startDate: '2025-04-14', endDate: '2025-04-16' },
+                        { id: 'p5-build-4', name: 'Pneumatic Drawings', status: 'Not Started', progress: 0, startDate: '2025-04-14', endDate: '2025-04-16' },
+                        { id: 'p5-build-5', name: 'eAssemblies (whole machine & substations)', status: 'Not Started', progress: 0, startDate: '2025-04-15', endDate: '2025-04-17' }
+                    ]
+                }]
+            },
+            {
+                id: 'p5-project-mgmt',
+                name: 'PROJECT MANAGEMENT PACKAGE',
+                color: '#a855f7',
+                expanded: true,
+                stations: [{
+                    id: 'p5-pm-station-1',
+                    stationNum: 1,
+                    name: 'FINAL DELIVERABLES',
+                    color: '#c084fc',
+                    expanded: false,
+                    groupLeadId: null,
+                    tasks: [
+                        { id: 'p5-pm-1', name: 'Design and Analysis Report', status: 'Not Started', progress: 0, startDate: '2025-04-14', endDate: '2025-04-16' },
+                        { id: 'p5-pm-2', name: 'Updated Gantt Chart (Build/Commission)', status: 'Not Started', progress: 0, startDate: '2025-04-15', endDate: '2025-04-17' },
+                        { id: 'p5-pm-3', name: 'Overall BOM by substation', status: 'Not Started', progress: 0, startDate: '2025-04-15', endDate: '2025-04-17' },
+                        { id: 'p5-pm-4', name: 'Updated budgets (industry & college)', status: 'Not Started', progress: 0, startDate: '2025-04-16', endDate: '2025-04-17' },
+                        { id: 'p5-pm-5', name: 'Design Phase Reflections', status: 'Not Started', progress: 0, startDate: '2025-04-17', endDate: '2025-04-18' }
+                    ]
+                }]
+            },
+            {
+                id: 'p5-reflections',
+                name: 'REFLECTIONS',
+                color: '#14b8a6',
+                expanded: false,
+                stations: [{
+                    id: 'p5-reflect-station-1',
+                    stationNum: 1,
+                    name: 'TEAM REFLECTIONS',
+                    color: '#2dd4bf',
+                    expanded: false,
+                    groupLeadId: null,
+                    tasks: [
+                        { id: 'p5-ref-1', name: 'Compare original vs final Gantt', status: 'Not Started', progress: 0, startDate: '2025-04-17', endDate: '2025-04-18' },
+                        { id: 'p5-ref-2', name: 'Compare proposed vs final budget', status: 'Not Started', progress: 0, startDate: '2025-04-17', endDate: '2025-04-18' },
+                        { id: 'p5-ref-3', name: 'Compare initial concept to final design', status: 'Not Started', progress: 0, startDate: '2025-04-17', endDate: '2025-04-18' },
+                        { id: 'p5-ref-4', name: 'Identify 3 things done well', status: 'Not Started', progress: 0, startDate: '2025-04-17', endDate: '2025-04-18' },
+                        { id: 'p5-ref-5', name: 'Identify 3 things to improve', status: 'Not Started', progress: 0, startDate: '2025-04-17', endDate: '2025-04-18' }
+                    ]
+                }]
             }
         ]
     }
@@ -284,24 +537,59 @@ let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSO
 // Migration: Ensure all stations have groupLeadId
 (function migrateProjectPhases() {
     let needsSave = false;
+    
+    // Check if we need to add new phases (Phase 3, 4A, 4B, 4C, 5)
+    const existingPhaseIds = projectPhases.map(p => p.id);
+    const requiredPhaseIds = ['phase2', 'phase3', 'phase4a', 'phase4b', 'phase4c', 'phase5'];
+    
+    requiredPhaseIds.forEach(phaseId => {
+        if (!existingPhaseIds.includes(phaseId)) {
+            // Find the phase in defaultPhases and add it
+            const defaultPhase = defaultPhases.find(p => p.id === phaseId);
+            if (defaultPhase) {
+                projectPhases.push(JSON.parse(JSON.stringify(defaultPhase)));
+                needsSave = true;
+                console.log(`Added missing phase: ${phaseId}`);
+            }
+        }
+    });
+    
+    // Ensure groupLeadId exists on all stations
     projectPhases.forEach(phase => {
-        phase.categories.forEach(category => {
-            category.stations.forEach(station => {
-                if (!station.groupLeadId) {
-                    // Assign groupLeadId based on category and station number
-                    if (category.id === 'mechanical') {
-                        station.groupLeadId = `mech-lead-${station.stationNum}`;
-                    } else if (category.id === 'controls') {
-                        station.groupLeadId = `ctrl-lead-${station.stationNum}`;
-                    }
-                    needsSave = true;
+        if (phase.categories) {
+            phase.categories.forEach(category => {
+                if (category.stations) {
+                    category.stations.forEach(station => {
+                        if (!station.groupLeadId) {
+                            // Assign groupLeadId based on category and station number
+                            if (category.id.includes('mechanical') || category.id.includes('mech')) {
+                                station.groupLeadId = `mech-lead-${station.stationNum}`;
+                            } else if (category.id.includes('controls') || category.id.includes('ctrl') || category.id.includes('electrical')) {
+                                station.groupLeadId = `ctrl-lead-${station.stationNum}`;
+                            }
+                            needsSave = true;
+                        }
+                        
+                        // Ensure tasks have dates
+                        if (station.tasks) {
+                            station.tasks.forEach(task => {
+                                if (!task.startDate || !task.endDate) {
+                                    // Use phase dates as fallback
+                                    if (!task.startDate) task.startDate = phase.startDate || '2025-01-20';
+                                    if (!task.endDate) task.endDate = phase.endDate || '2025-04-18';
+                                    needsSave = true;
+                                }
+                            });
+                        }
+                    });
                 }
             });
-        });
+        }
     });
+    
     if (needsSave) {
         localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
-        console.log('Migrated projectPhases to include groupLeadId');
+        console.log('Migrated projectPhases with new phases and data');
     }
 })();
 
@@ -389,6 +677,9 @@ function updateUIForAuthState() {
     const adminIndicator = document.getElementById('admin-indicator');
     const groupLeadBtn = document.getElementById('groupLead-login-btn');
     
+    // Get all admin-only elements
+    const adminOnlyElements = document.querySelectorAll('.admin-only');
+    
     if (isAdmin) {
         adminBtn.style.display = 'none';
         logoutBtn.style.display = 'flex';
@@ -398,6 +689,8 @@ function updateUIForAuthState() {
         // Clear any group lead session when admin logs in
         currentGroupLead = null;
         updateGroupLeadUI();
+        // Show admin-only elements
+        adminOnlyElements.forEach(el => el.style.display = 'inline-flex');
         console.log('Admin mode enabled');
     } else {
         adminBtn.style.display = 'flex';
@@ -407,6 +700,8 @@ function updateUIForAuthState() {
         if (groupLeadBtn && !currentGroupLead) {
             groupLeadBtn.style.display = 'flex';
         }
+        // Hide admin-only elements
+        adminOnlyElements.forEach(el => el.style.display = 'none');
         console.log('Public view mode');
     }
     
@@ -1050,18 +1345,63 @@ window.toggleColumnGroup = toggleColumnGroup;
 // PROJECT TIMELINE VIEW (Phase-based Gantt)
 // ============================================
 
-const PHASE_DAY_WIDTH = 24;
-const PHASE_TIMELINE_WEEKS = 16; // 16 weeks = ~4 months
+const PHASE_DAY_WIDTH = 20;
+const PHASE_TIMELINE_WEEKS = 18; // 18 weeks for full project timeline
+
+// Helper function to get the earliest start date from all phases
+function getProjectTimelineRange() {
+    let minDate = null;
+    let maxDate = null;
+    
+    projectPhases.forEach(phase => {
+        if (phase.startDate) {
+            const start = new Date(phase.startDate);
+            if (!minDate || start < minDate) minDate = start;
+        }
+        if (phase.endDate) {
+            const end = new Date(phase.endDate);
+            if (!maxDate || end > maxDate) maxDate = end;
+        }
+    });
+    
+    // Default to current semester if no dates found
+    if (!minDate) minDate = new Date('2025-01-20');
+    if (!maxDate) maxDate = new Date('2025-04-25');
+    
+    return { minDate, maxDate };
+}
+
+// Helper to calculate pixel position from date
+function getDatePosition(date, timelineStart) {
+    const d = new Date(date);
+    const start = new Date(timelineStart);
+    const diffDays = Math.floor((d - start) / (1000 * 60 * 60 * 24));
+    return diffDays * PHASE_DAY_WIDTH;
+}
+
+// Helper to calculate bar width from start/end dates
+function getDateWidth(startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    return Math.max(diffDays * PHASE_DAY_WIDTH, 40); // Minimum 40px width
+}
 
 function renderProjectTimeline() {
     const container = document.getElementById('timeline-container');
     if (!container) return;
     
-    // Calculate timeline range
+    // Get the project timeline range
+    const { minDate, maxDate } = getProjectTimelineRange();
+    const timelineStart = new Date(minDate);
+    timelineStart.setDate(timelineStart.getDate() - 7); // Start 1 week before first phase
+    
+    // Calculate total weeks needed
+    const totalDays = Math.ceil((maxDate - timelineStart) / (1000 * 60 * 60 * 24)) + 14;
+    const numWeeks = Math.ceil(totalDays / 7);
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const timelineStart = new Date(today);
-    timelineStart.setDate(timelineStart.getDate() - 7); // Start 1 week before today
     
     let html = '<div class="phase-gantt-container">';
     
@@ -1072,17 +1412,23 @@ function renderProjectTimeline() {
     html += '<div class="phase-gantt-header-row">';
     html += '<div class="phase-gantt-info-header">';
     html += '<div class="pg-col pg-col-name">Phase / Category / Task</div>';
+    html += '<div class="pg-col pg-col-dates">Start Date</div>';
+    html += '<div class="pg-col pg-col-dates">End Date</div>';
     html += '<div class="pg-col pg-col-status">Status</div>';
     html += '<div class="pg-col pg-col-progress">Progress</div>';
     html += '</div>';
     
     // Timeline header with weeks
     html += '<div class="phase-gantt-timeline-header">';
-    for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
+    for (let w = 0; w < numWeeks; w++) {
         const weekStart = new Date(timelineStart);
         weekStart.setDate(weekStart.getDate() + (w * 7));
         const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const isCurrentWeek = w === 1;
+        
+        // Check if current week
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const isCurrentWeek = today >= weekStart && today <= weekEnd;
         
         html += `<div class="pg-week-header ${isCurrentWeek ? 'current' : ''}">
             <span class="pg-week-label">W${w + 1}</span>
@@ -1094,6 +1440,18 @@ function renderProjectTimeline() {
     // Data rows
     projectPhases.forEach(phase => {
         const phaseProgress = calculatePhaseProgress(phase);
+        const phaseStart = phase.startDate || '2025-01-20';
+        const phaseEnd = phase.endDate || '2025-04-18';
+        
+        // Format dates for display
+        const formatDate = (dateStr) => {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        };
+        
+        // Calculate phase bar position
+        const phaseBarLeft = getDatePosition(phaseStart, timelineStart);
+        const phaseBarWidth = getDateWidth(phaseStart, phaseEnd);
         
         // Phase row
         html += `<div class="phase-gantt-row phase-row ${phase.expanded ? 'expanded' : ''}" data-phase="${phase.id}">`;
@@ -1106,6 +1464,12 @@ function renderProjectTimeline() {
             <strong style="color: ${phase.color}" class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updatePhaseName('${phase.id}', this.textContent)"` : ''}>${phase.name}</strong>
             ${isAdmin ? `<button class="pg-add-btn" onclick="addCategory('${phase.id}')" title="Add Category">+</button>` : ''}
         </div>`;
+        html += `<div class="pg-col pg-col-dates">
+            ${isAdmin ? `<input type="date" class="pg-date-input" value="${phaseStart}" onchange="updatePhaseDate('${phase.id}', 'startDate', this.value)">` : `<span>${formatDate(phaseStart)}</span>`}
+        </div>`;
+        html += `<div class="pg-col pg-col-dates">
+            ${isAdmin ? `<input type="date" class="pg-date-input" value="${phaseEnd}" onchange="updatePhaseDate('${phase.id}', 'endDate', this.value)">` : `<span>${formatDate(phaseEnd)}</span>`}
+        </div>`;
         html += `<div class="pg-col pg-col-status"><span class="phase-badge" style="background: ${phase.color}20; color: ${phase.color}">PHASE</span></div>`;
         html += `<div class="pg-col pg-col-progress">
             <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${phaseProgress}%; background: ${phase.color}"></div></div>
@@ -1115,19 +1479,43 @@ function renderProjectTimeline() {
         
         // Phase timeline bar
         html += '<div class="phase-gantt-timeline-cells">';
-        for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
-            html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+        for (let w = 0; w < numWeeks; w++) {
+            const weekStart = new Date(timelineStart);
+            weekStart.setDate(weekStart.getDate() + (w * 7));
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            const isCurrentWeek = today >= weekStart && today <= weekEnd;
+            html += `<div class="pg-week-cell ${isCurrentWeek ? 'current' : ''}"></div>`;
         }
-        // Phase bar spans entire timeline
-        html += `<div class="pg-gantt-bar pg-phase-bar" style="left: 0; width: ${PHASE_TIMELINE_WEEKS * 7 * PHASE_DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${phase.color}, ${phase.color}88);">${phase.name}</div>`;
+        html += `<div class="pg-gantt-bar pg-phase-bar" style="left: ${phaseBarLeft}px; width: ${phaseBarWidth}px; background: linear-gradient(135deg, ${phase.color}, ${phase.color}88);" title="${phase.name}: ${formatDate(phaseStart)} - ${formatDate(phaseEnd)}">${phase.name}</div>`;
         html += '</div></div>';
         
         // Categories and stations
         if (phase.expanded) {
             phase.categories.forEach((category, catIndex) => {
                 const categoryProgress = calculateCategoryProgress(category);
-                const catStartWeek = catIndex === 0 ? 0 : 8; // Mechanical starts week 0, Controls starts week 8
-                const catDurationWeeks = 8;
+                
+                // Calculate category dates from its stations/tasks
+                let catStartDate = phaseStart;
+                let catEndDate = phaseEnd;
+                if (category.stations && category.stations.length > 0) {
+                    // Find earliest task start and latest task end
+                    category.stations.forEach(station => {
+                        if (station.tasks) {
+                            station.tasks.forEach(task => {
+                                if (task.startDate && (!catStartDate || task.startDate < catStartDate)) {
+                                    catStartDate = task.startDate;
+                                }
+                                if (task.endDate && (!catEndDate || task.endDate > catEndDate)) {
+                                    catEndDate = task.endDate;
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                const catBarLeft = getDatePosition(catStartDate, timelineStart);
+                const catBarWidth = getDateWidth(catStartDate, catEndDate);
                 
                 // Category row
                 html += `<div class="phase-gantt-row category-row ${category.expanded ? 'expanded' : ''}" data-category="${category.id}">`;
@@ -1141,6 +1529,8 @@ function renderProjectTimeline() {
                     ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineStation('${phase.id}', '${category.id}')" title="Add Station">+</button>` : ''}
                     ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteCategory('${phase.id}', '${category.id}')" title="Delete Category">×</button>` : ''}
                 </div>`;
+                html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(catStartDate)}</span></div>`;
+                html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(catEndDate)}</span></div>`;
                 html += `<div class="pg-col pg-col-status"><span class="category-badge" style="background: ${category.color}20; color: ${category.color}">CATEGORY</span></div>`;
                 html += `<div class="pg-col pg-col-progress">
                     <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${categoryProgress}%; background: ${category.color}"></div></div>
@@ -1150,66 +1540,92 @@ function renderProjectTimeline() {
                 
                 // Category timeline bar
                 html += '<div class="phase-gantt-timeline-cells">';
-                for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
-                    html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+                for (let w = 0; w < numWeeks; w++) {
+                    const weekStart = new Date(timelineStart);
+                    weekStart.setDate(weekStart.getDate() + (w * 7));
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    const isCurrentWeek = today >= weekStart && today <= weekEnd;
+                    html += `<div class="pg-week-cell ${isCurrentWeek ? 'current' : ''}"></div>`;
                 }
-                html += `<div class="pg-gantt-bar pg-category-bar" style="left: ${catStartWeek * 7 * PHASE_DAY_WIDTH}px; width: ${catDurationWeeks * 7 * PHASE_DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${category.color}, ${category.color}88);">${category.name}</div>`;
+                html += `<div class="pg-gantt-bar pg-category-bar" style="left: ${catBarLeft}px; width: ${catBarWidth}px; background: linear-gradient(135deg, ${category.color}, ${category.color}88);" title="${category.name}: ${formatDate(catStartDate)} - ${formatDate(catEndDate)}">${category.name}</div>`;
                 html += '</div></div>';
                 
                 // Stations
-                                if (category.expanded) {
-                                    category.stations.forEach((station, stationIndex) => {
-                                        const stationProgress = calculateStationTasksProgress(station);
-                                        const stationStartWeek = catStartWeek + Math.floor(stationIndex * 1.2);
-                                        const stationDurationWeeks = 2;
-                                        
-                                        // Get group lead for this station
-                                        const groupLead = groupLeads.find(gl => gl.id === station.groupLeadId);
-                                        const hasGroupLead = groupLead && groupLead.active && groupLead.name;
-                                        const isCurrentLeadStation = currentGroupLead && currentGroupLead.id === station.groupLeadId;
-                                        
-                                        // Station row
-                                        html += `<div class="phase-gantt-row station-row ${station.expanded ? 'expanded' : ''} ${isCurrentLeadStation ? 'my-station' : ''}" data-station="${station.id}">`;
-                                        html += '<div class="phase-gantt-info-cells">';
-                                        html += `<div class="pg-col pg-col-name pg-station-name">
-                                            <button class="pg-expand-btn ${station.expanded ? 'expanded' : ''}" onclick="toggleTimelineStation('${phase.id}', '${category.id}', '${station.id}')">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                                            </button>
-                                            <span class="pg-station-number" style="background: ${station.color}">S${station.stationNum}</span>
-                                            <span class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateTimelineStationName('${phase.id}', '${category.id}', '${station.id}', this.textContent)"` : ''}>${station.name}</span>
-                                            ${hasGroupLead ? `<span class="pg-group-lead-badge" title="Group Lead: ${groupLead.name}">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
-                                                    <circle cx="12" cy="7" r="4"/>
-                                                    <path d="M5 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/>
-                                                </svg>
-                                                ${groupLead.name}
-                                            </span>` : ''}
-                                            ${isCurrentLeadStation ? '<span class="pg-my-station-badge">Your Station</span>' : ''}
-                                            ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineTask('${phase.id}', '${category.id}', '${station.id}')" title="Add Task">+</button>` : ''}
-                                            ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteTimelineStation('${phase.id}', '${category.id}', '${station.id}')" title="Delete Station">×</button>` : ''}
-                                        </div>`;
-                                        html += `<div class="pg-col pg-col-status">
-                                            <span class="status-badge ${getStatusClass(stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started')}">${stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started'}</span>
-                                        </div>`;
-                                        html += `<div class="pg-col pg-col-progress">
-                                            <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${stationProgress}%; background: ${station.color}"></div></div>
-                                            <span class="pg-progress-text">${stationProgress}%</span>
-                                        </div>`;
-                                        html += '</div>';
+                if (category.expanded) {
+                    category.stations.forEach((station, stationIndex) => {
+                        const stationProgress = calculateStationTasksProgress(station);
+                        
+                        // Calculate station dates from its tasks
+                        let stationStartDate = catStartDate;
+                        let stationEndDate = catEndDate;
+                        if (station.tasks && station.tasks.length > 0) {
+                            const taskStarts = station.tasks.filter(t => t.startDate).map(t => t.startDate);
+                            const taskEnds = station.tasks.filter(t => t.endDate).map(t => t.endDate);
+                            if (taskStarts.length > 0) stationStartDate = taskStarts.sort()[0];
+                            if (taskEnds.length > 0) stationEndDate = taskEnds.sort().reverse()[0];
+                        }
+                        
+                        const stationBarLeft = getDatePosition(stationStartDate, timelineStart);
+                        const stationBarWidth = getDateWidth(stationStartDate, stationEndDate);
+                        
+                        // Get group lead for this station
+                        const groupLead = groupLeads.find(gl => gl.id === station.groupLeadId);
+                        const hasGroupLead = groupLead && groupLead.active && groupLead.name;
+                        const isCurrentLeadStation = currentGroupLead && currentGroupLead.id === station.groupLeadId;
+                        
+                        // Station row
+                        html += `<div class="phase-gantt-row station-row ${station.expanded ? 'expanded' : ''} ${isCurrentLeadStation ? 'my-station' : ''}" data-station="${station.id}">`;
+                        html += '<div class="phase-gantt-info-cells">';
+                        html += `<div class="pg-col pg-col-name pg-station-name">
+                            <button class="pg-expand-btn ${station.expanded ? 'expanded' : ''}" onclick="toggleTimelineStation('${phase.id}', '${category.id}', '${station.id}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                            </button>
+                            <span class="pg-station-number" style="background: ${station.color}">S${station.stationNum}</span>
+                            <span class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateTimelineStationName('${phase.id}', '${category.id}', '${station.id}', this.textContent)"` : ''}>${station.name}</span>
+                            ${hasGroupLead ? `<span class="pg-group-lead-badge" title="Group Lead: ${groupLead.name}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
+                                    <circle cx="12" cy="7" r="4"/>
+                                    <path d="M5 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/>
+                                </svg>
+                                ${groupLead.name}
+                            </span>` : ''}
+                            ${isCurrentLeadStation ? '<span class="pg-my-station-badge">Your Station</span>' : ''}
+                            ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineTask('${phase.id}', '${category.id}', '${station.id}')" title="Add Task">+</button>` : ''}
+                            ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteTimelineStation('${phase.id}', '${category.id}', '${station.id}')" title="Delete Station">×</button>` : ''}
+                        </div>`;
+                        html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(stationStartDate)}</span></div>`;
+                        html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(stationEndDate)}</span></div>`;
+                        html += `<div class="pg-col pg-col-status">
+                            <span class="status-badge ${getStatusClass(stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started')}">${stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started'}</span>
+                        </div>`;
+                        html += `<div class="pg-col pg-col-progress">
+                            <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${stationProgress}%; background: ${station.color}"></div></div>
+                            <span class="pg-progress-text">${stationProgress}%</span>
+                        </div>`;
+                        html += '</div>';
                         
                         // Station timeline bar
                         html += '<div class="phase-gantt-timeline-cells">';
-                        for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
-                            html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+                        for (let w = 0; w < numWeeks; w++) {
+                            const weekStart = new Date(timelineStart);
+                            weekStart.setDate(weekStart.getDate() + (w * 7));
+                            const weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekEnd.getDate() + 6);
+                            const isCurrentWeek = today >= weekStart && today <= weekEnd;
+                            html += `<div class="pg-week-cell ${isCurrentWeek ? 'current' : ''}"></div>`;
                         }
-                        html += `<div class="pg-gantt-bar pg-station-bar" style="left: ${stationStartWeek * 7 * PHASE_DAY_WIDTH}px; width: ${stationDurationWeeks * 7 * PHASE_DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${station.color}, ${station.color}aa);">${station.name}</div>`;
+                        html += `<div class="pg-gantt-bar pg-station-bar" style="left: ${stationBarLeft}px; width: ${stationBarWidth}px; background: linear-gradient(135deg, ${station.color}, ${station.color}aa);" title="${station.name}: ${formatDate(stationStartDate)} - ${formatDate(stationEndDate)}">${station.name}</div>`;
                         html += '</div></div>';
                         
                         // Tasks
                         if (station.expanded) {
                             station.tasks.forEach((task, taskIndex) => {
-                                const taskStartWeek = stationStartWeek + Math.floor(taskIndex * 0.3);
-                                const taskDurationDays = 5;
+                                const taskStart = task.startDate || stationStartDate;
+                                const taskEnd = task.endDate || stationEndDate;
+                                
+                                const taskBarLeft = getDatePosition(taskStart, timelineStart);
+                                const taskBarWidth = getDateWidth(taskStart, taskEnd);
                                 
                                 // Check if current user can edit this station
                                 const canEdit = canEditStation(category.id, station.id);
@@ -1221,6 +1637,12 @@ function renderProjectTimeline() {
                                     <span class="pg-task-bullet" style="background: ${station.color}"></span>
                                     <span class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateTimelineTaskName('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.textContent)"` : ''}>${task.name}</span>
                                     ${isAdmin ? `<button class="pg-delete-btn small" onclick="deleteTimelineTask('${phase.id}', '${category.id}', '${station.id}', '${task.id}')" title="Delete Task">×</button>` : ''}
+                                </div>`;
+                                html += `<div class="pg-col pg-col-dates">
+                                    ${canEdit ? `<input type="date" class="pg-date-input small" value="${taskStart}" onchange="updateTaskDate('${phase.id}', '${category.id}', '${station.id}', '${task.id}', 'startDate', this.value)">` : `<span class="pg-date-display">${formatDate(taskStart)}</span>`}
+                                </div>`;
+                                html += `<div class="pg-col pg-col-dates">
+                                    ${canEdit ? `<input type="date" class="pg-date-input small" value="${taskEnd}" onchange="updateTaskDate('${phase.id}', '${category.id}', '${station.id}', '${task.id}', 'endDate', this.value)">` : `<span class="pg-date-display">${formatDate(taskEnd)}</span>`}
                                 </div>`;
                                 html += `<div class="pg-col pg-col-status">
                                     <select class="pg-status-select" onchange="updatePhaseTaskStatus('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEdit ? '' : 'disabled'}>
@@ -1239,12 +1661,16 @@ function renderProjectTimeline() {
                                 
                                 // Task timeline bar
                                 html += '<div class="phase-gantt-timeline-cells">';
-                                for (let w = 0; w < PHASE_TIMELINE_WEEKS; w++) {
-                                    html += `<div class="pg-week-cell ${w === 1 ? 'current' : ''}"></div>`;
+                                for (let w = 0; w < numWeeks; w++) {
+                                    const weekStart = new Date(timelineStart);
+                                    weekStart.setDate(weekStart.getDate() + (w * 7));
+                                    const weekEnd = new Date(weekStart);
+                                    weekEnd.setDate(weekEnd.getDate() + 6);
+                                    const isCurrentWeek = today >= weekStart && today <= weekEnd;
+                                    html += `<div class="pg-week-cell ${isCurrentWeek ? 'current' : ''}"></div>`;
                                 }
-                                const taskBarWidth = Math.max(taskDurationDays * PHASE_DAY_WIDTH, 60);
                                 const taskOpacity = task.status === 'Complete' ? '1' : task.status === 'In Progress' ? '0.85' : '0.5';
-                                html += `<div class="pg-gantt-bar pg-task-bar" style="left: ${taskStartWeek * 7 * PHASE_DAY_WIDTH + (taskIndex * 20)}px; width: ${taskBarWidth}px; background: ${station.color}; opacity: ${taskOpacity};" title="${task.name} - ${task.progress}%">${task.progress}%</div>`;
+                                html += `<div class="pg-gantt-bar pg-task-bar" style="left: ${taskBarLeft}px; width: ${taskBarWidth}px; background: ${station.color}; opacity: ${taskOpacity};" title="${task.name}: ${formatDate(taskStart)} - ${formatDate(taskEnd)} (${task.progress}%)">${task.progress}%</div>`;
                                 html += '</div></div>';
                             });
                         }
@@ -1402,6 +1828,20 @@ function expandAllPhases() {
     renderProjectTimeline();
 }
 
+function resetProjectPhases() {
+    if (!isAdmin) {
+        showError('Admin access required');
+        return;
+    }
+    
+    if (confirm('⚠️ This will reset ALL project timeline data to default phases (Phase 2-5). Your current progress will be lost. Continue?')) {
+        projectPhases = JSON.parse(JSON.stringify(defaultPhases));
+        saveProjectPhases();
+        renderProjectTimeline();
+        showSuccess('Project timeline reset to default phases');
+    }
+}
+
 function collapseAllPhases() {
     projectPhases.forEach(phase => {
         phase.expanded = false;
@@ -1431,6 +1871,39 @@ function updatePhaseName(phaseId, newName) {
         phase.name = newName.trim();
         saveProjectPhases();
         showSuccess('Phase name updated');
+    }
+}
+
+function updatePhaseDate(phaseId, dateType, newDate) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase && newDate) {
+        phase[dateType] = newDate;
+        saveProjectPhases();
+        renderProjectTimeline();
+        showSuccess('Phase date updated');
+    }
+}
+
+function updateTaskDate(phaseId, categoryId, stationId, taskId, dateType, newDate) {
+    const canEdit = canEditStation(categoryId, stationId);
+    if (!canEdit) return;
+    
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (phase) {
+        const category = phase.categories.find(c => c.id === categoryId);
+        if (category) {
+            const station = category.stations.find(s => s.id === stationId);
+            if (station) {
+                const task = station.tasks.find(t => t.id === taskId);
+                if (task && newDate) {
+                    task[dateType] = newDate;
+                    saveProjectPhases();
+                    renderProjectTimeline();
+                    showSuccess('Task date updated');
+                }
+            }
+        }
     }
 }
 
@@ -1601,6 +2074,8 @@ function deleteTimelineTask(phaseId, categoryId, stationId, taskId) {
 
 // Expose editing functions to window
 window.updatePhaseName = updatePhaseName;
+window.updatePhaseDate = updatePhaseDate;
+window.updateTaskDate = updateTaskDate;
 window.updateCategoryName = updateCategoryName;
 window.updateTimelineStationName = updateTimelineStationName;
 window.updateTimelineTaskName = updateTimelineTaskName;
@@ -1610,6 +2085,7 @@ window.addTimelineStation = addTimelineStation;
 window.deleteTimelineStation = deleteTimelineStation;
 window.addTimelineTask = addTimelineTask;
 window.deleteTimelineTask = deleteTimelineTask;
+window.resetProjectPhases = resetProjectPhases;
 
 function exportTimelinePDF() {
     showSuccess('Generating timeline PDF...');
