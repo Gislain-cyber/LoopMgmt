@@ -2088,18 +2088,355 @@ window.deleteTimelineTask = deleteTimelineTask;
 window.resetProjectPhases = resetProjectPhases;
 
 function exportTimelinePDF() {
-    showSuccess('Generating timeline PDF...');
+    showSuccess('Generating professional timeline PDF...');
     
-    // Expand all for export
-    const originalState = JSON.stringify(projectPhases);
-    expandAllPhases();
+    // Create print-friendly content in new window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showError('Pop-up blocked. Please allow pop-ups for this site.');
+        return;
+    }
     
-    setTimeout(() => {
-        window.print();
-        // Restore state
-        projectPhases = JSON.parse(originalState);
-        renderProjectTimeline();
-    }, 500);
+    // Calculate timeline metrics
+    const totalPhases = projectPhases.length;
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let inProgressTasks = 0;
+    
+    projectPhases.forEach(phase => {
+        phase.categories.forEach(cat => {
+            cat.stations.forEach(station => {
+                station.tasks.forEach(task => {
+                    totalTasks++;
+                    if (task.status === 'Complete') completedTasks++;
+                    else if (task.status === 'In Progress') inProgressTasks++;
+                });
+            });
+        });
+    });
+    
+    const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    // Get timeline date range
+    const { minDate, maxDate } = getProjectTimelineRange();
+    const timelineStart = new Date(minDate);
+    timelineStart.setDate(timelineStart.getDate() - 7);
+    const totalDays = Math.ceil((maxDate - timelineStart) / (1000 * 60 * 60 * 24)) + 14;
+    const dayWidth = Math.max(4, Math.min(12, 700 / totalDays));
+    
+    // Helper to format dates
+    const fmtDate = (d) => {
+        if (!d) return '-';
+        const date = new Date(d);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    
+    // Helper to calculate bar position
+    const getBarLeft = (dateStr) => {
+        const d = new Date(dateStr);
+        const diffDays = Math.floor((d - timelineStart) / (1000 * 60 * 60 * 24));
+        return diffDays * dayWidth;
+    };
+    
+    const getBarWidth = (start, end) => {
+        const s = new Date(start);
+        const e = new Date(end);
+        const days = Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
+        return Math.max(days * dayWidth, 30);
+    };
+    
+    // Build phase sections
+    let phasesHTML = '';
+    projectPhases.forEach(phase => {
+        const phaseProgress = calculatePhaseProgress(phase);
+        const phaseStart = phase.startDate || '2025-01-20';
+        const phaseEnd = phase.endDate || '2025-04-18';
+        const phaseDays = Math.ceil((new Date(phaseEnd) - new Date(phaseStart)) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Phase Gantt bar
+        const phaseBarLeft = getBarLeft(phaseStart);
+        const phaseBarWidth = getBarWidth(phaseStart, phaseEnd);
+        
+        // Count phase stats
+        let phaseTasks = 0, phaseComplete = 0, phaseInProgress = 0;
+        phase.categories.forEach(cat => {
+            cat.stations.forEach(station => {
+                station.tasks.forEach(task => {
+                    phaseTasks++;
+                    if (task.status === 'Complete') phaseComplete++;
+                    else if (task.status === 'In Progress') phaseInProgress++;
+                });
+            });
+        });
+        
+        let categoriesHTML = '';
+        phase.categories.forEach(category => {
+            const catProgress = calculateCategoryProgress(category);
+            
+            // Get category date range
+            let catStart = phaseStart, catEnd = phaseEnd;
+            category.stations.forEach(station => {
+                station.tasks.forEach(task => {
+                    if (task.startDate && task.startDate < catStart) catStart = task.startDate;
+                    if (task.endDate && task.endDate > catEnd) catEnd = task.endDate;
+                });
+            });
+            
+            let stationsHTML = '';
+            category.stations.forEach(station => {
+                const stationProgress = calculateStationTasksProgress(station);
+                
+                // Get station date range
+                let stationStart = catStart, stationEnd = catEnd;
+                if (station.tasks && station.tasks.length > 0) {
+                    const taskStarts = station.tasks.filter(t => t.startDate).map(t => t.startDate).sort();
+                    const taskEnds = station.tasks.filter(t => t.endDate).map(t => t.endDate).sort().reverse();
+                    if (taskStarts.length > 0) stationStart = taskStarts[0];
+                    if (taskEnds.length > 0) stationEnd = taskEnds[0];
+                }
+                
+                const stationBarLeft = getBarLeft(stationStart);
+                const stationBarWidth = getBarWidth(stationStart, stationEnd);
+                
+                // Task rows
+                let taskRows = '';
+                station.tasks.forEach(task => {
+                    const statusColor = task.status === 'Complete' ? '#28a745' : 
+                                       task.status === 'In Progress' ? '#17a2b8' : 
+                                       task.status === 'On Hold' ? '#ffc107' : '#6c757d';
+                    const taskStart = task.startDate || stationStart;
+                    const taskEnd = task.endDate || stationEnd;
+                    const taskBarLeft = getBarLeft(taskStart);
+                    const taskBarWidth = getBarWidth(taskStart, taskEnd);
+                    const taskOpacity = task.status === 'Complete' ? '1' : task.status === 'In Progress' ? '0.85' : '0.5';
+                    
+                    taskRows += `
+                        <tr>
+                            <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px;padding-left:40px">• ${task.name}</td>
+                            <td style="padding:5px;border-bottom:1px solid #eee;text-align:center;font-size:9px">${fmtDate(taskStart)}</td>
+                            <td style="padding:5px;border-bottom:1px solid #eee;text-align:center;font-size:9px">${fmtDate(taskEnd)}</td>
+                            <td style="padding:5px;border-bottom:1px solid #eee;text-align:center">
+                                <span style="display:inline-block;padding:2px 6px;border-radius:3px;font-size:8px;font-weight:bold;background:${statusColor}22;color:${statusColor}">${task.status}</span>
+                            </td>
+                            <td style="padding:5px;border-bottom:1px solid #eee;text-align:center;font-size:9px;font-weight:bold;color:${statusColor}">${task.progress}%</td>
+                            <td style="padding:5px;border-bottom:1px solid #eee;width:200px">
+                                <div style="position:relative;height:12px;background:#f0f0f0;border-radius:2px;overflow:hidden">
+                                    <div style="position:absolute;left:${taskBarLeft}px;top:1px;height:10px;width:${taskBarWidth}px;background:${station.color};opacity:${taskOpacity};border-radius:2px"></div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+                
+                const statusText = stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started';
+                const statusColor = stationProgress === 100 ? '#28a745' : stationProgress > 0 ? '#17a2b8' : '#6c757d';
+                
+                stationsHTML += `
+                    <div style="margin-left:15px;margin-bottom:12px;padding:10px;background:#fdfdfd;border-radius:6px;border:1px solid #e8e8e8">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <span style="display:inline-block;width:24px;height:24px;background:${station.color};color:white;border-radius:4px;text-align:center;line-height:24px;font-size:10px;font-weight:bold">S${station.stationNum}</span>
+                                <span style="font-weight:600;font-size:11px;color:#333">${station.name}</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <span style="font-size:9px;color:#666">${fmtDate(stationStart)} - ${fmtDate(stationEnd)}</span>
+                                <span style="padding:3px 8px;border-radius:4px;font-size:9px;font-weight:bold;background:${statusColor}22;color:${statusColor}">${statusText}</span>
+                                <span style="font-size:12px;font-weight:bold;color:${station.color}">${stationProgress}%</span>
+                            </div>
+                        </div>
+                        <div style="position:relative;height:14px;background:#f5f5f5;border-radius:3px;margin-bottom:8px;overflow:hidden">
+                            <div style="position:absolute;left:${stationBarLeft}px;top:2px;height:10px;width:${stationBarWidth}px;background:linear-gradient(90deg,${station.color},${station.color}cc);border-radius:2px"></div>
+                        </div>
+                        ${station.tasks.length > 0 ? `
+                        <table style="width:100%;border-collapse:collapse;margin-top:5px">
+                            <tr style="background:#f8f8f8">
+                                <th style="padding:5px 8px;text-align:left;font-size:9px;color:#666;font-weight:600">Task</th>
+                                <th style="padding:5px;text-align:center;font-size:9px;color:#666;font-weight:600">Start</th>
+                                <th style="padding:5px;text-align:center;font-size:9px;color:#666;font-weight:600">End</th>
+                                <th style="padding:5px;text-align:center;font-size:9px;color:#666;font-weight:600">Status</th>
+                                <th style="padding:5px;text-align:center;font-size:9px;color:#666;font-weight:600">Progress</th>
+                                <th style="padding:5px;text-align:center;font-size:9px;color:#666;font-weight:600;width:200px">Timeline</th>
+                            </tr>
+                            ${taskRows}
+                        </table>` : '<p style="font-size:10px;color:#999;font-style:italic;margin:5px 0">No tasks defined</p>'}
+                    </div>`;
+            });
+            
+            categoriesHTML += `
+                <div style="margin-bottom:15px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:${category.color}15;border-left:3px solid ${category.color};border-radius:0 4px 4px 0;margin-bottom:8px">
+                        <span style="font-weight:600;font-size:12px;color:${category.color}">${category.name}</span>
+                        <div style="display:flex;align-items:center;gap:15px">
+                            <span style="font-size:10px;color:#666">${fmtDate(catStart)} - ${fmtDate(catEnd)}</span>
+                            <span style="font-size:11px;font-weight:bold;color:${category.color}">${catProgress}%</span>
+                        </div>
+                    </div>
+                    ${stationsHTML}
+                </div>`;
+        });
+        
+        phasesHTML += `
+            <div style="margin-bottom:25px;page-break-inside:avoid">
+                <div style="background:linear-gradient(135deg,${phase.color}18,${phase.color}08);border:1px solid ${phase.color}40;border-radius:8px;padding:15px;margin-bottom:12px">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <div>
+                            <h3 style="margin:0;color:${phase.color};font-size:16px;display:flex;align-items:center;gap:8px">
+                                <span style="font-size:20px">◆</span>
+                                ${phase.name}
+                            </h3>
+                            <p style="margin:8px 0 0;font-size:11px;color:#666">
+                                <strong>Duration:</strong> ${fmtDate(phaseStart)} → ${fmtDate(phaseEnd)} (${phaseDays} days)
+                            </p>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:28px;font-weight:bold;color:${phase.color}">${phaseProgress}%</div>
+                            <div style="font-size:10px;color:#666">${phaseComplete}/${phaseTasks} tasks complete</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:15px;margin-top:12px">
+                        <div style="flex:1;text-align:center;padding:8px;background:white;border-radius:4px">
+                            <div style="font-size:18px;font-weight:bold;color:#17a2b8">${phaseTasks}</div>
+                            <div style="font-size:9px;color:#666">Total Tasks</div>
+                        </div>
+                        <div style="flex:1;text-align:center;padding:8px;background:white;border-radius:4px">
+                            <div style="font-size:18px;font-weight:bold;color:#28a745">${phaseComplete}</div>
+                            <div style="font-size:9px;color:#666">Completed</div>
+                        </div>
+                        <div style="flex:1;text-align:center;padding:8px;background:white;border-radius:4px">
+                            <div style="font-size:18px;font-weight:bold;color:#ffc107">${phaseInProgress}</div>
+                            <div style="font-size:9px;color:#666">In Progress</div>
+                        </div>
+                        <div style="flex:1;text-align:center;padding:8px;background:white;border-radius:4px">
+                            <div style="font-size:18px;font-weight:bold;color:#6c757d">${phaseTasks - phaseComplete - phaseInProgress}</div>
+                            <div style="font-size:9px;color:#666">Not Started</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px">
+                        <div style="font-size:9px;color:#666;margin-bottom:4px">PHASE TIMELINE</div>
+                        <div style="position:relative;height:20px;background:#f5f5f5;border-radius:4px;overflow:hidden">
+                            <div style="position:absolute;left:${phaseBarLeft}px;top:3px;height:14px;width:${phaseBarWidth}px;background:linear-gradient(90deg,${phase.color},${phase.color}aa);border-radius:3px;display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:bold">${phase.name}</div>
+                        </div>
+                    </div>
+                </div>
+                ${categoriesHTML}
+            </div>`;
+    });
+    
+    // Write the print document
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loop Automation - Project Timeline Report</title>
+    <style>
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            padding: 25px; 
+            color: #333;
+            line-height: 1.4;
+        }
+        div, span, td, th, tr, table {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+        @media print {
+            body { padding: 15px; }
+            .no-print { display: none !important; }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+        }
+        @page {
+            margin: 0.5in;
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:4px solid #00d4aa">
+        <h1 style="color:#00d4aa;margin:0;font-size:28px;letter-spacing:2px">LOOP AUTOMATION</h1>
+        <p style="color:#666;margin-top:10px;font-size:14px">Project Timeline Report</p>
+        <p style="color:#999;font-size:11px;margin-top:5px">Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    </div>
+    
+    <div style="background:linear-gradient(135deg,#f8f9fa,#e9ecef);padding:25px;margin-bottom:30px;border-radius:10px;border:1px solid #dee2e6">
+        <h2 style="color:#00a080;margin:0 0 20px;font-size:16px;border-bottom:2px solid #00d4aa;padding-bottom:10px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:20px">📊</span> Executive Summary
+        </h2>
+        <table style="width:100%;border-collapse:separate;border-spacing:12px 0">
+            <tr>
+                <td style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <div style="font-size:36px;font-weight:bold;color:#7c3aed">${totalPhases}</div>
+                    <div style="font-size:11px;color:#666;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Phases</div>
+                </td>
+                <td style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <div style="font-size:36px;font-weight:bold;color:#17a2b8">${totalTasks}</div>
+                    <div style="font-size:11px;color:#666;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Total Tasks</div>
+                </td>
+                <td style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <div style="font-size:36px;font-weight:bold;color:#28a745">${completedTasks}</div>
+                    <div style="font-size:11px;color:#666;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Completed</div>
+                </td>
+                <td style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <div style="font-size:36px;font-weight:bold;color:#ffc107">${inProgressTasks}</div>
+                    <div style="font-size:11px;color:#666;margin-top:5px;text-transform:uppercase;letter-spacing:1px">In Progress</div>
+                </td>
+                <td style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <div style="font-size:36px;font-weight:bold;color:#00d4aa">${overallProgress}%</div>
+                    <div style="font-size:11px;color:#666;margin-top:5px;text-transform:uppercase;letter-spacing:1px">Overall Progress</div>
+                </td>
+            </tr>
+        </table>
+        <div style="margin-top:20px">
+            <div style="font-size:10px;color:#666;margin-bottom:5px">OVERALL PROJECT PROGRESS</div>
+            <div style="height:24px;background:#e0e0e0;border-radius:12px;overflow:hidden;position:relative">
+                <div style="height:100%;width:${overallProgress}%;background:linear-gradient(90deg,#00d4aa,#00a080);border-radius:12px;display:flex;align-items:center;justify-content:center">
+                    <span style="color:white;font-size:11px;font-weight:bold">${overallProgress}% Complete</span>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#999;margin-top:3px">
+                <span>Project Start: ${fmtDate(minDate)}</span>
+                <span>Project End: ${fmtDate(maxDate)}</span>
+            </div>
+        </div>
+    </div>
+    
+    <h2 style="color:#00a080;font-size:18px;margin:25px 0 20px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">📋</span> Phase Details
+    </h2>
+    
+    ${phasesHTML}
+    
+    <div style="text-align:center;margin-top:40px;padding-top:25px;border-top:2px solid #e0e0e0;color:#999;font-size:10px">
+        <p style="margin-bottom:5px"><strong style="color:#00d4aa">Loop Automation</strong> Project Management System</p>
+        <p>This report was automatically generated. For questions, contact your project administrator.</p>
+    </div>
+    
+    <div class="no-print" style="position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#ffe066,#ffcc00);color:#333;padding:12px 20px;text-align:center;font-size:12px;z-index:9999;border-bottom:2px solid #cc9900;box-shadow:0 2px 10px rgba(0,0,0,0.2)">
+        <strong>⚠️ Print Tip:</strong> In the print dialog, expand "More settings" and enable <strong>"Background graphics"</strong> to see all colors and timeline bars in your PDF.
+        <button onclick="window.print()" style="margin-left:20px;padding:6px 15px;background:#00d4aa;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:bold">🖨️ Print Now</button>
+    </div>
+    
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html>`);
+    
+    printWindow.document.close();
 }
 
 window.togglePhase = togglePhase;
