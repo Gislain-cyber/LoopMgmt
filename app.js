@@ -2194,6 +2194,187 @@ function exportTimelinePDF() {
         return Math.max(days * dayWidth, 30);
     };
     
+    // ========================================
+    // BUILD GANTT OVERVIEW CHART
+    // ========================================
+    const ganttTimelineWidth = totalDays * dayWidth;
+    
+    // Generate week markers
+    let weekMarkersHTML = '';
+    let weekGridLinesHTML = '';
+    const weekStart = new Date(timelineStart);
+    // Align to Monday
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+    
+    while (weekStart <= new Date(maxDate.getTime() + 14 * 24 * 60 * 60 * 1000)) {
+        const offsetDays = Math.floor((weekStart - timelineStart) / (1000 * 60 * 60 * 24));
+        const leftPx = offsetDays * dayWidth;
+        const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        
+        weekMarkersHTML += `<div style="position:absolute;left:${leftPx}px;top:0;font-size:8px;color:#666;white-space:nowrap;transform:translateX(-50%)">${weekLabel}</div>`;
+        weekGridLinesHTML += `<div style="position:absolute;left:${leftPx}px;top:0;bottom:0;width:1px;background:#e0e0e0"></div>`;
+        
+        weekStart.setDate(weekStart.getDate() + 7);
+    }
+    
+    // Generate month markers
+    let monthMarkersHTML = '';
+    const monthStart = new Date(timelineStart.getFullYear(), timelineStart.getMonth(), 1);
+    while (monthStart <= new Date(maxDate.getTime() + 30 * 24 * 60 * 60 * 1000)) {
+        const offsetDays = Math.floor((monthStart - timelineStart) / (1000 * 60 * 60 * 24));
+        const leftPx = offsetDays * dayWidth;
+        const monthLabel = monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        // Calculate month width
+        const nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+        const monthDays = Math.floor((nextMonth - monthStart) / (1000 * 60 * 60 * 24));
+        const monthWidth = monthDays * dayWidth;
+        
+        monthMarkersHTML += `<div style="position:absolute;left:${leftPx}px;top:0;width:${monthWidth}px;text-align:center;font-size:10px;font-weight:bold;color:#333;border-left:2px solid #999;padding-left:4px">${monthLabel}</div>`;
+        
+        monthStart.setMonth(monthStart.getMonth() + 1);
+    }
+    
+    // Build Gantt rows for overview
+    let ganttRowsHTML = '';
+    let rowIndex = 0;
+    
+    // Today marker position
+    const today = new Date();
+    const todayOffset = Math.floor((today - timelineStart) / (1000 * 60 * 60 * 24));
+    const todayLeft = todayOffset * dayWidth;
+    
+    projectPhases.forEach(phase => {
+        const phaseProgress = calculatePhaseProgress(phase);
+        const phaseBarLeft = getBarLeft(phase.startDate || '2026-01-20');
+        const phaseBarWidth = getBarWidth(phase.startDate || '2026-01-20', phase.endDate || '2026-04-30');
+        const bgColor = rowIndex % 2 === 0 ? '#fafafa' : '#fff';
+        
+        // Phase row
+        ganttRowsHTML += `
+            <div style="display:flex;min-height:26px;border-bottom:1px solid #e8e8e8;background:${bgColor}">
+                <div style="width:260px;min-width:260px;padding:4px 8px;font-size:10px;font-weight:bold;color:${phase.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid #ddd;display:flex;align-items:center;gap:4px">
+                    <span style="display:inline-block;width:10px;height:10px;background:${phase.color};border-radius:2px;flex-shrink:0"></span>
+                    ${phase.name}
+                </div>
+                <div style="flex:1;position:relative;min-width:${ganttTimelineWidth}px">
+                    ${weekGridLinesHTML}
+                    <div style="position:absolute;left:${phaseBarLeft}px;top:3px;height:20px;width:${phaseBarWidth}px;background:linear-gradient(90deg,${phase.color},${phase.color}bb);border-radius:3px;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.15)">
+                        <span style="color:white;font-size:7px;font-weight:bold;text-shadow:0 1px 1px rgba(0,0,0,0.3)">${phaseProgress}%</span>
+                    </div>
+                </div>
+            </div>`;
+        rowIndex++;
+        
+        // Category rows
+        phase.categories.forEach(category => {
+            const catProgress = calculateCategoryProgress(category);
+            let catStart = phase.startDate, catEnd = phase.endDate;
+            category.stations.forEach(station => {
+                station.tasks.forEach(task => {
+                    if (task.startDate && task.startDate < catStart) catStart = task.startDate;
+                    if (task.endDate && task.endDate > catEnd) catEnd = task.endDate;
+                });
+            });
+            const catBarLeft = getBarLeft(catStart);
+            const catBarWidth = getBarWidth(catStart, catEnd);
+            const bgColor2 = rowIndex % 2 === 0 ? '#fafafa' : '#fff';
+            
+            ganttRowsHTML += `
+                <div style="display:flex;min-height:22px;border-bottom:1px solid #f0f0f0;background:${bgColor2}">
+                    <div style="width:260px;min-width:260px;padding:3px 8px 3px 24px;font-size:9px;font-weight:600;color:${category.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid #ddd;display:flex;align-items:center">
+                        ├ ${category.name}
+                    </div>
+                    <div style="flex:1;position:relative;min-width:${ganttTimelineWidth}px">
+                        ${weekGridLinesHTML}
+                        <div style="position:absolute;left:${catBarLeft}px;top:3px;height:16px;width:${catBarWidth}px;background:linear-gradient(90deg,${category.color}cc,${category.color}88);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                            <span style="color:white;font-size:7px;font-weight:bold;text-shadow:0 1px 1px rgba(0,0,0,0.2)">${catProgress}%</span>
+                        </div>
+                    </div>
+                </div>`;
+            rowIndex++;
+            
+            // Station rows
+            category.stations.forEach(station => {
+                const stationProgress = calculateStationTasksProgress(station);
+                let stationStart = catStart, stationEnd = catEnd;
+                if (station.tasks && station.tasks.length > 0) {
+                    const taskStarts = station.tasks.filter(t => t.startDate).map(t => t.startDate).sort();
+                    const taskEnds = station.tasks.filter(t => t.endDate).map(t => t.endDate).sort().reverse();
+                    if (taskStarts.length > 0) stationStart = taskStarts[0];
+                    if (taskEnds.length > 0) stationEnd = taskEnds[0];
+                }
+                const sBarLeft = getBarLeft(stationStart);
+                const sBarWidth = getBarWidth(stationStart, stationEnd);
+                const bgColor3 = rowIndex % 2 === 0 ? '#fafafa' : '#fff';
+                const progressColor = stationProgress === 100 ? '#28a745' : stationProgress > 0 ? station.color : '#aaa';
+                
+                ganttRowsHTML += `
+                    <div style="display:flex;min-height:20px;border-bottom:1px solid #f5f5f5;background:${bgColor3}">
+                        <div style="width:260px;min-width:260px;padding:2px 8px 2px 44px;font-size:8px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid #ddd;display:flex;align-items:center">
+                            └ ${station.name}
+                        </div>
+                        <div style="flex:1;position:relative;min-width:${ganttTimelineWidth}px">
+                            ${weekGridLinesHTML}
+                            <div style="position:absolute;left:${sBarLeft}px;top:3px;height:14px;width:${sBarWidth}px;background:${progressColor}88;border-radius:2px;overflow:hidden">
+                                <div style="height:100%;width:${stationProgress}%;background:${progressColor};border-radius:2px"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                rowIndex++;
+            });
+        });
+    });
+    
+    // Build the complete Gantt overview section
+    const ganttOverviewHTML = `
+        <div style="margin-bottom:30px;page-break-inside:avoid">
+            <h2 style="color:#00a080;font-size:18px;margin:0 0 15px;display:flex;align-items:center;gap:10px">
+                <span style="font-size:22px">📊</span> Project Timeline Overview
+            </h2>
+            <div style="border:1px solid #ddd;border-radius:8px;overflow:hidden;background:white">
+                <div style="overflow-x:auto">
+                    <div style="min-width:${260 + ganttTimelineWidth}px">
+                        <!-- Month headers -->
+                        <div style="display:flex;border-bottom:2px solid #ccc;background:#f0f4f8">
+                            <div style="width:260px;min-width:260px;padding:6px 8px;font-size:10px;font-weight:bold;color:#333;border-right:1px solid #ddd">Phase / Category / Station</div>
+                            <div style="flex:1;position:relative;height:24px;min-width:${ganttTimelineWidth}px">
+                                ${monthMarkersHTML}
+                            </div>
+                        </div>
+                        <!-- Week headers -->
+                        <div style="display:flex;border-bottom:1px solid #ddd;background:#f8f9fa">
+                            <div style="width:260px;min-width:260px;padding:4px 8px;font-size:8px;color:#999;border-right:1px solid #ddd">Timeline →</div>
+                            <div style="flex:1;position:relative;height:20px;min-width:${ganttTimelineWidth}px">
+                                ${weekMarkersHTML}
+                            </div>
+                        </div>
+                        <!-- Gantt bars -->
+                        ${ganttRowsHTML}
+                        <!-- Today marker -->
+                        ${todayLeft > 0 && todayLeft < ganttTimelineWidth ? `
+                        <div style="position:absolute;left:${260 + todayLeft}px;top:48px;bottom:0;width:2px;background:#ff4444;z-index:10;opacity:0.7">
+                            <div style="position:absolute;top:-16px;left:-20px;background:#ff4444;color:white;font-size:7px;padding:2px 5px;border-radius:3px;white-space:nowrap">Today</div>
+                        </div>` : ''}
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex;gap:20px;margin-top:8px;justify-content:center">
+                <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:#666">
+                    <span style="display:inline-block;width:12px;height:8px;background:#28a745;border-radius:2px"></span> Complete
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:#666">
+                    <span style="display:inline-block;width:12px;height:8px;background:#17a2b8;border-radius:2px"></span> In Progress
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:#666">
+                    <span style="display:inline-block;width:12px;height:8px;background:#aaa;border-radius:2px"></span> Not Started
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:#666">
+                    <span style="display:inline-block;width:12px;height:2px;background:#ff4444;border-radius:1px"></span> Today
+                </div>
+            </div>
+        </div>`;
+
     // Build phase sections
     let phasesHTML = '';
     projectPhases.forEach(phase => {
@@ -2458,6 +2639,8 @@ function exportTimelinePDF() {
             </div>
         </div>
     </div>
+    
+    ${ganttOverviewHTML}
     
     <h2 style="color:#00a080;font-size:18px;margin:25px 0 20px;display:flex;align-items:center;gap:10px">
         <span style="font-size:22px">📋</span> Phase Details
