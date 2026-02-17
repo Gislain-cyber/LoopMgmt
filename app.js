@@ -4230,6 +4230,393 @@ function applyZoom() {
 }
 
 // ============================================
+// AI ASSISTANT
+// ============================================
+
+let aiChatHistory = [];
+let aiIsProcessing = false;
+
+function toggleAIPanel() {
+    const panel = document.getElementById('ai-panel');
+    const btn = document.getElementById('ai-toggle-btn');
+    if (!panel) return;
+    
+    panel.classList.toggle('open');
+    if (btn) btn.classList.toggle('active');
+    
+    // Load saved API key & model
+    if (panel.classList.contains('open')) {
+        const savedKey = localStorage.getItem('loopAI_apiKey') || '';
+        const savedModel = localStorage.getItem('loopAI_model') || 'gpt-4o-mini';
+        const keyInput = document.getElementById('ai-api-key');
+        const modelSelect = document.getElementById('ai-model');
+        if (keyInput && savedKey) keyInput.value = savedKey;
+        if (modelSelect) modelSelect.value = savedModel;
+    }
+}
+
+function toggleAISettings() {
+    const settings = document.getElementById('ai-settings');
+    if (!settings) return;
+    settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveAIApiKey() {
+    const keyInput = document.getElementById('ai-api-key');
+    if (!keyInput) return;
+    
+    const key = keyInput.value.trim();
+    if (key) {
+        localStorage.setItem('loopAI_apiKey', key);
+        showSuccess('API key saved securely to your browser.');
+        document.getElementById('ai-settings').style.display = 'none';
+    } else {
+        showError('Please enter a valid API key.');
+    }
+}
+
+function saveAIModel() {
+    const modelSelect = document.getElementById('ai-model');
+    if (!modelSelect) return;
+    localStorage.setItem('loopAI_model', modelSelect.value);
+}
+
+function getProjectContext() {
+    const allTasks = getAllTasks();
+    const totalTasks = allTasks.length;
+    const completedTasks = allTasks.filter(t => t.status === 'Complete').length;
+    const inProgressTasks = allTasks.filter(t => t.status === 'In Progress').length;
+    const notStartedTasks = allTasks.filter(t => t.status === 'Not Started').length;
+    const delayedTasks = allTasks.filter(t => t.status === 'Delayed').length;
+    const onHoldTasks = allTasks.filter(t => t.status === 'On Hold').length;
+    
+    const totalEstHours = allTasks.reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
+    const totalActualHours = allTasks.reduce((sum, t) => sum + (parseFloat(t.actualHours) || 0), 0);
+    const overallProgress = totalEstHours > 0 ? Math.round((totalActualHours / totalEstHours) * 100) : 0;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Build station summaries
+    const stationSummaries = stations.map(s => {
+        const stationTasks = s.tasks || [];
+        const stationComplete = stationTasks.filter(t => t.status === 'Complete').length;
+        const stationProgress = stationTasks.length > 0 ? Math.round((stationComplete / stationTasks.length) * 100) : 0;
+        
+        return {
+            name: s.name,
+            description: s.description || '',
+            startDate: s.startDate,
+            endDate: s.endDate,
+            priority: s.priority,
+            taskCount: stationTasks.length,
+            completedCount: stationComplete,
+            progress: stationProgress + '%',
+            tasks: stationTasks.map(t => ({
+                name: t.name,
+                assignedTo: t.assignedTo || 'Unassigned',
+                startDate: t.startDate,
+                endDate: t.endDate,
+                estHours: t.estHours,
+                actualHours: t.actualHours,
+                status: t.status,
+                priority: t.priority,
+                notes: t.notes || ''
+            }))
+        };
+    });
+    
+    // Build team summaries
+    const teamSummaries = teamMembers.map(m => {
+        const assignedHrs = getAssignedHours(m.name);
+        const memberTasks = allTasks.filter(t => t.assignedTo === m.name);
+        const completedCount = memberTasks.filter(t => t.status === 'Complete').length;
+        
+        return {
+            name: m.name,
+            role: m.role,
+            targetHours: m.targetHours,
+            assignedHours: assignedHrs,
+            availableHours: m.targetHours - assignedHrs,
+            loadPercent: Math.round((assignedHrs / m.targetHours) * 100),
+            totalTasks: memberTasks.length,
+            completedTasks: completedCount,
+            taskNames: memberTasks.map(t => t.name)
+        };
+    });
+    
+    // Identify overdue tasks
+    const overdueTasks = allTasks.filter(t => {
+        if (t.status === 'Complete') return false;
+        return t.endDate && t.endDate < today;
+    }).map(t => ({
+        name: t.name,
+        assignedTo: t.assignedTo,
+        endDate: t.endDate,
+        status: t.status
+    }));
+    
+    return `
+PROJECT CONTEXT (Loop Automation - Project Management)
+Today's Date: ${today}
+========================================================
+
+OVERVIEW:
+- Total Stations: ${stations.length}
+- Total Tasks: ${totalTasks}
+- Completed: ${completedTasks} | In Progress: ${inProgressTasks} | Not Started: ${notStartedTasks} | Delayed: ${delayedTasks} | On Hold: ${onHoldTasks}
+- Total Estimated Hours: ${totalEstHours}
+- Total Actual Hours: ${totalActualHours}
+- Overall Progress: ${overallProgress}%
+
+STATIONS:
+${JSON.stringify(stationSummaries, null, 2)}
+
+TEAM MEMBERS:
+${JSON.stringify(teamSummaries, null, 2)}
+
+OVERDUE TASKS (end date before today):
+${overdueTasks.length > 0 ? JSON.stringify(overdueTasks, null, 2) : 'None'}
+`;
+}
+
+async function sendAIMessage(userMessage) {
+    if (aiIsProcessing) return;
+    
+    const inputEl = document.getElementById('ai-input');
+    const messagesEl = document.getElementById('ai-messages');
+    
+    // Get message from input or parameter
+    const message = userMessage || (inputEl ? inputEl.value.trim() : '');
+    if (!message) return;
+    
+    // Check API key
+    const apiKey = localStorage.getItem('loopAI_apiKey');
+    if (!apiKey) {
+        appendAIMessage('error', 'Please configure your OpenAI API key first. Click the ⚙️ button above to add it.');
+        return;
+    }
+    
+    // Clear input
+    if (inputEl && !userMessage) {
+        inputEl.value = '';
+        inputEl.style.height = 'auto';
+    }
+    
+    // Add user message to UI
+    appendAIMessage('user', message);
+    
+    // Add typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'ai-message assistant';
+    typingEl.id = 'ai-typing-indicator';
+    typingEl.innerHTML = `
+        <div class="ai-message-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/>
+                <circle cx="9" cy="14" r="1" fill="currentColor"/>
+                <circle cx="15" cy="14" r="1" fill="currentColor"/>
+            </svg>
+        </div>
+        <div class="ai-message-content">
+            <div class="ai-typing">
+                <div class="ai-typing-dot"></div>
+                <div class="ai-typing-dot"></div>
+                <div class="ai-typing-dot"></div>
+            </div>
+        </div>
+    `;
+    messagesEl.appendChild(typingEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    
+    aiIsProcessing = true;
+    document.getElementById('ai-send-btn').disabled = true;
+    
+    try {
+        const model = localStorage.getItem('loopAI_model') || 'gpt-4o-mini';
+        const projectContext = getProjectContext();
+        
+        // Build conversation messages
+        const systemMessage = {
+            role: 'system',
+            content: `You are an AI project management assistant for "Loop Automation", an industrial automation project management tool. You have full access to the current project data provided below.
+
+Your role is to:
+1. Answer questions about project status, team workload, and scheduling
+2. Identify risks, bottlenecks, and issues
+3. Suggest task assignments and optimizations
+4. Generate status reports and summaries
+5. Help with task planning and breakdown
+
+Be concise, actionable, and specific. Use the actual data to support your answers. Format responses with markdown when helpful. Use bullet points for lists. Bold important numbers or names.
+
+${projectContext}`
+        };
+        
+        // Keep last 10 messages for context
+        aiChatHistory.push({ role: 'user', content: message });
+        if (aiChatHistory.length > 20) {
+            aiChatHistory = aiChatHistory.slice(-20);
+        }
+        
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [systemMessage, ...aiChatHistory],
+                max_tokens: 1500,
+                temperature: 0.7
+            })
+        });
+        
+        // Remove typing indicator
+        const typing = document.getElementById('ai-typing-indicator');
+        if (typing) typing.remove();
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = errorData.error?.message || `API Error: ${response.status}`;
+            
+            if (response.status === 401) {
+                appendAIMessage('error', 'Invalid API key. Please check your key in settings (⚙️).');
+            } else if (response.status === 429) {
+                appendAIMessage('error', 'Rate limit exceeded. Please wait a moment and try again.');
+            } else if (response.status === 402) {
+                appendAIMessage('error', 'API quota exceeded. Please check your OpenAI billing.');
+            } else {
+                appendAIMessage('error', errorMsg);
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        const assistantMessage = data.choices[0]?.message?.content || 'No response received.';
+        
+        // Store in chat history
+        aiChatHistory.push({ role: 'assistant', content: assistantMessage });
+        
+        // Render assistant message
+        appendAIMessage('assistant', assistantMessage);
+        
+    } catch (error) {
+        // Remove typing indicator
+        const typing = document.getElementById('ai-typing-indicator');
+        if (typing) typing.remove();
+        
+        console.error('AI Error:', error);
+        appendAIMessage('error', `Connection error: ${error.message}. Please check your internet connection.`);
+    } finally {
+        aiIsProcessing = false;
+        document.getElementById('ai-send-btn').disabled = false;
+    }
+}
+
+function appendAIMessage(type, content) {
+    const messagesEl = document.getElementById('ai-messages');
+    if (!messagesEl) return;
+    
+    const messageEl = document.createElement('div');
+    messageEl.className = `ai-message ${type}`;
+    
+    if (type === 'user') {
+        messageEl.innerHTML = `
+            <div class="ai-message-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                    <circle cx="12" cy="7" r="4"/>
+                    <path d="M5 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/>
+                </svg>
+            </div>
+            <div class="ai-message-content"><p>${escapeHtml(content)}</p></div>
+        `;
+    } else {
+        const formattedContent = formatAIResponse(content);
+        messageEl.innerHTML = `
+            <div class="ai-message-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                    <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/>
+                    <circle cx="9" cy="14" r="1" fill="currentColor"/>
+                    <circle cx="15" cy="14" r="1" fill="currentColor"/>
+                </svg>
+            </div>
+            <div class="ai-message-content">${formattedContent}</div>
+        `;
+    }
+    
+    messagesEl.appendChild(messageEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function formatAIResponse(text) {
+    // Convert markdown to HTML (basic formatting)
+    let html = escapeHtml(text);
+    
+    // Bold: **text**
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Italic: *text*
+    html = html.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+    
+    // Code blocks: ```code```
+    html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+    
+    // Inline code: `code`
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Headers: ### Header
+    html = html.replace(/^### (.*$)/gm, '<strong style="font-size: 1rem; display: block; margin-top: 12px;">$1</strong>');
+    html = html.replace(/^## (.*$)/gm, '<strong style="font-size: 1.05rem; display: block; margin-top: 12px;">$1</strong>');
+    
+    // Bullet points: - item or * item
+    html = html.replace(/^[\-\*] (.+)/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/gs, '<ul>$&</ul>');
+    
+    // Numbered lists: 1. item
+    html = html.replace(/^\d+\. (.+)/gm, '<li>$1</li>');
+    
+    // Line breaks: convert double newlines to paragraphs
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    
+    // Wrap in paragraph
+    html = '<p>' + html + '</p>';
+    
+    // Clean up empty paragraphs
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    html = html.replace(/<p>\s*<br>\s*<\/p>/g, '');
+    
+    return html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function handleAIInputKeydown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendAIMessage();
+    }
+    
+    // Auto-resize textarea
+    const textarea = event.target;
+    setTimeout(() => {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }, 0);
+}
+
+function sendAIQuickAction(message) {
+    const inputEl = document.getElementById('ai-input');
+    if (inputEl) inputEl.value = message;
+    sendAIMessage(message);
+}
+
+// ============================================
 // EXPOSE FUNCTIONS TO GLOBAL SCOPE (for onclick handlers)
 // ============================================
 
@@ -4256,6 +4643,13 @@ window.adminLogin = adminLogin;
 window.adminLogout = adminLogout;
 window.zoomIn = zoomIn;
 window.zoomOut = zoomOut;
+window.toggleAIPanel = toggleAIPanel;
+window.toggleAISettings = toggleAISettings;
+window.saveAIApiKey = saveAIApiKey;
+window.saveAIModel = saveAIModel;
+window.sendAIMessage = sendAIMessage;
+window.sendAIQuickAction = sendAIQuickAction;
+window.handleAIInputKeydown = handleAIInputKeydown;
 
 // ============================================
 // INITIALIZATION

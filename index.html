@@ -123,6 +123,16 @@
                     </svg>
                     Validate Project
                 </button>
+
+                <button class="btn-ai-assistant" id="ai-toggle-btn" onclick="toggleAIPanel()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/>
+                        <circle cx="9" cy="14" r="1" fill="currentColor"/>
+                        <circle cx="15" cy="14" r="1" fill="currentColor"/>
+                        <path d="M10 17.5c0 0 1 1 2 1s2-1 2-1"/>
+                    </svg>
+                    AI Assistant
+                </button>
             </div>
         </aside>
 
@@ -448,6 +458,98 @@
                 <div class="team-grid" id="team-grid"></div>
             </section>
         </main>
+
+        <!-- AI Assistant Panel -->
+        <div class="ai-panel" id="ai-panel">
+            <div class="ai-panel-header">
+                <div class="ai-panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                        <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/>
+                        <circle cx="9" cy="14" r="1" fill="currentColor"/>
+                        <circle cx="15" cy="14" r="1" fill="currentColor"/>
+                        <path d="M10 17.5c0 0 1 1 2 1s2-1 2-1"/>
+                    </svg>
+                    <span>AI Assistant</span>
+                </div>
+                <div class="ai-panel-actions">
+                    <button class="ai-settings-btn" onclick="toggleAISettings()" title="API Settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                        </svg>
+                    </button>
+                    <button class="ai-close-btn" onclick="toggleAIPanel()" title="Close">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- API Key Settings (hidden by default) -->
+            <div class="ai-settings" id="ai-settings" style="display: none;">
+                <div class="ai-settings-content">
+                    <label for="ai-api-key">OpenAI API Key</label>
+                    <div class="ai-key-input-row">
+                        <input type="password" id="ai-api-key" placeholder="sk-..." value="">
+                        <button class="ai-save-key-btn" onclick="saveAIApiKey()">Save</button>
+                    </div>
+                    <p class="ai-settings-note">Your key is stored locally and never sent to any server except OpenAI. <a href="https://platform.openai.com/api-keys" target="_blank">Get a key</a></p>
+                    <div class="ai-model-select">
+                        <label for="ai-model">Model</label>
+                        <select id="ai-model" onchange="saveAIModel()">
+                            <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cheap)</option>
+                            <option value="gpt-4o">GPT-4o (Best Quality)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Legacy)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="ai-messages" id="ai-messages">
+                <div class="ai-message assistant">
+                    <div class="ai-message-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/>
+                            <circle cx="9" cy="14" r="1" fill="currentColor"/>
+                            <circle cx="15" cy="14" r="1" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <div class="ai-message-content">
+                        <p>Hi! I'm your Loop Automation AI assistant. I have full context of your project data. Ask me anything about:</p>
+                        <ul>
+                            <li>📊 Project status & progress</li>
+                            <li>👥 Team workload & availability</li>
+                            <li>⚠️ Risks & bottlenecks</li>
+                            <li>📝 Task suggestions & planning</li>
+                            <li>📋 Status report generation</li>
+                        </ul>
+                        <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.8rem;">Configure your OpenAI API key in settings (⚙️) to get started.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="ai-quick-actions" id="ai-quick-actions">
+                <button onclick="sendAIQuickAction('Give me a brief project status summary')">📊 Status Summary</button>
+                <button onclick="sendAIQuickAction('Who has the most availability on the team?')">👥 Team Availability</button>
+                <button onclick="sendAIQuickAction('What are the biggest risks or issues right now?')">⚠️ Risk Analysis</button>
+                <button onclick="sendAIQuickAction('Which tasks are behind schedule or overdue?')">🕐 Overdue Tasks</button>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="ai-input-container">
+                <textarea id="ai-input" placeholder="Ask about your project..." rows="1" onkeydown="handleAIInputKeydown(event)"></textarea>
+                <button class="ai-send-btn" onclick="sendAIMessage()" id="ai-send-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Team Member Modal -->
