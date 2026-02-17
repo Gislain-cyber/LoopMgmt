@@ -4244,14 +4244,9 @@ function toggleAIPanel() {
     panel.classList.toggle('open');
     if (btn) btn.classList.toggle('active');
     
-    // Load saved API key & model
+    // Load saved settings
     if (panel.classList.contains('open')) {
-        const savedKey = localStorage.getItem('loopAI_apiKey') || '';
-        const savedModel = localStorage.getItem('loopAI_model') || 'gpt-4o-mini';
-        const keyInput = document.getElementById('ai-api-key');
-        const modelSelect = document.getElementById('ai-model');
-        if (keyInput && savedKey) keyInput.value = savedKey;
-        if (modelSelect) modelSelect.value = savedModel;
+        loadAISettings();
     }
 }
 
@@ -4261,6 +4256,75 @@ function toggleAISettings() {
     settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
 }
 
+function loadAISettings() {
+    const savedProvider = localStorage.getItem('loopAI_provider') || 'gemini';
+    const savedKey = localStorage.getItem('loopAI_apiKey') || '';
+    const savedModel = localStorage.getItem('loopAI_model') || 'gemini-2.0-flash';
+    
+    const providerSelect = document.getElementById('ai-provider');
+    const keyInput = document.getElementById('ai-api-key');
+    const modelSelect = document.getElementById('ai-model');
+    
+    if (providerSelect) providerSelect.value = savedProvider;
+    if (keyInput && savedKey) keyInput.value = savedKey;
+    
+    // Update UI for the selected provider
+    updateProviderUI(savedProvider);
+    
+    if (modelSelect) modelSelect.value = savedModel;
+}
+
+function switchAIProvider() {
+    const providerSelect = document.getElementById('ai-provider');
+    if (!providerSelect) return;
+    
+    const provider = providerSelect.value;
+    localStorage.setItem('loopAI_provider', provider);
+    
+    // Clear old API key when switching providers
+    localStorage.removeItem('loopAI_apiKey');
+    const keyInput = document.getElementById('ai-api-key');
+    if (keyInput) keyInput.value = '';
+    
+    // Reset chat history since provider changed
+    aiChatHistory = [];
+    
+    updateProviderUI(provider);
+}
+
+function updateProviderUI(provider) {
+    const keyLabel = document.getElementById('ai-key-label');
+    const keyInput = document.getElementById('ai-api-key');
+    const keyHelp = document.getElementById('ai-key-help');
+    const modelSelect = document.getElementById('ai-model');
+    
+    if (provider === 'gemini') {
+        if (keyLabel) keyLabel.textContent = 'Google Gemini API Key';
+        if (keyInput) keyInput.placeholder = 'AIza...';
+        if (keyHelp) keyHelp.innerHTML = 'Free! Get your key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — 15 requests/min, no credit card needed.';
+        if (modelSelect) {
+            modelSelect.innerHTML = `
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Free & Fast)</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Free)</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Free, 2 RPM)</option>
+            `;
+        }
+        localStorage.setItem('loopAI_model', 'gemini-2.0-flash');
+    } else {
+        if (keyLabel) keyLabel.textContent = 'OpenAI API Key';
+        if (keyInput) keyInput.placeholder = 'sk-...';
+        if (keyHelp) keyHelp.innerHTML = 'Requires paid credits. <a href="https://platform.openai.com/api-keys" target="_blank">Get a key</a>';
+        if (modelSelect) {
+            modelSelect.innerHTML = `
+                <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cheap)</option>
+                <option value="gpt-4o">GPT-4o (Best Quality)</option>
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Legacy)</option>
+            `;
+        }
+        localStorage.setItem('loopAI_model', 'gpt-4o-mini');
+    }
+}
+
 function saveAIApiKey() {
     const keyInput = document.getElementById('ai-api-key');
     if (!keyInput) return;
@@ -4268,7 +4332,8 @@ function saveAIApiKey() {
     const key = keyInput.value.trim();
     if (key) {
         localStorage.setItem('loopAI_apiKey', key);
-        showSuccess('API key saved securely to your browser.');
+        const provider = localStorage.getItem('loopAI_provider') || 'gemini';
+        showSuccess(`${provider === 'gemini' ? 'Gemini' : 'OpenAI'} API key saved securely to your browser.`);
         document.getElementById('ai-settings').style.display = 'none';
     } else {
         showError('Please enter a valid API key.');
@@ -4391,8 +4456,10 @@ async function sendAIMessage(userMessage) {
     
     // Check API key
     const apiKey = localStorage.getItem('loopAI_apiKey');
+    const provider = localStorage.getItem('loopAI_provider') || 'gemini';
     if (!apiKey) {
-        appendAIMessage('error', 'Please configure your OpenAI API key first. Click the ⚙️ button above to add it.');
+        const providerName = provider === 'gemini' ? 'Google Gemini' : 'OpenAI';
+        appendAIMessage('error', `Please configure your ${providerName} API key first. Click the ⚙️ button above to add it.`);
         return;
     }
     
@@ -4432,13 +4499,10 @@ async function sendAIMessage(userMessage) {
     document.getElementById('ai-send-btn').disabled = true;
     
     try {
-        const model = localStorage.getItem('loopAI_model') || 'gpt-4o-mini';
+        const model = localStorage.getItem('loopAI_model') || (provider === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini');
         const projectContext = getProjectContext();
         
-        // Build conversation messages
-        const systemMessage = {
-            role: 'system',
-            content: `You are an AI project management assistant for "Loop Automation", an industrial automation project management tool. You have full access to the current project data provided below.
+        const systemPrompt = `You are an AI project management assistant for "Loop Automation", an industrial automation project management tool. You have full access to the current project data provided below.
 
 Your role is to:
 1. Answer questions about project status, team workload, and scheduling
@@ -4449,51 +4513,25 @@ Your role is to:
 
 Be concise, actionable, and specific. Use the actual data to support your answers. Format responses with markdown when helpful. Use bullet points for lists. Bold important numbers or names.
 
-${projectContext}`
-        };
-        
-        // Keep last 10 messages for context
+${projectContext}`;
+
+        // Keep last 20 messages for context
         aiChatHistory.push({ role: 'user', content: message });
         if (aiChatHistory.length > 20) {
             aiChatHistory = aiChatHistory.slice(-20);
         }
         
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: [systemMessage, ...aiChatHistory],
-                max_tokens: 1500,
-                temperature: 0.7
-            })
-        });
+        let assistantMessage;
+        
+        if (provider === 'gemini') {
+            assistantMessage = await callGeminiAPI(apiKey, model, systemPrompt, aiChatHistory);
+        } else {
+            assistantMessage = await callOpenAIAPI(apiKey, model, systemPrompt, aiChatHistory);
+        }
         
         // Remove typing indicator
         const typing = document.getElementById('ai-typing-indicator');
         if (typing) typing.remove();
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errorMsg = errorData.error?.message || `API Error: ${response.status}`;
-            
-            if (response.status === 401) {
-                appendAIMessage('error', 'Invalid API key. Please check your key in settings (⚙️).');
-            } else if (response.status === 429) {
-                appendAIMessage('error', 'Rate limit exceeded. Please wait a moment and try again.');
-            } else if (response.status === 402) {
-                appendAIMessage('error', 'API quota exceeded. Please check your OpenAI billing.');
-            } else {
-                appendAIMessage('error', errorMsg);
-            }
-            return;
-        }
-        
-        const data = await response.json();
-        const assistantMessage = data.choices[0]?.message?.content || 'No response received.';
         
         // Store in chat history
         aiChatHistory.push({ role: 'assistant', content: assistantMessage });
@@ -4507,11 +4545,105 @@ ${projectContext}`
         if (typing) typing.remove();
         
         console.error('AI Error:', error);
-        appendAIMessage('error', `Connection error: ${error.message}. Please check your internet connection.`);
+        appendAIMessage('error', error.message || 'Connection error. Please check your internet connection.');
     } finally {
         aiIsProcessing = false;
         document.getElementById('ai-send-btn').disabled = false;
     }
+}
+
+// ---- Google Gemini API ----
+async function callGeminiAPI(apiKey, model, systemPrompt, chatHistory) {
+    // Build Gemini conversation format
+    const contents = chatHistory.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+    }));
+    
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            },
+            contents: contents,
+            generationConfig: {
+                maxOutputTokens: 2048,
+                temperature: 0.7
+            }
+        })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || `API Error: ${response.status}`;
+        
+        if (response.status === 400 && errorMsg.includes('API key')) {
+            throw new Error('Invalid API key. Please check your Gemini API key in settings (⚙️). Get a free key at aistudio.google.com/apikey');
+        } else if (response.status === 403) {
+            throw new Error('API key not authorized. Make sure you have enabled the Gemini API. Get a free key at aistudio.google.com/apikey');
+        } else if (response.status === 429) {
+            throw new Error('Rate limit reached (15 requests/min on free tier). Please wait a moment and try again.');
+        } else {
+            throw new Error(errorMsg);
+        }
+    }
+    
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!text) {
+        const blockReason = data.candidates?.[0]?.finishReason;
+        if (blockReason === 'SAFETY') {
+            throw new Error('Response was blocked by safety filters. Please try rephrasing your question.');
+        }
+        throw new Error('No response received from Gemini.');
+    }
+    
+    return text;
+}
+
+// ---- OpenAI API ----
+async function callOpenAIAPI(apiKey, model, systemPrompt, chatHistory) {
+    const systemMessage = { role: 'system', content: systemPrompt };
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: [systemMessage, ...chatHistory],
+            max_tokens: 1500,
+            temperature: 0.7
+        })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || `API Error: ${response.status}`;
+        
+        if (response.status === 401) {
+            throw new Error('Invalid API key. Please check your OpenAI key in settings (⚙️).');
+        } else if (response.status === 429) {
+            const isQuota = errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('billing') || errorMsg.toLowerCase().includes('exceeded');
+            if (isQuota) {
+                throw new Error('Your OpenAI account has no credits. Add credits at platform.openai.com/settings/organization/billing ($5 minimum).');
+            } else {
+                throw new Error('Rate limit exceeded. Please wait and try again.');
+            }
+        } else if (response.status === 402) {
+            throw new Error('Your OpenAI account requires payment. Add credits at platform.openai.com/settings/organization/billing');
+        } else {
+            throw new Error(errorMsg);
+        }
+    }
+    
+    const data = await response.json();
+    return data.choices[0]?.message?.content || 'No response received.';
 }
 
 function appendAIMessage(type, content) {
@@ -4645,6 +4777,7 @@ window.zoomIn = zoomIn;
 window.zoomOut = zoomOut;
 window.toggleAIPanel = toggleAIPanel;
 window.toggleAISettings = toggleAISettings;
+window.switchAIProvider = switchAIProvider;
 window.saveAIApiKey = saveAIApiKey;
 window.saveAIModel = saveAIModel;
 window.sendAIMessage = sendAIMessage;

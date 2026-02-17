@@ -4073,6 +4073,35 @@ body {
     text-decoration: underline;
 }
 
+.ai-provider-select {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.ai-provider-select select {
+    padding: 8px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.ai-provider-select select:focus {
+    outline: none;
+    border-color: #7c3aed;
+}
+
+.ai-provider-select label,
+.ai-model-select label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
 .ai-model-select {
     display: flex;
     flex-direction: column;

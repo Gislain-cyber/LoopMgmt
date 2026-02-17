@@ -490,18 +490,27 @@
             <!-- API Key Settings (hidden by default) -->
             <div class="ai-settings" id="ai-settings" style="display: none;">
                 <div class="ai-settings-content">
-                    <label for="ai-api-key">OpenAI API Key</label>
+                    <div class="ai-provider-select">
+                        <label for="ai-provider">AI Provider</label>
+                        <select id="ai-provider" onchange="switchAIProvider()">
+                            <option value="gemini">Google Gemini (Free ✨)</option>
+                            <option value="openai">OpenAI (Paid)</option>
+                        </select>
+                    </div>
+                    <label for="ai-api-key" id="ai-key-label">Google Gemini API Key</label>
                     <div class="ai-key-input-row">
-                        <input type="password" id="ai-api-key" placeholder="sk-..." value="">
+                        <input type="password" id="ai-api-key" placeholder="AIza..." value="">
                         <button class="ai-save-key-btn" onclick="saveAIApiKey()">Save</button>
                     </div>
-                    <p class="ai-settings-note">Your key is stored locally and never sent to any server except OpenAI. <a href="https://platform.openai.com/api-keys" target="_blank">Get a key</a></p>
+                    <p class="ai-settings-note" id="ai-key-help">
+                        Free! Get your key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — 15 requests/min, no credit card needed.
+                    </p>
                     <div class="ai-model-select">
                         <label for="ai-model">Model</label>
                         <select id="ai-model" onchange="saveAIModel()">
-                            <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cheap)</option>
-                            <option value="gpt-4o">GPT-4o (Best Quality)</option>
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Legacy)</option>
+                            <option value="gemini-2.0-flash">Gemini 2.0 Flash (Free & Fast)</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Free)</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Free, 2 RPM)</option>
                         </select>
                     </div>
                 </div>
@@ -526,7 +535,7 @@
                             <li>📝 Task suggestions & planning</li>
                             <li>📋 Status report generation</li>
                         </ul>
-                        <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.8rem;">Configure your OpenAI API key in settings (⚙️) to get started.</p>
+                        <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.8rem;">Configure your free Google Gemini API key in settings (⚙️) to get started.</p>
                     </div>
                 </div>
             </div>
