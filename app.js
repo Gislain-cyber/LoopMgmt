@@ -4374,87 +4374,47 @@ function getProjectContext() {
     
     const today = new Date().toISOString().split('T')[0];
     
-    // Build station summaries
-    const stationSummaries = stations.map(s => {
-        const stationTasks = s.tasks || [];
-        const stationComplete = stationTasks.filter(t => t.status === 'Complete').length;
-        const stationProgress = stationTasks.length > 0 ? Math.round((stationComplete / stationTasks.length) * 100) : 0;
+    // Build compact station summaries (one line per task to save tokens)
+    const stationLines = stations.map(s => {
+        const tasks = s.tasks || [];
+        const done = tasks.filter(t => t.status === 'Complete').length;
+        const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
         
-        return {
-            name: s.name,
-            description: s.description || '',
-            startDate: s.startDate,
-            endDate: s.endDate,
-            priority: s.priority,
-            taskCount: stationTasks.length,
-            completedCount: stationComplete,
-            progress: stationProgress + '%',
-            tasks: stationTasks.map(t => ({
-                name: t.name,
-                assignedTo: t.assignedTo || 'Unassigned',
-                startDate: t.startDate,
-                endDate: t.endDate,
-                estHours: t.estHours,
-                actualHours: t.actualHours,
-                status: t.status,
-                priority: t.priority,
-                notes: t.notes || ''
-            }))
-        };
-    });
+        let lines = `\n## ${s.name} [${s.startDate} to ${s.endDate}] Priority:${s.priority} Progress:${pct}% (${done}/${tasks.length})`;
+        tasks.forEach(t => {
+            lines += `\n  - ${t.name} | ${t.assignedTo || 'Unassigned'} | ${t.status} | ${t.startDate}-${t.endDate} | Est:${t.estHours}h Act:${t.actualHours}h | P:${t.priority}${t.notes ? ' | '+t.notes : ''}`;
+        });
+        return lines;
+    }).join('');
     
-    // Build team summaries
-    const teamSummaries = teamMembers.map(m => {
+    // Build compact team summaries
+    const teamLines = teamMembers.map(m => {
         const assignedHrs = getAssignedHours(m.name);
         const memberTasks = allTasks.filter(t => t.assignedTo === m.name);
         const completedCount = memberTasks.filter(t => t.status === 'Complete').length;
-        
-        return {
-            name: m.name,
-            role: m.role,
-            targetHours: m.targetHours,
-            assignedHours: assignedHrs,
-            availableHours: m.targetHours - assignedHrs,
-            loadPercent: Math.round((assignedHrs / m.targetHours) * 100),
-            totalTasks: memberTasks.length,
-            completedTasks: completedCount,
-            taskNames: memberTasks.map(t => t.name)
-        };
-    });
+        const load = Math.round((assignedHrs / m.targetHours) * 100);
+        return `  - ${m.name} (${m.role}) | Target:${m.targetHours}h Assigned:${assignedHrs}h Avail:${m.targetHours - assignedHrs}h Load:${load}% | Tasks:${memberTasks.length} Done:${completedCount}`;
+    }).join('\n');
     
-    // Identify overdue tasks
+    // Identify overdue tasks (compact)
     const overdueTasks = allTasks.filter(t => {
         if (t.status === 'Complete') return false;
         return t.endDate && t.endDate < today;
-    }).map(t => ({
-        name: t.name,
-        assignedTo: t.assignedTo,
-        endDate: t.endDate,
-        status: t.status
-    }));
+    });
+    const overdueLines = overdueTasks.length > 0 
+        ? overdueTasks.map(t => `  - ${t.name} (${t.assignedTo || 'Unassigned'}) due:${t.endDate} status:${t.status}`).join('\n')
+        : 'None';
     
-    return `
-PROJECT CONTEXT (Loop Automation - Project Management)
-Today's Date: ${today}
-========================================================
+    return `PROJECT: Loop Automation | Date: ${today}
+OVERVIEW: ${stations.length} stations, ${totalTasks} tasks | Done:${completedTasks} InProg:${inProgressTasks} NotStarted:${notStartedTasks} Delayed:${delayedTasks} OnHold:${onHoldTasks} | EstHrs:${totalEstHours} ActHrs:${totalActualHours} Progress:${overallProgress}%
 
-OVERVIEW:
-- Total Stations: ${stations.length}
-- Total Tasks: ${totalTasks}
-- Completed: ${completedTasks} | In Progress: ${inProgressTasks} | Not Started: ${notStartedTasks} | Delayed: ${delayedTasks} | On Hold: ${onHoldTasks}
-- Total Estimated Hours: ${totalEstHours}
-- Total Actual Hours: ${totalActualHours}
-- Overall Progress: ${overallProgress}%
+STATIONS:${stationLines}
 
-STATIONS:
-${JSON.stringify(stationSummaries, null, 2)}
+TEAM:
+${teamLines}
 
-TEAM MEMBERS:
-${JSON.stringify(teamSummaries, null, 2)}
-
-OVERDUE TASKS (end date before today):
-${overdueTasks.length > 0 ? JSON.stringify(overdueTasks, null, 2) : 'None'}
-`;
+OVERDUE:
+${overdueLines}`;
 }
 
 async function sendAIMessage(userMessage) {
@@ -4516,16 +4476,7 @@ async function sendAIMessage(userMessage) {
         const model = localStorage.getItem('loopAI_model') || defaultModels[provider] || 'llama-3.3-70b-versatile';
         const projectContext = getProjectContext();
         
-        const systemPrompt = `You are an AI project management assistant for "Loop Automation", an industrial automation project management tool. You have full access to the current project data provided below.
-
-Your role is to:
-1. Answer questions about project status, team workload, and scheduling
-2. Identify risks, bottlenecks, and issues
-3. Suggest task assignments and optimizations
-4. Generate status reports and summaries
-5. Help with task planning and breakdown
-
-Be concise, actionable, and specific. Use the actual data to support your answers. Format responses with markdown when helpful. Use bullet points for lists. Bold important numbers or names.
+        const systemPrompt = `You are a project management AI for "Loop Automation" (industrial automation). You have the project data below. Be concise and specific. Use markdown, bullet points, bold key info. Answer about status, workload, risks, assignments, reports, and planning.
 
 ${projectContext}`;
 
