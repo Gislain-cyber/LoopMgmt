@@ -4805,18 +4805,114 @@ function parseTimesheetFile(file) {
             // Process each sheet
             workbook.SheetNames.forEach(sheetName => {
                 const sheet = workbook.Sheets[sheetName];
-                const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
                 
-                if (jsonRows.length === 0) return;
+                // Read ALL rows as raw arrays (no header assumption)
+                const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
                 
-                // Try to detect the person's name from file name or sheet name
-                let personName = guessPersonName(file.name, sheetName, jsonRows);
+                if (allRows.length === 0) return;
                 
-                // Normalize the rows — try to find date, hours, and description columns
-                const normalizedRows = normalizeTimesheetRows(jsonRows);
+                // 1) Extract person name from header area (look for "Name" label)
+                let personName = extractPersonFromHeader(allRows, file.name, sheetName);
+                
+                // 2) Find the data table header row (look for row containing "Phase", "Date", "Hours")
+                let headerRowIdx = -1;
+                for (let i = 0; i < Math.min(allRows.length, 30); i++) {
+                    const rowStr = allRows[i].map(c => String(c).toLowerCase().trim());
+                    // Look for a row that has at least "date" and "hours" as column headers
+                    const hasDate = rowStr.some(c => c === 'date');
+                    const hasHours = rowStr.some(c => c === 'hours');
+                    if (hasDate && hasHours) {
+                        headerRowIdx = i;
+                        break;
+                    }
+                }
+                
+                if (headerRowIdx === -1) {
+                    // Fallback: try standard sheet_to_json parsing
+                    const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                    if (jsonRows.length > 0) {
+                        const normalizedRows = normalizeTimesheetRows(jsonRows);
+                        if (normalizedRows.length > 0) {
+                            uploadedTimesheets.push({
+                                fileName: file.name,
+                                sheetName: sheetName,
+                                personName: personName,
+                                rows: normalizedRows,
+                                rawHeaders: Object.keys(jsonRows[0])
+                            });
+                            renderUploadedTimesheets();
+                            return;
+                        }
+                    }
+                    showError(`Could not find data table in "${file.name}" (sheet: ${sheetName}). Expected columns: Phase, Date, Hours, Description.`);
+                    return;
+                }
+                
+                // 3) Build column map from the header row
+                const headerCells = allRows[headerRowIdx].map(c => String(c).trim());
+                const colMap = {};
+                headerCells.forEach((h, idx) => {
+                    const hl = h.toLowerCase();
+                    if (hl === 'phase') colMap.phase = idx;
+                    else if (hl === 'date') colMap.date = idx;
+                    else if (hl === 'start time') colMap.startTime = idx;
+                    else if (hl === 'end time') colMap.endTime = idx;
+                    else if (hl === 'hours') colMap.hours = idx;
+                    else if (hl === 'station') colMap.station = idx;
+                    else if (hl === 'workset') colMap.workset = idx;
+                    else if (hl === 'category') colMap.category = idx;
+                    else if (hl === 'description') colMap.description = idx;
+                    // Also handle alternative names
+                    else if (/hour|hrs|duration/i.test(hl) && colMap.hours === undefined) colMap.hours = idx;
+                    else if (/desc|task|activity|detail|note|summary/i.test(hl) && colMap.description === undefined) colMap.description = idx;
+                    else if (/categor|type/i.test(hl) && colMap.category === undefined) colMap.category = idx;
+                });
+                
+                // 4) Parse data rows (everything after header row)
+                const normalizedRows = [];
+                for (let i = headerRowIdx + 1; i < allRows.length; i++) {
+                    const row = allRows[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    // Get hours
+                    let hours = 0;
+                    if (colMap.hours !== undefined) {
+                        hours = parseFloat(row[colMap.hours]) || 0;
+                    }
+                    
+                    // Get description
+                    let description = '';
+                    if (colMap.description !== undefined) {
+                        description = String(row[colMap.description] || '').trim();
+                    }
+                    
+                    // Skip empty/summary rows
+                    if (hours === 0 && !description) continue;
+                    // Skip "Total Hours" rows
+                    const firstCell = String(row[0] || '').toLowerCase().trim();
+                    if (firstCell.includes('total')) continue;
+                    
+                    // Get date
+                    let date = '';
+                    if (colMap.date !== undefined) {
+                        date = parseTimesheetDate(row[colMap.date]);
+                    }
+                    
+                    // Get other fields
+                    let phase = colMap.phase !== undefined ? String(row[colMap.phase] || '').trim() : '';
+                    let station = colMap.station !== undefined ? String(row[colMap.station] || '').trim() : '';
+                    let workset = colMap.workset !== undefined ? String(row[colMap.workset] || '').trim() : '';
+                    let category = colMap.category !== undefined ? String(row[colMap.category] || '').trim() : '';
+                    let startTime = colMap.startTime !== undefined ? String(row[colMap.startTime] || '').trim() : '';
+                    let endTime = colMap.endTime !== undefined ? String(row[colMap.endTime] || '').trim() : '';
+                    
+                    normalizedRows.push({
+                        date, hours, description, phase, station, workset, category, startTime, endTime
+                    });
+                }
                 
                 if (normalizedRows.length === 0) {
-                    showError(`Could not parse timesheet data from "${file.name}" (sheet: ${sheetName}). Make sure it has columns for Date, Hours, and Description/Task.`);
+                    showError(`No data rows found in "${file.name}" (sheet: ${sheetName}).`);
                     return;
                 }
                 
@@ -4826,10 +4922,11 @@ function parseTimesheetFile(file) {
                     sheetName: sheetName,
                     personName: personName,
                     rows: normalizedRows,
-                    rawHeaders: Object.keys(jsonRows[0])
+                    rawHeaders: headerCells.filter(h => h)
                 });
                 
                 renderUploadedTimesheets();
+                showSuccess(`Loaded ${normalizedRows.length} entries for ${personName} from "${file.name}"`);
             });
             
         } catch (err) {
@@ -4840,16 +4937,42 @@ function parseTimesheetFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
-function guessPersonName(fileName, sheetName, rows) {
-    // Try matching file name against team members
-    const cleanFile = fileName.replace(/\.(xlsx|xls|csv)$/i, '').replace(/[_\-]/g, ' ').trim();
+function extractPersonFromHeader(allRows, fileName, sheetName) {
+    // Look for "Name" label in the first ~15 rows of the sheet
+    for (let i = 0; i < Math.min(allRows.length, 15); i++) {
+        const row = allRows[i];
+        for (let j = 0; j < row.length - 1; j++) {
+            const cell = String(row[j] || '').trim().toLowerCase();
+            if (cell === 'name' || cell === 'student name' || cell === 'employee name') {
+                const nameVal = String(row[j + 1] || '').trim();
+                if (nameVal) {
+                    // Try to match against team members
+                    for (const member of teamMembers) {
+                        const memberLower = member.name.toLowerCase();
+                        const valLower = nameVal.toLowerCase();
+                        if (memberLower === valLower || memberLower.includes(valLower) || valLower.includes(memberLower)) {
+                            return member.name;
+                        }
+                        // Try last name / first name match
+                        const memberParts = member.name.toLowerCase().split(' ');
+                        const valParts = valLower.split(' ');
+                        if (memberParts.some(p => valParts.includes(p) && p.length > 2)) {
+                            return member.name;
+                        }
+                    }
+                    return nameVal; // Return raw name if no team member match
+                }
+            }
+        }
+    }
     
+    // Fallback: try file name or sheet name against team members
+    const cleanFile = fileName.replace(/\.(xlsx|xls|csv)$/i, '').replace(/[_\-]/g, ' ').trim();
     for (const member of teamMembers) {
         const nameLower = member.name.toLowerCase();
         const fileLower = cleanFile.toLowerCase();
         const sheetLower = sheetName.toLowerCase();
         
-        // Check if team member's name or last name appears in file name or sheet name
         if (fileLower.includes(nameLower) || sheetLower.includes(nameLower)) return member.name;
         
         const parts = member.name.split(' ');
@@ -4860,64 +4983,75 @@ function guessPersonName(fileName, sheetName, rows) {
         if (sheetLower.includes(lastName) || sheetLower.includes(firstName)) return member.name;
     }
     
-    // Try to find a name column in the data
-    if (rows.length > 0) {
-        const headers = Object.keys(rows[0]);
-        const nameCol = headers.find(h => /^(name|person|employee|member|worker|staff)/i.test(h));
-        if (nameCol && rows[0][nameCol]) {
-            const val = String(rows[0][nameCol]).trim();
-            // Check if this matches a team member
-            for (const member of teamMembers) {
-                if (member.name.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(member.name.toLowerCase())) {
-                    return member.name;
-                }
-            }
-            return val; // Use the raw value
-        }
-    }
-    
     return cleanFile; // Fall back to file name
 }
 
+function parseTimesheetDate(raw) {
+    if (!raw) return '';
+    
+    if (raw instanceof Date) {
+        return raw.toISOString().split('T')[0];
+    }
+    
+    if (typeof raw === 'number') {
+        // Excel serial date
+        const d = XLSX.SSF.parse_date_code(raw);
+        if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+        return '';
+    }
+    
+    const str = String(raw).trim();
+    
+    // Handle "FRIDAY, January 30, 2026" or "SUNDAY, February 1, 2026" format
+    const longMatch = str.match(/(?:\w+,\s*)?(\w+)\s+(\d{1,2})\s*,?\s*(\d{4})/i);
+    if (longMatch) {
+        const months = { january:1, february:2, march:3, april:4, may:5, june:6, july:7, august:8, september:9, october:10, november:11, december:12 };
+        const month = months[longMatch[1].toLowerCase()];
+        if (month) {
+            return `${longMatch[3]}-${String(month).padStart(2,'0')}-${String(longMatch[2]).padStart(2,'0')}`;
+        }
+    }
+    
+    // Handle "MM/DD/YYYY" or "DD/MM/YYYY" or "YYYY-MM-DD"
+    const slashMatch = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (slashMatch) {
+        // Assume MM/DD/YYYY
+        return `${slashMatch[3]}-${String(slashMatch[1]).padStart(2,'0')}-${String(slashMatch[2]).padStart(2,'0')}`;
+    }
+    
+    const isoMatch = str.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (isoMatch) {
+        return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2,'0')}-${String(isoMatch[3]).padStart(2,'0')}`;
+    }
+    
+    return str;
+}
+
 function normalizeTimesheetRows(jsonRows) {
+    // Fallback parser for simpler formats
     if (jsonRows.length === 0) return [];
     
     const headers = Object.keys(jsonRows[0]);
     
-    // Auto-detect columns by name matching
-    const dateCol = headers.find(h => /date|day|when|time/i.test(h));
-    const hoursCol = headers.find(h => /hour|hrs|duration|time\s*spent|worked/i.test(h));
-    const descCol = headers.find(h => /desc|task|activity|work|detail|note|comment|what|summary/i.test(h));
-    const categoryCol = headers.find(h => /category|type|station|project|phase|area/i.test(h));
+    const dateCol = headers.find(h => /^date$/i.test(h)) || headers.find(h => /date|day|when/i.test(h));
+    const hoursCol = headers.find(h => /^hours$/i.test(h)) || headers.find(h => /hour|hrs|duration/i.test(h));
+    const descCol = headers.find(h => /^description$/i.test(h)) || headers.find(h => /desc|task|activity|detail|note/i.test(h));
+    const categoryCol = headers.find(h => /^category$/i.test(h)) || headers.find(h => /categor|type/i.test(h));
+    const stationCol = headers.find(h => /^station$/i.test(h));
+    const worksetCol = headers.find(h => /^workset$/i.test(h));
+    const phaseCol = headers.find(h => /^phase$/i.test(h));
     
     return jsonRows.map(row => {
-        let date = '';
-        if (dateCol) {
-            const raw = row[dateCol];
-            if (raw instanceof Date) {
-                date = raw.toISOString().split('T')[0];
-            } else if (typeof raw === 'number') {
-                // Excel serial date
-                const d = XLSX.SSF.parse_date_code(raw);
-                if (d) date = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
-            } else {
-                date = String(raw).trim();
-            }
-        }
+        let date = dateCol ? parseTimesheetDate(row[dateCol]) : '';
+        let hours = hoursCol ? (parseFloat(row[hoursCol]) || 0) : 0;
+        let description = descCol ? String(row[descCol] || '').trim() : '';
+        let category = categoryCol ? String(row[categoryCol] || '').trim() : '';
+        let station = stationCol ? String(row[stationCol] || '').trim() : '';
+        let workset = worksetCol ? String(row[worksetCol] || '').trim() : '';
+        let phase = phaseCol ? String(row[phaseCol] || '').trim() : '';
         
-        let hours = 0;
-        if (hoursCol) {
-            hours = parseFloat(row[hoursCol]) || 0;
-        }
-        
-        let description = '';
-        if (descCol) description = String(row[descCol] || '').trim();
-        
-        let category = '';
-        if (categoryCol) category = String(row[categoryCol] || '').trim();
-        
-        return { date, hours, description, category };
-    }).filter(r => r.hours > 0 || r.description); // Filter out empty rows
+        return { date, hours, description, phase, station, workset, category, startTime: '', endTime: '' };
+    }).filter(r => r.hours > 0 || r.description);
 }
 
 function renderUploadedTimesheets() {
@@ -5163,7 +5297,8 @@ function buildTimesheetComparison() {
         const totalHours = ts.rows.reduce((s, r) => s + r.hours, 0);
         timesheetSummary += `${ts.personName} (Total: ${totalHours}h, File: ${ts.fileName}):\n`;
         ts.rows.forEach(r => {
-            timesheetSummary += `  - ${r.date} | ${r.hours}h | ${r.description}${r.category ? ' [' + r.category + ']' : ''}\n`;
+            const extras = [r.station, r.workset, r.category].filter(Boolean).join(', ');
+            timesheetSummary += `  - ${r.date} | ${r.hours}h | ${r.description}${extras ? ' [' + extras + ']' : ''}${r.phase ? ' ('+r.phase+')' : ''}\n`;
         });
     });
     
@@ -5242,18 +5377,18 @@ function generateExcelReport(analysis, comparisonData) {
     XLSX.utils.book_append_sheet(wb, ganttSheet, 'Gantt Tasks');
     
     // Sheet 4: Timesheet Data (all reported work)
-    const tsHeaders = ['Person', 'Source File', 'Date', 'Hours', 'Description', 'Category'];
+    const tsHeaders = ['Person', 'Phase', 'Date', 'Start Time', 'End Time', 'Hours', 'Station', 'Workset', 'Category', 'Description'];
     const tsRows = [tsHeaders];
     
     uploadedTimesheets.forEach(ts => {
         ts.rows.forEach(r => {
-            tsRows.push([ts.personName, ts.fileName, r.date, r.hours, r.description, r.category]);
+            tsRows.push([ts.personName, r.phase || '', r.date, r.startTime || '', r.endTime || '', r.hours, r.station || '', r.workset || '', r.category || '', r.description]);
         });
     });
     
     const tsSheet = XLSX.utils.aoa_to_sheet(tsRows);
     tsSheet['!cols'] = [
-        { wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 8 }, { wch: 50 }, { wch: 20 }
+        { wch: 25 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 50 }
     ];
     XLSX.utils.book_append_sheet(wb, tsSheet, 'Timesheet Data');
     
@@ -5281,15 +5416,15 @@ function generateBasicExcelReport(comparisonData) {
     XLSX.utils.book_append_sheet(wb, ganttSheet, 'Gantt Tasks');
     
     // Timesheet Data sheet
-    const tsHeaders = ['Person', 'Source File', 'Date', 'Hours', 'Description', 'Category'];
+    const tsHeaders = ['Person', 'Phase', 'Date', 'Start Time', 'End Time', 'Hours', 'Station', 'Workset', 'Category', 'Description'];
     const tsRows = [tsHeaders];
     uploadedTimesheets.forEach(ts => {
         ts.rows.forEach(r => {
-            tsRows.push([ts.personName, ts.fileName, r.date, r.hours, r.description, r.category]);
+            tsRows.push([ts.personName, r.phase || '', r.date, r.startTime || '', r.endTime || '', r.hours, r.station || '', r.workset || '', r.category || '', r.description]);
         });
     });
     const tsSheet = XLSX.utils.aoa_to_sheet(tsRows);
-    tsSheet['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 8 }, { wch: 50 }, { wch: 20 }];
+    tsSheet['!cols'] = [{ wch: 25 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 50 }];
     XLSX.utils.book_append_sheet(wb, tsSheet, 'Timesheet Data');
     
     const fileName = `Timesheet_Comparison_${new Date().toISOString().split('T')[0]}.xlsx`;
