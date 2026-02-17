@@ -4304,9 +4304,9 @@ function updateProviderUI(provider) {
         if (keyHelp) keyHelp.innerHTML = 'Free! Get your key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — 15 requests/min, no credit card needed.';
         if (modelSelect) {
             modelSelect.innerHTML = `
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Free & Fast)</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Free)</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Free, 2 RPM)</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Recommended)</option>
+                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (Fastest)</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Stable)</option>
             `;
         }
         localStorage.setItem('loopAI_model', 'gemini-2.0-flash');
@@ -4578,13 +4578,22 @@ async function callGeminiAPI(apiKey, model, systemPrompt, chatHistory) {
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMsg = errorData.error?.message || `API Error: ${response.status}`;
+        const errorStatus = errorData.error?.status || '';
         
-        if (response.status === 400 && errorMsg.includes('API key')) {
-            throw new Error('Invalid API key. Please check your Gemini API key in settings (⚙️). Get a free key at aistudio.google.com/apikey');
+        console.error('Gemini API error:', response.status, errorMsg, errorStatus);
+        
+        if (response.status === 400) {
+            if (errorMsg.includes('API key')) {
+                throw new Error('Invalid API key. Please check your Gemini API key in settings (⚙️). Get a free key at aistudio.google.com/apikey');
+            }
+            throw new Error('Bad request: ' + errorMsg);
         } else if (response.status === 403) {
-            throw new Error('API key not authorized. Make sure you have enabled the Gemini API. Get a free key at aistudio.google.com/apikey');
+            throw new Error('API key not authorized. Make sure the Generative Language API is enabled in your Google Cloud project. Get a new free key at aistudio.google.com/apikey');
         } else if (response.status === 429) {
-            throw new Error('Rate limit reached (15 requests/min on free tier). Please wait a moment and try again.');
+            if (errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('resource') || errorMsg.toLowerCase().includes('exceeded')) {
+                throw new Error('Free quota exceeded for today. The Gemini free tier resets daily. You can try again tomorrow, or try switching to a different model (e.g. Gemini 1.5 Flash) in settings (⚙️). Details: ' + errorMsg);
+            }
+            throw new Error('Rate limit reached. Please wait a minute and try again. If this persists, try Gemini 1.5 Flash model. Details: ' + errorMsg);
         } else {
             throw new Error(errorMsg);
         }
