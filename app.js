@@ -4257,9 +4257,9 @@ function toggleAISettings() {
 }
 
 function loadAISettings() {
-    const savedProvider = localStorage.getItem('loopAI_provider') || 'gemini';
+    const savedProvider = localStorage.getItem('loopAI_provider') || 'groq';
     const savedKey = localStorage.getItem('loopAI_apiKey') || '';
-    const savedModel = localStorage.getItem('loopAI_model') || 'gemini-2.0-flash';
+    const savedModel = localStorage.getItem('loopAI_model') || 'llama-3.3-70b-versatile';
     
     const providerSelect = document.getElementById('ai-provider');
     const keyInput = document.getElementById('ai-api-key');
@@ -4298,7 +4298,19 @@ function updateProviderUI(provider) {
     const keyHelp = document.getElementById('ai-key-help');
     const modelSelect = document.getElementById('ai-model');
     
-    if (provider === 'gemini') {
+    if (provider === 'groq') {
+        if (keyLabel) keyLabel.textContent = 'Groq API Key';
+        if (keyInput) keyInput.placeholder = 'gsk_...';
+        if (keyHelp) keyHelp.innerHTML = 'Free & fast! Get your key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> — 30 requests/min, no credit card needed.';
+        if (modelSelect) {
+            modelSelect.innerHTML = `
+                <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Best Quality)</option>
+                <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fastest)</option>
+                <option value="mixtral-8x7b-32768">Mixtral 8x7B (Balanced)</option>
+            `;
+        }
+        localStorage.setItem('loopAI_model', 'llama-3.3-70b-versatile');
+    } else if (provider === 'gemini') {
         if (keyLabel) keyLabel.textContent = 'Google Gemini API Key';
         if (keyInput) keyInput.placeholder = 'AIza...';
         if (keyHelp) keyHelp.innerHTML = 'Free! Get your key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — 15 requests/min, no credit card needed.';
@@ -4332,8 +4344,9 @@ function saveAIApiKey() {
     const key = keyInput.value.trim();
     if (key) {
         localStorage.setItem('loopAI_apiKey', key);
-        const provider = localStorage.getItem('loopAI_provider') || 'gemini';
-        showSuccess(`${provider === 'gemini' ? 'Gemini' : 'OpenAI'} API key saved securely to your browser.`);
+        const provider = localStorage.getItem('loopAI_provider') || 'groq';
+        const providerNames = { groq: 'Groq', gemini: 'Gemini', openai: 'OpenAI' };
+        showSuccess(`${providerNames[provider] || provider} API key saved securely to your browser.`);
         document.getElementById('ai-settings').style.display = 'none';
     } else {
         showError('Please enter a valid API key.');
@@ -4456,10 +4469,10 @@ async function sendAIMessage(userMessage) {
     
     // Check API key
     const apiKey = localStorage.getItem('loopAI_apiKey');
-    const provider = localStorage.getItem('loopAI_provider') || 'gemini';
+    const provider = localStorage.getItem('loopAI_provider') || 'groq';
     if (!apiKey) {
-        const providerName = provider === 'gemini' ? 'Google Gemini' : 'OpenAI';
-        appendAIMessage('error', `Please configure your ${providerName} API key first. Click the ⚙️ button above to add it.`);
+        const providerNames = { groq: 'Groq', gemini: 'Google Gemini', openai: 'OpenAI' };
+        appendAIMessage('error', `Please configure your ${providerNames[provider] || provider} API key first. Click the ⚙️ button above to add it.`);
         return;
     }
     
@@ -4499,7 +4512,8 @@ async function sendAIMessage(userMessage) {
     document.getElementById('ai-send-btn').disabled = true;
     
     try {
-        const model = localStorage.getItem('loopAI_model') || (provider === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini');
+        const defaultModels = { groq: 'llama-3.3-70b-versatile', gemini: 'gemini-2.0-flash', openai: 'gpt-4o-mini' };
+        const model = localStorage.getItem('loopAI_model') || defaultModels[provider] || 'llama-3.3-70b-versatile';
         const projectContext = getProjectContext();
         
         const systemPrompt = `You are an AI project management assistant for "Loop Automation", an industrial automation project management tool. You have full access to the current project data provided below.
@@ -4523,7 +4537,9 @@ ${projectContext}`;
         
         let assistantMessage;
         
-        if (provider === 'gemini') {
+        if (provider === 'groq') {
+            assistantMessage = await callGroqAPI(apiKey, model, systemPrompt, aiChatHistory);
+        } else if (provider === 'gemini') {
             assistantMessage = await callGeminiAPI(apiKey, model, systemPrompt, aiChatHistory);
         } else {
             assistantMessage = await callOpenAIAPI(apiKey, model, systemPrompt, aiChatHistory);
@@ -4550,6 +4566,45 @@ ${projectContext}`;
         aiIsProcessing = false;
         document.getElementById('ai-send-btn').disabled = false;
     }
+}
+
+// ---- Groq API (OpenAI-compatible, free) ----
+async function callGroqAPI(apiKey, model, systemPrompt, chatHistory) {
+    const systemMessage = { role: 'system', content: systemPrompt };
+    
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: [systemMessage, ...chatHistory],
+            max_tokens: 2048,
+            temperature: 0.7
+        })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || `API Error: ${response.status}`;
+        
+        console.error('Groq API error:', response.status, errorMsg);
+        
+        if (response.status === 401) {
+            throw new Error('Invalid API key. Please check your Groq key in settings (⚙️). Get a free key at console.groq.com/keys');
+        } else if (response.status === 429) {
+            throw new Error('Rate limit reached. Please wait a moment and try again (free tier: 30 req/min).');
+        } else if (response.status === 413) {
+            throw new Error('Message too long. Try asking a shorter question or switch to a model with a larger context window.');
+        } else {
+            throw new Error(errorMsg);
+        }
+    }
+    
+    const data = await response.json();
+    return data.choices[0]?.message?.content || 'No response received.';
 }
 
 // ---- Google Gemini API ----

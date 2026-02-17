@@ -493,24 +493,25 @@
                     <div class="ai-provider-select">
                         <label for="ai-provider">AI Provider</label>
                         <select id="ai-provider" onchange="switchAIProvider()">
-                            <option value="gemini">Google Gemini (Free ✨)</option>
+                            <option value="groq">Groq (Free & Fast ✨)</option>
+                            <option value="gemini">Google Gemini (Free)</option>
                             <option value="openai">OpenAI (Paid)</option>
                         </select>
                     </div>
-                    <label for="ai-api-key" id="ai-key-label">Google Gemini API Key</label>
+                    <label for="ai-api-key" id="ai-key-label">Groq API Key</label>
                     <div class="ai-key-input-row">
-                        <input type="password" id="ai-api-key" placeholder="AIza..." value="">
+                        <input type="password" id="ai-api-key" placeholder="gsk_..." value="">
                         <button class="ai-save-key-btn" onclick="saveAIApiKey()">Save</button>
                     </div>
                     <p class="ai-settings-note" id="ai-key-help">
-                        Free! Get your key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — 15 requests/min, no credit card needed.
+                        Free & fast! Get your key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> — 30 requests/min, no credit card needed.
                     </p>
                     <div class="ai-model-select">
                         <label for="ai-model">Model</label>
                         <select id="ai-model" onchange="saveAIModel()">
-                            <option value="gemini-2.0-flash">Gemini 2.0 Flash (Recommended)</option>
-                            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (Fastest)</option>
-                            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Stable)</option>
+                            <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Best Quality)</option>
+                            <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fastest)</option>
+                            <option value="mixtral-8x7b-32768">Mixtral 8x7B (Balanced)</option>
                         </select>
                     </div>
                 </div>
@@ -535,7 +536,7 @@
                             <li>📝 Task suggestions & planning</li>
                             <li>📋 Status report generation</li>
                         </ul>
-                        <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.8rem;">Configure your free Google Gemini API key in settings (⚙️) to get started.</p>
+                        <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.8rem;">Configure your free Groq API key in settings (⚙️) to get started.</p>
                     </div>
                 </div>
             </div>
