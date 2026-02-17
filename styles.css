@@ -4124,6 +4124,159 @@ body {
     border-color: #7c3aed;
 }
 
+/* Timesheet Upload */
+.ai-timesheet-upload {
+    border-bottom: 1px solid var(--border-primary);
+    flex-shrink: 0;
+}
+
+.ai-timesheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.ai-timesheet-header:hover {
+    background: var(--bg-secondary);
+}
+
+.ai-timesheet-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    transition: transform 0.2s;
+}
+
+.ai-timesheet-upload.expanded .ai-timesheet-toggle {
+    transform: rotate(180deg);
+}
+
+.ai-timesheet-body {
+    padding: 0 14px 14px;
+}
+
+.ai-timesheet-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.ai-timesheet-drop {
+    border: 2px dashed var(--border-primary);
+    border-radius: 8px;
+    padding: 20px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-timesheet-drop:hover,
+.ai-timesheet-drop.drag-over {
+    border-color: #7c3aed;
+    background: rgba(124, 58, 237, 0.05);
+}
+
+.ai-timesheet-drop span {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.ai-timesheet-formats {
+    font-size: 0.7rem !important;
+    opacity: 0.6;
+}
+
+.ai-timesheet-files {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.ai-timesheet-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    font-size: 0.78rem;
+}
+
+.ai-timesheet-file-icon {
+    color: #22c55e;
+    flex-shrink: 0;
+}
+
+.ai-timesheet-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+.ai-timesheet-file-rows {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.ai-timesheet-file-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    font-size: 1rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.ai-timesheet-file-remove:hover {
+    color: #ef4444;
+}
+
+.ai-timesheet-analyze-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ai-timesheet-analyze-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.ai-timesheet-analyze-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
 /* Chat Messages */
 .ai-messages {
     flex: 1;

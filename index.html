@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- PDF Export Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Excel Read/Write Library (SheetJS) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -538,6 +540,35 @@
                         </ul>
                         <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.8rem;">Configure your free Groq API key in settings (⚙️) to get started.</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Timesheet Upload Area -->
+            <div class="ai-timesheet-upload" id="ai-timesheet-upload">
+                <div class="ai-timesheet-header">
+                    <span>📂 Timesheet Analysis</span>
+                    <button class="ai-timesheet-toggle" onclick="toggleTimesheetUpload()" title="Upload timesheets">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="ai-timesheet-body" id="ai-timesheet-body" style="display: none;">
+                    <p class="ai-timesheet-desc">Upload Excel timesheets to compare against Gantt tasks. The AI will analyze discrepancies and generate a report.</p>
+                    <div class="ai-timesheet-drop" id="ai-timesheet-drop" onclick="document.getElementById('timesheet-file-input').click()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px; opacity: 0.5;">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Click or drag Excel files here</span>
+                        <span class="ai-timesheet-formats">.xlsx, .xls, .csv</span>
+                    </div>
+                    <input type="file" id="timesheet-file-input" multiple accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleTimesheetFiles(this.files)">
+                    <div class="ai-timesheet-files" id="ai-timesheet-files"></div>
+                    <button class="ai-timesheet-analyze-btn" id="ai-timesheet-analyze-btn" onclick="analyzeTimesheets()" style="display:none;">
+                        🤖 Analyze & Generate Report
+                    </button>
                 </div>
             </div>
 

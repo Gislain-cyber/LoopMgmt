@@ -4764,6 +4764,540 @@ function sendAIQuickAction(message) {
 }
 
 // ============================================
+// TIMESHEET IMPORT & ANALYSIS
+// ============================================
+
+let uploadedTimesheets = []; // { fileName, personName, rows: [{date, hours, description}] }
+
+function toggleTimesheetUpload() {
+    const upload = document.getElementById('ai-timesheet-upload');
+    const body = document.getElementById('ai-timesheet-body');
+    if (!body) return;
+    
+    const isExpanded = body.style.display !== 'none';
+    body.style.display = isExpanded ? 'none' : 'block';
+    if (upload) upload.classList.toggle('expanded', !isExpanded);
+}
+
+function handleTimesheetFiles(files) {
+    if (!files || files.length === 0) return;
+    
+    for (const file of files) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+            showError(`"${file.name}" is not a supported format. Use .xlsx, .xls, or .csv`);
+            continue;
+        }
+        parseTimesheetFile(file);
+    }
+    
+    // Reset file input so same file can be re-uploaded
+    document.getElementById('timesheet-file-input').value = '';
+}
+
+function parseTimesheetFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            
+            // Process each sheet
+            workbook.SheetNames.forEach(sheetName => {
+                const sheet = workbook.Sheets[sheetName];
+                const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                
+                if (jsonRows.length === 0) return;
+                
+                // Try to detect the person's name from file name or sheet name
+                let personName = guessPersonName(file.name, sheetName, jsonRows);
+                
+                // Normalize the rows — try to find date, hours, and description columns
+                const normalizedRows = normalizeTimesheetRows(jsonRows);
+                
+                if (normalizedRows.length === 0) {
+                    showError(`Could not parse timesheet data from "${file.name}" (sheet: ${sheetName}). Make sure it has columns for Date, Hours, and Description/Task.`);
+                    return;
+                }
+                
+                // Add to uploaded timesheets
+                uploadedTimesheets.push({
+                    fileName: file.name,
+                    sheetName: sheetName,
+                    personName: personName,
+                    rows: normalizedRows,
+                    rawHeaders: Object.keys(jsonRows[0])
+                });
+                
+                renderUploadedTimesheets();
+            });
+            
+        } catch (err) {
+            console.error('Error parsing timesheet:', err);
+            showError(`Error reading "${file.name}": ${err.message}`);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function guessPersonName(fileName, sheetName, rows) {
+    // Try matching file name against team members
+    const cleanFile = fileName.replace(/\.(xlsx|xls|csv)$/i, '').replace(/[_\-]/g, ' ').trim();
+    
+    for (const member of teamMembers) {
+        const nameLower = member.name.toLowerCase();
+        const fileLower = cleanFile.toLowerCase();
+        const sheetLower = sheetName.toLowerCase();
+        
+        // Check if team member's name or last name appears in file name or sheet name
+        if (fileLower.includes(nameLower) || sheetLower.includes(nameLower)) return member.name;
+        
+        const parts = member.name.split(' ');
+        const lastName = parts[parts.length - 1].toLowerCase();
+        const firstName = parts[0].toLowerCase();
+        
+        if (fileLower.includes(lastName) || fileLower.includes(firstName)) return member.name;
+        if (sheetLower.includes(lastName) || sheetLower.includes(firstName)) return member.name;
+    }
+    
+    // Try to find a name column in the data
+    if (rows.length > 0) {
+        const headers = Object.keys(rows[0]);
+        const nameCol = headers.find(h => /^(name|person|employee|member|worker|staff)/i.test(h));
+        if (nameCol && rows[0][nameCol]) {
+            const val = String(rows[0][nameCol]).trim();
+            // Check if this matches a team member
+            for (const member of teamMembers) {
+                if (member.name.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(member.name.toLowerCase())) {
+                    return member.name;
+                }
+            }
+            return val; // Use the raw value
+        }
+    }
+    
+    return cleanFile; // Fall back to file name
+}
+
+function normalizeTimesheetRows(jsonRows) {
+    if (jsonRows.length === 0) return [];
+    
+    const headers = Object.keys(jsonRows[0]);
+    
+    // Auto-detect columns by name matching
+    const dateCol = headers.find(h => /date|day|when|time/i.test(h));
+    const hoursCol = headers.find(h => /hour|hrs|duration|time\s*spent|worked/i.test(h));
+    const descCol = headers.find(h => /desc|task|activity|work|detail|note|comment|what|summary/i.test(h));
+    const categoryCol = headers.find(h => /category|type|station|project|phase|area/i.test(h));
+    
+    return jsonRows.map(row => {
+        let date = '';
+        if (dateCol) {
+            const raw = row[dateCol];
+            if (raw instanceof Date) {
+                date = raw.toISOString().split('T')[0];
+            } else if (typeof raw === 'number') {
+                // Excel serial date
+                const d = XLSX.SSF.parse_date_code(raw);
+                if (d) date = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+            } else {
+                date = String(raw).trim();
+            }
+        }
+        
+        let hours = 0;
+        if (hoursCol) {
+            hours = parseFloat(row[hoursCol]) || 0;
+        }
+        
+        let description = '';
+        if (descCol) description = String(row[descCol] || '').trim();
+        
+        let category = '';
+        if (categoryCol) category = String(row[categoryCol] || '').trim();
+        
+        return { date, hours, description, category };
+    }).filter(r => r.hours > 0 || r.description); // Filter out empty rows
+}
+
+function renderUploadedTimesheets() {
+    const container = document.getElementById('ai-timesheet-files');
+    const analyzeBtn = document.getElementById('ai-timesheet-analyze-btn');
+    if (!container) return;
+    
+    if (uploadedTimesheets.length === 0) {
+        container.innerHTML = '';
+        if (analyzeBtn) analyzeBtn.style.display = 'none';
+        return;
+    }
+    
+    container.innerHTML = uploadedTimesheets.map((ts, i) => `
+        <div class="ai-timesheet-file">
+            <span class="ai-timesheet-file-icon">📄</span>
+            <span class="ai-timesheet-file-name" title="${ts.fileName} - ${ts.personName}">${ts.personName}</span>
+            <span class="ai-timesheet-file-rows">${ts.rows.length} rows</span>
+            <button class="ai-timesheet-file-remove" onclick="removeTimesheet(${i})" title="Remove">×</button>
+        </div>
+    `).join('');
+    
+    if (analyzeBtn) analyzeBtn.style.display = 'block';
+}
+
+function removeTimesheet(index) {
+    uploadedTimesheets.splice(index, 1);
+    renderUploadedTimesheets();
+}
+
+// Setup drag-and-drop on timesheet drop zone
+function setupTimesheetDragDrop() {
+    const dropZone = document.getElementById('ai-timesheet-drop');
+    if (!dropZone) return;
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        handleTimesheetFiles(e.dataTransfer.files);
+    });
+}
+
+// ============================================
+// TIMESHEET ANALYSIS & REPORT GENERATION
+// ============================================
+
+async function analyzeTimesheets() {
+    if (uploadedTimesheets.length === 0) {
+        showError('Please upload at least one timesheet first.');
+        return;
+    }
+    
+    const apiKey = localStorage.getItem('loopAI_apiKey');
+    const provider = localStorage.getItem('loopAI_provider') || 'groq';
+    if (!apiKey) {
+        const providerNames = { groq: 'Groq', gemini: 'Google Gemini', openai: 'OpenAI' };
+        showError(`Please configure your ${providerNames[provider] || provider} API key first.`);
+        return;
+    }
+    
+    const analyzeBtn = document.getElementById('ai-timesheet-analyze-btn');
+    if (analyzeBtn) {
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = '⏳ Analyzing timesheets...';
+    }
+    
+    appendAIMessage('user', `Analyze ${uploadedTimesheets.length} timesheet(s) against Gantt chart tasks and generate a comparison report.`);
+    
+    // Add typing indicator
+    const messagesEl = document.getElementById('ai-messages');
+    const typingEl = document.createElement('div');
+    typingEl.className = 'ai-message assistant';
+    typingEl.id = 'ai-typing-indicator';
+    typingEl.innerHTML = `
+        <div class="ai-message-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/>
+                <circle cx="9" cy="14" r="1" fill="currentColor"/>
+                <circle cx="15" cy="14" r="1" fill="currentColor"/>
+            </svg>
+        </div>
+        <div class="ai-message-content">
+            <div class="ai-typing"><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div></div>
+        </div>
+    `;
+    messagesEl.appendChild(typingEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    
+    try {
+        // Build comparison data
+        const comparisonData = buildTimesheetComparison();
+        
+        const model = localStorage.getItem('loopAI_model') || 'llama-3.3-70b-versatile';
+        
+        const analysisPrompt = `You are analyzing timesheet data vs Gantt chart planned tasks for a project management tool.
+
+GANTT CHART TASKS (what was planned):
+${comparisonData.ganttSummary}
+
+TIMESHEET DATA (what was actually reported):
+${comparisonData.timesheetSummary}
+
+Analyze the data and provide a structured response in EXACTLY this JSON format (no other text, just valid JSON):
+{
+  "summary": "Brief overall assessment (2-3 sentences)",
+  "personAnalysis": [
+    {
+      "name": "Person Name",
+      "ganttHours": 0,
+      "timesheetHours": 0,
+      "hoursDiff": 0,
+      "matchedTasks": ["task names that match between gantt and timesheet"],
+      "unmatchedGantt": ["gantt tasks with no timesheet entry"],
+      "unmatchedTimesheet": ["timesheet entries with no gantt task"],
+      "assessment": "Brief assessment for this person",
+      "flag": "green|yellow|red"
+    }
+  ],
+  "risks": ["list of concerns or risks identified"],
+  "recommendations": ["list of actionable recommendations"]
+}
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no explanation before or after.`;
+
+        let aiResponse;
+        if (provider === 'groq') {
+            aiResponse = await callGroqAPI(apiKey, model, analysisPrompt, [{ role: 'user', content: 'Analyze the timesheets now.' }]);
+        } else if (provider === 'gemini') {
+            aiResponse = await callGeminiAPI(apiKey, model, analysisPrompt, [{ role: 'user', content: 'Analyze the timesheets now.' }]);
+        } else {
+            aiResponse = await callOpenAIAPI(apiKey, model, analysisPrompt, [{ role: 'user', content: 'Analyze the timesheets now.' }]);
+        }
+        
+        // Remove typing indicator
+        const typing = document.getElementById('ai-typing-indicator');
+        if (typing) typing.remove();
+        
+        // Parse AI response
+        let analysis;
+        try {
+            // Extract JSON from response (handle markdown code blocks)
+            let jsonStr = aiResponse.trim();
+            const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) jsonStr = jsonMatch[1].trim();
+            // Also try to extract from plain response
+            const braceStart = jsonStr.indexOf('{');
+            const braceEnd = jsonStr.lastIndexOf('}');
+            if (braceStart !== -1 && braceEnd !== -1) {
+                jsonStr = jsonStr.substring(braceStart, braceEnd + 1);
+            }
+            analysis = JSON.parse(jsonStr);
+        } catch (parseErr) {
+            console.error('Failed to parse AI response as JSON:', aiResponse);
+            // If JSON parsing fails, show the raw response and still generate a basic report
+            appendAIMessage('assistant', aiResponse);
+            generateBasicExcelReport(comparisonData);
+            return;
+        }
+        
+        // Show summary in chat
+        let chatSummary = `**📊 Timesheet Analysis Complete**\n\n${analysis.summary}\n\n`;
+        
+        if (analysis.personAnalysis) {
+            chatSummary += '**Per-Person Summary:**\n';
+            for (const person of analysis.personAnalysis) {
+                const flag = person.flag === 'red' ? '🔴' : person.flag === 'yellow' ? '🟡' : '🟢';
+                chatSummary += `- ${flag} **${person.name}**: Gantt ${person.ganttHours}h vs Timesheet ${person.timesheetHours}h (${person.hoursDiff >= 0 ? '+' : ''}${person.hoursDiff}h) — ${person.assessment}\n`;
+            }
+        }
+        
+        if (analysis.risks && analysis.risks.length > 0) {
+            chatSummary += '\n**⚠️ Risks:**\n';
+            analysis.risks.forEach(r => chatSummary += `- ${r}\n`);
+        }
+        
+        if (analysis.recommendations && analysis.recommendations.length > 0) {
+            chatSummary += '\n**💡 Recommendations:**\n';
+            analysis.recommendations.forEach(r => chatSummary += `- ${r}\n`);
+        }
+        
+        chatSummary += '\n📥 **Excel report is downloading now...**';
+        
+        appendAIMessage('assistant', chatSummary);
+        
+        // Generate and download Excel report
+        generateExcelReport(analysis, comparisonData);
+        
+    } catch (error) {
+        const typing = document.getElementById('ai-typing-indicator');
+        if (typing) typing.remove();
+        
+        console.error('Timesheet analysis error:', error);
+        appendAIMessage('error', `Analysis error: ${error.message}`);
+    } finally {
+        if (analyzeBtn) {
+            analyzeBtn.disabled = false;
+            analyzeBtn.textContent = '🤖 Analyze & Generate Report';
+        }
+    }
+}
+
+function buildTimesheetComparison() {
+    const allTasks = getAllTasks();
+    
+    // Build compact Gantt summary per person
+    const ganttByPerson = {};
+    allTasks.forEach(t => {
+        const person = t.assignedTo || 'Unassigned';
+        if (!ganttByPerson[person]) ganttByPerson[person] = [];
+        ganttByPerson[person].push({
+            task: t.name,
+            station: stations.find(s => s.tasks && s.tasks.some(st => st.id === t.id))?.name || '',
+            start: t.startDate,
+            end: t.endDate,
+            estH: t.estHours,
+            actH: t.actualHours,
+            status: t.status
+        });
+    });
+    
+    let ganttSummary = '';
+    for (const [person, tasks] of Object.entries(ganttByPerson)) {
+        const totalEst = tasks.reduce((s, t) => s + (t.estH || 0), 0);
+        const totalAct = tasks.reduce((s, t) => s + (t.actH || 0), 0);
+        ganttSummary += `${person} (Est:${totalEst}h Act:${totalAct}h):\n`;
+        tasks.forEach(t => {
+            ganttSummary += `  - ${t.task} | ${t.start}-${t.end} | Est:${t.estH}h Act:${t.actH}h | ${t.status}\n`;
+        });
+    }
+    
+    // Build compact timesheet summary per person
+    let timesheetSummary = '';
+    uploadedTimesheets.forEach(ts => {
+        const totalHours = ts.rows.reduce((s, r) => s + r.hours, 0);
+        timesheetSummary += `${ts.personName} (Total: ${totalHours}h, File: ${ts.fileName}):\n`;
+        ts.rows.forEach(r => {
+            timesheetSummary += `  - ${r.date} | ${r.hours}h | ${r.description}${r.category ? ' [' + r.category + ']' : ''}\n`;
+        });
+    });
+    
+    return { ganttByPerson, ganttSummary, timesheetSummary };
+}
+
+function generateExcelReport(analysis, comparisonData) {
+    const wb = XLSX.utils.book_new();
+    
+    // Sheet 1: Summary
+    const summaryData = [
+        ['TIMESHEET vs GANTT ANALYSIS REPORT'],
+        ['Generated', new Date().toLocaleString()],
+        [''],
+        ['OVERALL SUMMARY'],
+        [analysis.summary],
+        ['']
+    ];
+    
+    if (analysis.risks && analysis.risks.length > 0) {
+        summaryData.push(['RISKS & CONCERNS']);
+        analysis.risks.forEach((r, i) => summaryData.push([`${i + 1}. ${r}`]));
+        summaryData.push(['']);
+    }
+    
+    if (analysis.recommendations && analysis.recommendations.length > 0) {
+        summaryData.push(['RECOMMENDATIONS']);
+        analysis.recommendations.forEach((r, i) => summaryData.push([`${i + 1}. ${r}`]));
+    }
+    
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    summarySheet['!cols'] = [{ wch: 80 }];
+    XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+    
+    // Sheet 2: Person-by-Person Analysis
+    const personHeaders = ['Name', 'Gantt Hours', 'Timesheet Hours', 'Difference', 'Status', 'Matched Tasks', 'Unmatched Gantt Tasks', 'Unmatched Timesheet Entries', 'Assessment'];
+    const personRows = [personHeaders];
+    
+    if (analysis.personAnalysis) {
+        analysis.personAnalysis.forEach(p => {
+            personRows.push([
+                p.name,
+                p.ganttHours,
+                p.timesheetHours,
+                p.hoursDiff,
+                p.flag === 'red' ? '❌ Concern' : p.flag === 'yellow' ? '⚠️ Review' : '✅ OK',
+                (p.matchedTasks || []).join('; '),
+                (p.unmatchedGantt || []).join('; '),
+                (p.unmatchedTimesheet || []).join('; '),
+                p.assessment
+            ]);
+        });
+    }
+    
+    const personSheet = XLSX.utils.aoa_to_sheet(personRows);
+    personSheet['!cols'] = [
+        { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
+        { wch: 40 }, { wch: 40 }, { wch: 40 }, { wch: 50 }
+    ];
+    XLSX.utils.book_append_sheet(wb, personSheet, 'Person Analysis');
+    
+    // Sheet 3: Gantt Tasks (all planned work)
+    const ganttHeaders = ['Person', 'Station', 'Task', 'Start Date', 'End Date', 'Est Hours', 'Actual Hours', 'Status'];
+    const ganttRows = [ganttHeaders];
+    
+    for (const [person, tasks] of Object.entries(comparisonData.ganttByPerson)) {
+        tasks.forEach(t => {
+            ganttRows.push([person, t.station, t.task, t.start, t.end, t.estH, t.actH, t.status]);
+        });
+    }
+    
+    const ganttSheet = XLSX.utils.aoa_to_sheet(ganttRows);
+    ganttSheet['!cols'] = [
+        { wch: 25 }, { wch: 30 }, { wch: 35 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }
+    ];
+    XLSX.utils.book_append_sheet(wb, ganttSheet, 'Gantt Tasks');
+    
+    // Sheet 4: Timesheet Data (all reported work)
+    const tsHeaders = ['Person', 'Source File', 'Date', 'Hours', 'Description', 'Category'];
+    const tsRows = [tsHeaders];
+    
+    uploadedTimesheets.forEach(ts => {
+        ts.rows.forEach(r => {
+            tsRows.push([ts.personName, ts.fileName, r.date, r.hours, r.description, r.category]);
+        });
+    });
+    
+    const tsSheet = XLSX.utils.aoa_to_sheet(tsRows);
+    tsSheet['!cols'] = [
+        { wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 8 }, { wch: 50 }, { wch: 20 }
+    ];
+    XLSX.utils.book_append_sheet(wb, tsSheet, 'Timesheet Data');
+    
+    // Download
+    const fileName = `Timesheet_Analysis_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    showSuccess(`Report downloaded: ${fileName}`);
+}
+
+function generateBasicExcelReport(comparisonData) {
+    // Fallback report when AI JSON parsing fails
+    const wb = XLSX.utils.book_new();
+    
+    // Gantt Tasks sheet
+    const ganttHeaders = ['Person', 'Station', 'Task', 'Start', 'End', 'Est Hours', 'Actual Hours', 'Status'];
+    const ganttRows = [ganttHeaders];
+    for (const [person, tasks] of Object.entries(comparisonData.ganttByPerson)) {
+        tasks.forEach(t => {
+            ganttRows.push([person, t.station, t.task, t.start, t.end, t.estH, t.actH, t.status]);
+        });
+    }
+    const ganttSheet = XLSX.utils.aoa_to_sheet(ganttRows);
+    ganttSheet['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 35 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, ganttSheet, 'Gantt Tasks');
+    
+    // Timesheet Data sheet
+    const tsHeaders = ['Person', 'Source File', 'Date', 'Hours', 'Description', 'Category'];
+    const tsRows = [tsHeaders];
+    uploadedTimesheets.forEach(ts => {
+        ts.rows.forEach(r => {
+            tsRows.push([ts.personName, ts.fileName, r.date, r.hours, r.description, r.category]);
+        });
+    });
+    const tsSheet = XLSX.utils.aoa_to_sheet(tsRows);
+    tsSheet['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 8 }, { wch: 50 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, tsSheet, 'Timesheet Data');
+    
+    const fileName = `Timesheet_Comparison_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showSuccess(`Basic report downloaded: ${fileName}`);
+}
+
+// ============================================
 // EXPOSE FUNCTIONS TO GLOBAL SCOPE (for onclick handlers)
 // ============================================
 
@@ -4798,6 +5332,10 @@ window.saveAIModel = saveAIModel;
 window.sendAIMessage = sendAIMessage;
 window.sendAIQuickAction = sendAIQuickAction;
 window.handleAIInputKeydown = handleAIInputKeydown;
+window.toggleTimesheetUpload = toggleTimesheetUpload;
+window.handleTimesheetFiles = handleTimesheetFiles;
+window.removeTimesheet = removeTimesheet;
+window.analyzeTimesheets = analyzeTimesheets;
 
 // ============================================
 // INITIALIZATION
@@ -4824,6 +5362,9 @@ function init() {
         
         // Initialize group lead UI
         updateGroupLeadUI();
+        
+        // Setup timesheet drag-drop
+        setupTimesheetDragDrop();
         
         // Then try Firebase (this can fail without breaking the app)
         initializeFirebase().catch(err => {
