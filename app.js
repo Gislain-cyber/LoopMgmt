@@ -1563,6 +1563,7 @@ function renderProjectTimeline() {
             <span class="pg-phase-icon" style="color: ${phase.color}">◆</span>
             <strong style="color: ${phase.color}" class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updatePhaseName('${phase.id}', this.textContent)"` : ''}>${phase.name}</strong>
             ${isAdmin ? `<button class="pg-add-btn" onclick="addCategory('${phase.id}')" title="Add Category">+</button>` : ''}
+            ${isAdmin && phaseProgress < 100 ? `<button class="pg-complete-phase-btn" onclick="event.stopPropagation(); completePhase('${phase.id}')" title="Mark entire phase as complete">✓ Complete</button>` : ''}
         </div>`;
         html += `<div class="pg-col pg-col-dates">
             ${isAdmin ? `<input type="date" class="pg-date-input" value="${phaseStart}" onchange="updatePhaseDate('${phase.id}', 'startDate', this.value)">` : `<span>${formatDate(phaseStart)}</span>`}
@@ -2011,6 +2012,44 @@ function updatePhaseDate(phaseId, dateType, newDate) {
     }
 }
 
+function completePhase(phaseId) {
+    if (!isAdmin) return;
+    
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (!phase) return;
+    
+    // Count total tasks for confirmation
+    let taskCount = 0;
+    phase.categories.forEach(cat => {
+        cat.stations.forEach(station => {
+            taskCount += station.tasks.length;
+        });
+    });
+    
+    if (taskCount === 0) {
+        showError('This phase has no tasks to complete.');
+        return;
+    }
+    
+    if (!confirm(`Mark ALL ${taskCount} tasks in "${phase.name}" as Complete (100%)?\n\nThis will set every task's status to "Complete" and progress to 100%.`)) {
+        return;
+    }
+    
+    // Set every task in this phase to Complete / 100%
+    phase.categories.forEach(cat => {
+        cat.stations.forEach(station => {
+            station.tasks.forEach(task => {
+                task.status = 'Complete';
+                task.progress = 100;
+            });
+        });
+    });
+    
+    saveProjectPhases();
+    renderProjectTimeline();
+    showSuccess(`${phase.name}: All ${taskCount} tasks marked as complete!`);
+}
+
 function updateTaskDate(phaseId, categoryId, stationId, taskId, dateType, newDate) {
     const canEdit = canEditStation(categoryId, stationId);
     if (!canEdit) return;
@@ -2212,6 +2251,7 @@ window.deleteTimelineStation = deleteTimelineStation;
 window.addTimelineTask = addTimelineTask;
 window.deleteTimelineTask = deleteTimelineTask;
 window.resetProjectPhases = resetProjectPhases;
+window.completePhase = completePhase;
 
 function exportTimelinePDF() {
     showSuccess('Generating professional timeline PDF...');
