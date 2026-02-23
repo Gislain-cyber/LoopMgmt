@@ -958,9 +958,56 @@ function showSuccess(message) {
     setTimeout(() => toast.remove(), 2000);
 }
 
+function saveScrollPositions() {
+    const positions = {};
+    // Save scroll for the active view itself
+    const activeView = document.querySelector('.view.active');
+    if (activeView) {
+        positions['_activeView'] = { top: activeView.scrollTop, left: activeView.scrollLeft };
+    }
+    // Save scroll for known scrollable containers by selector
+    const scrollSelectors = [
+        '.dashboard-grid', '.gantt-unified', '.phase-gantt-container',
+        '.team-grid', '.gantt-table-wrapper', '.station-table-scroll',
+        '.gantt-timeline-scroll', '.tasks-detail-container', '.task-timeline-gantt',
+        '.workload-table-container'
+    ];
+    scrollSelectors.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el && (el.scrollTop > 0 || el.scrollLeft > 0)) {
+            positions[sel] = { top: el.scrollTop, left: el.scrollLeft };
+        }
+    });
+    return positions;
+}
+
+function restoreScrollPositions(positions) {
+    if (!positions) return;
+    requestAnimationFrame(() => {
+        // Restore active view scroll
+        const activeView = document.querySelector('.view.active');
+        if (activeView && positions['_activeView']) {
+            activeView.scrollTop = positions['_activeView'].top;
+            activeView.scrollLeft = positions['_activeView'].left;
+        }
+        // Restore known containers
+        Object.keys(positions).forEach(sel => {
+            if (sel === '_activeView') return;
+            const el = document.querySelector(sel);
+            if (el) {
+                el.scrollTop = positions[sel].top;
+                el.scrollLeft = positions[sel].left;
+            }
+        });
+    });
+}
+
 function renderAllViews() {
     const activeView = document.querySelector('.view.active');
     if (!activeView) return;
+    
+    // Save scroll positions before re-render
+    const savedScroll = saveScrollPositions();
     
     const viewId = activeView.id;
     if (viewId === 'dashboard-view') renderDashboard();
@@ -974,6 +1021,9 @@ function renderAllViews() {
             renderTaskTimeline(station);
         }
     }
+    
+    // Restore scroll positions after render
+    restoreScrollPositions(savedScroll);
 }
 
 // ============================================
@@ -1161,6 +1211,10 @@ function renderGanttView() {
     const container = document.getElementById('gantt-unified');
     if (!container) return;
     
+    // Save scroll position before re-render
+    const prevScrollTop = container.scrollTop;
+    const prevScrollLeft = container.scrollLeft;
+    
     if (stations.length === 0) {
         container.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">No stations yet. Add a station to get started.</div>';
         return;
@@ -1329,6 +1383,12 @@ function renderGanttView() {
     });
     
     container.innerHTML = html;
+    
+    // Restore scroll position after re-render
+    requestAnimationFrame(() => {
+        container.scrollTop = prevScrollTop;
+        container.scrollLeft = prevScrollLeft;
+    });
 }
 
 function toggleStationExpand(stationId, event) {
@@ -1423,6 +1483,13 @@ function getDateWidth(startDate, endDate) {
 function renderProjectTimeline() {
     const container = document.getElementById('timeline-container');
     if (!container) return;
+    
+    // Save scroll position before re-render
+    const prevScrollTop = container.scrollTop;
+    const prevScrollLeft = container.scrollLeft;
+    const phaseContainer = container.closest('.phase-gantt-container') || container.parentElement;
+    const parentScrollTop = phaseContainer ? phaseContainer.scrollTop : 0;
+    const parentScrollLeft = phaseContainer ? phaseContainer.scrollLeft : 0;
     
     // Get the project timeline range
     const { minDate, maxDate } = getProjectTimelineRange();
@@ -1715,6 +1782,16 @@ function renderProjectTimeline() {
     
     html += '</div></div>';
     container.innerHTML = html;
+    
+    // Restore scroll position after re-render
+    requestAnimationFrame(() => {
+        container.scrollTop = prevScrollTop;
+        container.scrollLeft = prevScrollLeft;
+        if (phaseContainer) {
+            phaseContainer.scrollTop = parentScrollTop;
+            phaseContainer.scrollLeft = parentScrollLeft;
+        }
+    });
 }
 
 function calculatePhaseProgress(phase) {
@@ -3226,6 +3303,10 @@ function renderTeam() {
     const grid = document.getElementById('team-grid');
     console.log('renderTeam called, isAdmin:', isAdmin);
     
+    // Save scroll position before re-render
+    const prevScrollTop = grid ? grid.scrollTop : 0;
+    const prevScrollLeft = grid ? grid.scrollLeft : 0;
+    
     // Hide "Add Member" button if not admin
     const addMemberBtn = document.querySelector('#team-view .header-actions .btn-primary');
     if (addMemberBtn) {
@@ -3293,6 +3374,14 @@ function renderTeam() {
             </div>
         `;
     }).join('');
+    
+    // Restore scroll position after re-render
+    requestAnimationFrame(() => {
+        if (grid) {
+            grid.scrollTop = prevScrollTop;
+            grid.scrollLeft = prevScrollLeft;
+        }
+    });
 }
 
 function openModal(modalId) {
