@@ -1630,8 +1630,12 @@ function renderProjectTimeline() {
                     ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineStation('${phase.id}', '${category.id}')" title="Add Station">+</button>` : ''}
                     ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteCategory('${phase.id}', '${category.id}')" title="Delete Category">×</button>` : ''}
                 </div>`;
-                html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(catStartDate)}</span></div>`;
-                html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(catEndDate)}</span></div>`;
+                html += `<div class="pg-col pg-col-dates">
+                    ${isAdmin ? `<input type="date" class="pg-date-input" value="${catStartDate}" onchange="updateCategoryDate('${phase.id}', '${category.id}', 'startDate', this.value)">` : `<span class="pg-date-display">${formatDate(catStartDate)}</span>`}
+                </div>`;
+                html += `<div class="pg-col pg-col-dates">
+                    ${isAdmin ? `<input type="date" class="pg-date-input" value="${catEndDate}" onchange="updateCategoryDate('${phase.id}', '${category.id}', 'endDate', this.value)">` : `<span class="pg-date-display">${formatDate(catEndDate)}</span>`}
+                </div>`;
                 html += `<div class="pg-col pg-col-status"><span class="category-badge" style="background: ${category.color}20; color: ${category.color}">CATEGORY</span></div>`;
                 html += `<div class="pg-col pg-col-progress">
                     <div class="pg-progress-bar"><div class="pg-progress-fill" style="width: ${categoryProgress}%; background: ${category.color}"></div></div>
@@ -1695,8 +1699,12 @@ function renderProjectTimeline() {
                             ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineTask('${phase.id}', '${category.id}', '${station.id}')" title="Add Task">+</button>` : ''}
                             ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteTimelineStation('${phase.id}', '${category.id}', '${station.id}')" title="Delete Station">×</button>` : ''}
                         </div>`;
-                        html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(stationStartDate)}</span></div>`;
-                        html += `<div class="pg-col pg-col-dates"><span class="pg-date-display">${formatDate(stationEndDate)}</span></div>`;
+                        html += `<div class="pg-col pg-col-dates">
+                            ${isAdmin ? `<input type="date" class="pg-date-input" value="${stationStartDate}" onchange="updateStationDate('${phase.id}', '${category.id}', '${station.id}', 'startDate', this.value)">` : `<span class="pg-date-display">${formatDate(stationStartDate)}</span>`}
+                        </div>`;
+                        html += `<div class="pg-col pg-col-dates">
+                            ${isAdmin ? `<input type="date" class="pg-date-input" value="${stationEndDate}" onchange="updateStationDate('${phase.id}', '${category.id}', '${station.id}', 'endDate', this.value)">` : `<span class="pg-date-display">${formatDate(stationEndDate)}</span>`}
+                        </div>`;
                         html += `<div class="pg-col pg-col-status">
                             <span class="status-badge ${getStatusClass(stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started')}">${stationProgress === 100 ? 'Complete' : stationProgress > 0 ? 'In Progress' : 'Not Started'}</span>
                         </div>`;
@@ -1987,15 +1995,122 @@ function updatePhaseName(phaseId, newName) {
     }
 }
 
+function shiftDateStr(dateStr, deltaDays) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + deltaDays);
+    return d.toISOString().split('T')[0];
+}
+
+function rescaleChildDates(tasks, oldStart, oldEnd, newStart, newEnd) {
+    const oldS = new Date(oldStart).getTime();
+    const oldE = new Date(oldEnd).getTime();
+    const newS = new Date(newStart).getTime();
+    const newE = new Date(newEnd).getTime();
+    const oldRange = oldE - oldS;
+    const newRange = newE - newS;
+
+    tasks.forEach(task => {
+        if (task.startDate) {
+            if (oldRange > 0) {
+                const ratio = (new Date(task.startDate).getTime() - oldS) / oldRange;
+                const mapped = new Date(newS + ratio * newRange);
+                task.startDate = mapped.toISOString().split('T')[0];
+            } else {
+                task.startDate = newStart;
+            }
+        }
+        if (task.endDate) {
+            if (oldRange > 0) {
+                const ratio = (new Date(task.endDate).getTime() - oldS) / oldRange;
+                const mapped = new Date(newS + ratio * newRange);
+                task.endDate = mapped.toISOString().split('T')[0];
+            } else {
+                task.endDate = newEnd;
+            }
+        }
+    });
+}
+
+function getChildDateRange(stations) {
+    let earliest = null, latest = null;
+    stations.forEach(station => {
+        if (station.tasks) {
+            station.tasks.forEach(task => {
+                if (task.startDate && (!earliest || task.startDate < earliest)) earliest = task.startDate;
+                if (task.endDate && (!latest || task.endDate > latest)) latest = task.endDate;
+            });
+        }
+    });
+    return { earliest, latest };
+}
+
 function updatePhaseDate(phaseId, dateType, newDate) {
     if (!isAdmin) return;
     const phase = projectPhases.find(p => p.id === phaseId);
-    if (phase && newDate) {
-        phase[dateType] = newDate;
-        saveProjectPhases();
-        renderProjectTimeline();
-        showSuccess('Phase date updated');
-    }
+    if (!phase || !newDate) return;
+
+    const oldStart = phase.startDate;
+    const oldEnd = phase.endDate;
+    phase[dateType] = newDate;
+    const updatedStart = phase.startDate;
+    const updatedEnd = phase.endDate;
+
+    phase.categories.forEach(cat => {
+        cat.stations.forEach(station => {
+            rescaleChildDates(station.tasks, oldStart, oldEnd, updatedStart, updatedEnd);
+        });
+    });
+
+    saveProjectPhases();
+    renderProjectTimeline();
+    showSuccess('Phase dates updated — all children shifted');
+}
+
+function updateCategoryDate(phaseId, categoryId, dateType, newDate) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (!phase) return;
+    const category = phase.categories.find(c => c.id === categoryId);
+    if (!category || !newDate) return;
+
+    const { earliest, latest } = getChildDateRange(category.stations);
+    const oldStart = earliest || phase.startDate;
+    const oldEnd = latest || phase.endDate;
+
+    const updatedStart = dateType === 'startDate' ? newDate : oldStart;
+    const updatedEnd = dateType === 'endDate' ? newDate : oldEnd;
+
+    category.stations.forEach(station => {
+        rescaleChildDates(station.tasks, oldStart, oldEnd, updatedStart, updatedEnd);
+    });
+
+    saveProjectPhases();
+    renderProjectTimeline();
+    showSuccess('Category dates updated — tasks shifted');
+}
+
+function updateStationDate(phaseId, categoryId, stationId, dateType, newDate) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (!phase) return;
+    const category = phase.categories.find(c => c.id === categoryId);
+    if (!category) return;
+    const station = category.stations.find(s => s.id === stationId);
+    if (!station || !newDate) return;
+
+    const taskStarts = station.tasks.filter(t => t.startDate).map(t => t.startDate).sort();
+    const taskEnds = station.tasks.filter(t => t.endDate).map(t => t.endDate).sort().reverse();
+    const oldStart = taskStarts[0] || phase.startDate;
+    const oldEnd = taskEnds[0] || phase.endDate;
+
+    const updatedStart = dateType === 'startDate' ? newDate : oldStart;
+    const updatedEnd = dateType === 'endDate' ? newDate : oldEnd;
+
+    rescaleChildDates(station.tasks, oldStart, oldEnd, updatedStart, updatedEnd);
+
+    saveProjectPhases();
+    renderProjectTimeline();
+    showSuccess('Station dates updated — tasks shifted');
 }
 
 function completePhase(phaseId) {
@@ -2226,6 +2341,8 @@ function deleteTimelineTask(phaseId, categoryId, stationId, taskId) {
 // Expose editing functions to window
 window.updatePhaseName = updatePhaseName;
 window.updatePhaseDate = updatePhaseDate;
+window.updateCategoryDate = updateCategoryDate;
+window.updateStationDate = updateStationDate;
 window.updateTaskDate = updateTaskDate;
 window.updateCategoryName = updateCategoryName;
 window.updateTimelineStationName = updateTimelineStationName;
@@ -2774,7 +2891,7 @@ function exportTimelinePDF() {
 }
 
 async function exportTimelineImage() {
-    showSuccess('Generating HD image — expanding all phases...');
+    showSuccess('Preparing HD projector image — capturing current view...');
 
     const container = document.getElementById('timeline-container');
     if (!container) {
@@ -2782,314 +2899,162 @@ async function exportTimelineImage() {
         return;
     }
 
-    const savedExpand = projectPhases.map(phase => ({
-        id: phase.id,
-        expanded: phase.expanded,
-        categories: phase.categories.map(cat => ({
-            id: cat.id,
-            expanded: cat.expanded,
-            stations: cat.stations.map(s => ({ id: s.id, expanded: s.expanded }))
-        }))
-    }));
-
-    projectPhases.forEach(phase => {
-        phase.expanded = true;
-        phase.categories.forEach(cat => {
-            cat.expanded = true;
-            cat.stations.forEach(s => { s.expanded = true; });
-        });
-    });
-    renderProjectTimeline();
-
-    await new Promise(r => setTimeout(r, 400));
-
     const ganttEl = container.querySelector('.phase-gantt-container') || container;
     const unifiedEl = container.querySelector('.phase-gantt-unified') || ganttEl;
 
-    const origContainer = container.style.cssText;
-    const origGantt = ganttEl.style.cssText;
+    const projectorCSS = document.createElement('style');
+    projectorCSS.id = 'projector-export-overrides';
+    projectorCSS.textContent = `
+        .timeline-container,
+        .phase-gantt-container,
+        .phase-gantt-unified { overflow: visible !important; max-height: none !important; height: auto !important; }
 
-    container.style.overflow = 'visible';
-    container.style.maxHeight = 'none';
-    container.style.height = 'auto';
-    ganttEl.style.overflow = 'visible';
-    ganttEl.style.maxHeight = 'none';
-    ganttEl.style.height = 'auto';
+        .phase-gantt-unified {
+            --bg-primary: #141e2b !important;
+            --bg-secondary: #1a2636 !important;
+            --text-primary: #ffffff !important;
+            --text-secondary: #d0d8e0 !important;
+            --border-primary: #3e5068 !important;
+        }
+        .phase-gantt-unified * { font-weight: inherit; }
+        .phase-gantt-unified .phase-gantt-header-row,
+        .phase-gantt-unified .pg-week-header { background: #1a2636 !important; border-color: #3e5068 !important; }
+        .phase-gantt-unified .pg-week-header .pg-week-label,
+        .phase-gantt-unified .pg-week-header .pg-week-date { color: #e8ecf0 !important; font-weight: 600 !important; }
+        .phase-gantt-unified .pg-week-header.current { background: #1e3a28 !important; }
+        .phase-gantt-unified .pg-week-header.current .pg-week-label,
+        .phase-gantt-unified .pg-week-header.current .pg-week-date { color: #4afa9a !important; }
 
-    await new Promise(r => setTimeout(r, 200));
+        .phase-gantt-unified .phase-gantt-info-header { background: #1a2636 !important; border-color: #3e5068 !important; }
+        .phase-gantt-unified .phase-gantt-info-header .pg-col { color: #e8ecf0 !important; font-weight: 700 !important; }
+
+        .phase-gantt-unified .phase-gantt-row { border-color: #2a3a50 !important; }
+        .phase-gantt-unified .phase-gantt-row.phase-row { background: #141e2b !important; }
+        .phase-gantt-unified .phase-gantt-row.category-row { background: #172030 !important; }
+        .phase-gantt-unified .phase-gantt-row.station-row { background: #1a2438 !important; }
+        .phase-gantt-unified .phase-gantt-row.task-row { background: #1c2840 !important; }
+
+        .phase-gantt-unified .phase-gantt-info-cells { border-color: #3e5068 !important; }
+
+        .phase-gantt-unified .pg-phase-name strong { font-weight: 800 !important; text-shadow: 0 0 8px currentColor; }
+        .phase-gantt-unified .pg-category-name span { font-weight: 700 !important; }
+        .phase-gantt-unified .pg-station-name span.editable-name { color: #e0e8f0 !important; font-weight: 600 !important; }
+        .phase-gantt-unified .pg-task-name span.editable-name { color: #ccd4dc !important; font-weight: 500 !important; }
+
+        .phase-gantt-unified .pg-date-display { color: #b0bcc8 !important; }
+        .phase-gantt-unified .pg-date-input { color: #d0d8e4 !important; background: #1e2e42 !important; border-color: #3e5068 !important; }
+
+        .phase-gantt-unified .pg-progress-text { color: #e0e8f0 !important; font-weight: 600 !important; }
+        .phase-gantt-unified .pg-progress-bar { background: #253040 !important; }
+
+        .phase-gantt-unified .phase-badge,
+        .phase-gantt-unified .category-badge { font-weight: 700 !important; }
+
+        .phase-gantt-unified .status-badge { font-weight: 600 !important; }
+
+        .phase-gantt-unified .pg-gantt-bar { font-weight: 700 !important; text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important; box-shadow: 0 0 6px rgba(255,255,255,0.15) !important; }
+        .phase-gantt-unified .pg-gantt-bar.pg-phase-bar { filter: brightness(1.15) saturate(1.2) !important; }
+        .phase-gantt-unified .pg-gantt-bar.pg-category-bar { filter: brightness(1.15) saturate(1.2) !important; }
+        .phase-gantt-unified .pg-gantt-bar.pg-station-bar { filter: brightness(1.1) saturate(1.15) !important; }
+        .phase-gantt-unified .pg-gantt-bar.pg-task-bar { filter: brightness(1.2) saturate(1.2) !important; opacity: 1 !important; }
+
+        .phase-gantt-unified .pg-week-cell { border-color: #253040 !important; }
+        .phase-gantt-unified .pg-week-cell.current { background: rgba(0,212,170,0.08) !important; }
+
+        .phase-gantt-unified .pg-station-number { font-weight: 700 !important; filter: brightness(1.2) saturate(1.2) !important; }
+        .phase-gantt-unified .pg-group-lead-badge { color: #a0c0e0 !important; }
+        .phase-gantt-unified .pg-my-station-badge { filter: brightness(1.2) !important; }
+        .phase-gantt-unified .pg-expand-btn { display: none !important; }
+        .phase-gantt-unified .pg-add-btn,
+        .phase-gantt-unified .pg-delete-btn,
+        .phase-gantt-unified .pg-complete-phase-btn { display: none !important; }
+        .phase-gantt-unified .pg-status-select { color: #d0d8e4 !important; background: #1e2e42 !important; border-color: #3e5068 !important; font-weight: 600 !important; }
+    `;
+    document.head.appendChild(projectorCSS);
+
+    await new Promise(r => setTimeout(r, 400));
 
     const captureW = unifiedEl.scrollWidth || unifiedEl.offsetWidth;
     const captureH = unifiedEl.scrollHeight || unifiedEl.offsetHeight;
 
     try {
-        showSuccess('Rendering high-resolution image...');
+        showSuccess('Rendering HD image at 3x resolution...');
         const canvas = await html2canvas(unifiedEl, {
             scale: 3,
             useCORS: true,
-            backgroundColor: '#0d1117',
+            backgroundColor: '#141e2b',
             logging: false,
             width: captureW,
             height: captureH,
             windowWidth: captureW + 40,
             windowHeight: captureH + 40,
-            x: 0,
-            y: 0,
-            scrollX: 0,
-            scrollY: 0,
+            x: 0, y: 0, scrollX: 0, scrollY: 0,
         });
 
-        canvas.toBlob(function(blob) {
-            if (!blob) {
-                showError('Image generation failed — empty result.');
-                return;
-            }
+        const headerH = 90;
+        const pad = 30;
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = canvas.width + pad * 2;
+        finalCanvas.height = canvas.height + headerH + pad * 2;
+        const ctx = finalCanvas.getContext('2d');
+
+        ctx.fillStyle = '#141e2b';
+        ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+        const scale = 3;
+        ctx.fillStyle = '#00d4aa';
+        ctx.font = `bold ${22 * scale}px "DM Sans", sans-serif`;
+        ctx.fillText('Loop Automation — Project Timeline', pad, pad + 28 * scale);
+
+        ctx.fillStyle = '#8899aa';
+        ctx.font = `${11 * scale}px "DM Sans", sans-serif`;
+        const genDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        ctx.fillText(`Generated: ${genDate}    |    HD Export for Projector Presentation`, pad, pad + 48 * scale);
+
+        let totalTasks = 0, completedTasks = 0;
+        projectPhases.forEach(ph => ph.categories.forEach(c => c.stations.forEach(s => s.tasks.forEach(t => {
+            totalTasks++;
+            if (t.status === 'Complete') completedTasks++;
+        }))));
+        const pct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        ctx.fillStyle = '#00d4aa';
+        ctx.font = `bold ${28 * scale}px "DM Sans", sans-serif`;
+        const pctText = `${pct}%`;
+        const pctW = ctx.measureText(pctText).width;
+        ctx.fillText(pctText, finalCanvas.width - pad - pctW, pad + 28 * scale);
+        ctx.fillStyle = '#8899aa';
+        ctx.font = `${10 * scale}px "DM Sans", sans-serif`;
+        const subText = `${completedTasks}/${totalTasks} tasks complete`;
+        const subW = ctx.measureText(subText).width;
+        ctx.fillText(subText, finalCanvas.width - pad - subW, pad + 45 * scale);
+
+        ctx.strokeStyle = '#00d4aa';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pad, headerH - 10);
+        ctx.lineTo(finalCanvas.width - pad, headerH - 10);
+        ctx.stroke();
+
+        ctx.drawImage(canvas, pad, headerH + 4);
+
+        finalCanvas.toBlob(function(blob) {
+            if (!blob) { showError('Image generation failed.'); return; }
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const dateStr = new Date().toISOString().split('T')[0];
-            a.download = `LoopAutomation_ProjectTimeline_HD_${dateStr}.png`;
+            a.download = `LoopAutomation_ProjectTimeline_HD_${new Date().toISOString().split('T')[0]}.png`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showSuccess(`HD image exported! (${canvas.width}×${canvas.height}px)`);
+            showSuccess(`HD projector image exported! (${finalCanvas.width}x${finalCanvas.height}px)`);
         }, 'image/png');
     } catch (err) {
         console.error('HD image export failed:', err);
         showError('Image export failed: ' + err.message);
     }
 
-    container.style.cssText = origContainer;
-    ganttEl.style.cssText = origGantt;
-
-    savedExpand.forEach(ps => {
-        const phase = projectPhases.find(p => p.id === ps.id);
-        if (!phase) return;
-        phase.expanded = ps.expanded;
-        ps.categories.forEach(cs => {
-            const cat = phase.categories.find(c => c.id === cs.id);
-            if (!cat) return;
-            cat.expanded = cs.expanded;
-            cs.stations.forEach(ss => {
-                const st = cat.stations.find(s => s.id === ss.id);
-                if (st) st.expanded = ss.expanded;
-            });
-        });
-    });
-    renderProjectTimeline();
-}
-
-async function exportTimelineImageLight() {
-    showSuccess('Generating projector-friendly HD image...');
-
-    const totalTasks = [];
-    projectPhases.forEach(phase => {
-        phase.categories.forEach(cat => {
-            cat.stations.forEach(station => {
-                station.tasks.forEach(task => totalTasks.push(task));
-            });
-        });
-    });
-    const completedTasks = totalTasks.filter(t => t.status === 'Complete').length;
-    const overallProgress = totalTasks.length > 0 ? Math.round((completedTasks / totalTasks.length) * 100) : 0;
-
-    const { minDate, maxDate } = getProjectTimelineRange();
-    const timelineStart = new Date(minDate);
-    timelineStart.setDate(timelineStart.getDate() - 7);
-    const totalDays = Math.ceil((maxDate - timelineStart) / (1000 * 60 * 60 * 24)) + 14;
-    const dayWidth = Math.max(5, Math.min(14, 1200 / totalDays));
-    const chartWidth = totalDays * dayWidth;
-
-    const fmtDate = (d) => {
-        if (!d) return '-';
-        return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
-    const getBarLeft = (dateStr) => {
-        const diffDays = Math.floor((new Date(dateStr) - timelineStart) / (1000 * 60 * 60 * 24));
-        return diffDays * dayWidth;
-    };
-    const getBarW = (start, end) => {
-        const days = Math.floor((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1;
-        return Math.max(days * dayWidth, 30);
-    };
-
-    const today = new Date();
-    const todayLeft = Math.floor((today - timelineStart) / (1000 * 60 * 60 * 24)) * dayWidth;
-
-    let weekMarkers = '';
-    let weekGrid = '';
-    const ws = new Date(timelineStart);
-    ws.setDate(ws.getDate() - ws.getDay() + 1);
-    while (ws <= new Date(maxDate.getTime() + 14 * 86400000)) {
-        const left = Math.floor((ws - timelineStart) / 86400000) * dayWidth;
-        const label = ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        weekMarkers += `<div style="position:absolute;left:${left}px;top:0;font-size:9px;color:#666;white-space:nowrap;transform:translateX(-50%)">${label}</div>`;
-        weekGrid += `<div style="position:absolute;left:${left}px;top:0;bottom:0;width:1px;background:#ddd"></div>`;
-        ws.setDate(ws.getDate() + 7);
-    }
-
-    let monthMarkers = '';
-    const ms = new Date(timelineStart.getFullYear(), timelineStart.getMonth(), 1);
-    while (ms <= new Date(maxDate.getTime() + 30 * 86400000)) {
-        const left = Math.floor((ms - timelineStart) / 86400000) * dayWidth;
-        const label = ms.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        const nm = new Date(ms.getFullYear(), ms.getMonth() + 1, 1);
-        const mw = Math.floor((nm - ms) / 86400000) * dayWidth;
-        monthMarkers += `<div style="position:absolute;left:${left}px;top:0;width:${mw}px;text-align:center;font-size:11px;font-weight:bold;color:#333;border-left:2px solid #999;padding-left:4px">${label}</div>`;
-        ms.setMonth(ms.getMonth() + 1);
-    }
-
-    let rows = '';
-    let ri = 0;
-    projectPhases.forEach(phase => {
-        const pp = calculatePhaseProgress(phase);
-        const pLeft = getBarLeft(phase.startDate || '2026-01-20');
-        const pWidth = getBarW(phase.startDate || '2026-01-20', phase.endDate || '2026-04-30');
-        const bg = ri % 2 === 0 ? '#f8f9fa' : '#fff';
-        rows += `<div style="display:flex;min-height:28px;border-bottom:1px solid #e0e0e0;background:${bg}">
-            <div style="width:300px;min-width:300px;padding:5px 10px;font-size:11px;font-weight:bold;color:${phase.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid #ddd;display:flex;align-items:center;gap:6px">
-                <span style="display:inline-block;width:12px;height:12px;background:${phase.color};border-radius:2px;flex-shrink:0"></span>${phase.name}
-            </div>
-            <div style="flex:1;position:relative;min-width:${chartWidth}px">
-                ${weekGrid}
-                <div style="position:absolute;left:${pLeft}px;top:4px;height:20px;width:${pWidth}px;background:linear-gradient(90deg,${phase.color},${phase.color}bb);border-radius:3px;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.12)">
-                    <span style="color:white;font-size:8px;font-weight:bold;text-shadow:0 1px 1px rgba(0,0,0,0.3)">${pp}%</span>
-                </div>
-            </div></div>`;
-        ri++;
-
-        phase.categories.forEach(category => {
-            const cp = calculateCategoryProgress(category);
-            let cStart = phase.startDate, cEnd = phase.endDate;
-            category.stations.forEach(st => st.tasks.forEach(t => {
-                if (t.startDate && t.startDate < cStart) cStart = t.startDate;
-                if (t.endDate && t.endDate > cEnd) cEnd = t.endDate;
-            }));
-            const cLeft = getBarLeft(cStart);
-            const cWidth = getBarW(cStart, cEnd);
-            const bg2 = ri % 2 === 0 ? '#f8f9fa' : '#fff';
-            rows += `<div style="display:flex;min-height:24px;border-bottom:1px solid #eee;background:${bg2}">
-                <div style="width:300px;min-width:300px;padding:4px 10px 4px 28px;font-size:10px;font-weight:600;color:${category.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid #ddd;display:flex;align-items:center">├ ${category.name}</div>
-                <div style="flex:1;position:relative;min-width:${chartWidth}px">
-                    ${weekGrid}
-                    <div style="position:absolute;left:${cLeft}px;top:4px;height:16px;width:${cWidth}px;background:linear-gradient(90deg,${category.color}cc,${category.color}88);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden">
-                        <span style="color:white;font-size:7px;font-weight:bold">${cp}%</span>
-                    </div>
-                </div></div>`;
-            ri++;
-
-            category.stations.forEach(station => {
-                const sp = calculateStationTasksProgress(station);
-                let sStart = cStart, sEnd = cEnd;
-                if (station.tasks && station.tasks.length > 0) {
-                    const ts = station.tasks.filter(t => t.startDate).map(t => t.startDate).sort();
-                    const te = station.tasks.filter(t => t.endDate).map(t => t.endDate).sort().reverse();
-                    if (ts.length) sStart = ts[0];
-                    if (te.length) sEnd = te[0];
-                }
-                const sLeft = getBarLeft(sStart);
-                const sWidth = getBarW(sStart, sEnd);
-                const bg3 = ri % 2 === 0 ? '#f8f9fa' : '#fff';
-                const pColor = sp === 100 ? '#28a745' : sp > 0 ? station.color : '#aaa';
-                rows += `<div style="display:flex;min-height:22px;border-bottom:1px solid #f0f0f0;background:${bg3}">
-                    <div style="width:300px;min-width:300px;padding:3px 10px 3px 48px;font-size:9px;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid #ddd;display:flex;align-items:center">└ ${station.name}</div>
-                    <div style="flex:1;position:relative;min-width:${chartWidth}px">
-                        ${weekGrid}
-                        <div style="position:absolute;left:${sLeft}px;top:4px;height:14px;width:${sWidth}px;background:${pColor}44;border-radius:2px;overflow:hidden">
-                            <div style="height:100%;width:${sp}%;background:${pColor};border-radius:2px"></div>
-                        </div>
-                    </div></div>`;
-                ri++;
-
-                station.tasks.forEach(task => {
-                    const tLeft = getBarLeft(task.startDate || sStart);
-                    const tWidth = getBarW(task.startDate || sStart, task.endDate || sEnd);
-                    const bg4 = ri % 2 === 0 ? '#f8f9fa' : '#fff';
-                    const tColor = task.status === 'Complete' ? '#28a745' : task.status === 'In Progress' ? station.color : '#bbb';
-                    const tOpacity = task.status === 'Complete' ? 1 : task.status === 'In Progress' ? 0.8 : 0.4;
-                    rows += `<div style="display:flex;min-height:20px;border-bottom:1px solid #f5f5f5;background:${bg4}">
-                        <div style="width:300px;min-width:300px;padding:2px 10px 2px 68px;font-size:8px;color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid #ddd;display:flex;align-items:center;gap:4px">
-                            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${tColor};flex-shrink:0"></span>${task.name}
-                        </div>
-                        <div style="flex:1;position:relative;min-width:${chartWidth}px">
-                            ${weekGrid}
-                            <div style="position:absolute;left:${tLeft}px;top:3px;height:14px;width:${tWidth}px;background:${tColor};opacity:${tOpacity};border-radius:2px;display:flex;align-items:center;justify-content:center">
-                                <span style="color:white;font-size:7px;font-weight:bold;text-shadow:0 0 2px rgba(0,0,0,0.3)">${task.progress}%</span>
-                            </div>
-                        </div></div>`;
-                    ri++;
-                });
-            });
-        });
-    });
-
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:-99999px;top:0;z-index:-1;';
-    wrapper.innerHTML = `<div id="hd-export-root" style="background:#fff;color:#333;font-family:'DM Sans',sans-serif;padding:30px;width:${340 + chartWidth}px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:15px;border-bottom:2px solid #00a080">
-            <div>
-                <h1 style="margin:0;font-size:22px;color:#00a080">Loop Automation — Project Timeline</h1>
-                <p style="margin:4px 0 0;font-size:12px;color:#888">Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            </div>
-            <div style="text-align:right">
-                <div style="font-size:28px;font-weight:700;color:#00a080">${overallProgress}%</div>
-                <div style="font-size:10px;color:#888">${completedTasks}/${totalTasks.length} tasks complete</div>
-            </div>
-        </div>
-        <div style="border:1px solid #ddd;border-radius:8px;overflow:hidden">
-            <div style="overflow:visible">
-                <div style="min-width:${300 + chartWidth}px">
-                    <div style="position:relative;height:22px;border-bottom:2px solid #ddd;background:#f0f0f0">${monthMarkers}</div>
-                    <div style="position:relative;height:18px;border-bottom:1px solid #ddd;background:#fafafa">${weekMarkers}</div>
-                    ${rows}
-                    <div style="position:absolute;left:${300 + todayLeft}px;top:0;bottom:0;width:2px;background:#ff4444;z-index:10;pointer-events:none"></div>
-                </div>
-            </div>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:20px;font-size:9px;color:#888">
-            <span>■ Complete</span><span>■ In Progress</span><span style="color:#ccc">■ Not Started</span>
-            <span style="margin-left:auto">HD Export for Projector Presentation</span>
-        </div>
-    </div>`;
-    document.body.appendChild(wrapper);
-
-    await new Promise(r => setTimeout(r, 300));
-
-    const exportRoot = document.getElementById('hd-export-root');
-    try {
-        const canvas = await html2canvas(exportRoot, {
-            scale: 3,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            width: exportRoot.scrollWidth,
-            height: exportRoot.scrollHeight,
-            windowWidth: exportRoot.scrollWidth + 40,
-            windowHeight: exportRoot.scrollHeight + 40,
-        });
-
-        canvas.toBlob(function(blob) {
-            if (!blob) {
-                showError('Image generation failed.');
-                return;
-            }
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const dateStr = new Date().toISOString().split('T')[0];
-            a.download = `LoopAutomation_Timeline_Projector_${dateStr}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showSuccess(`Projector-ready image exported! (${canvas.width}×${canvas.height}px @ 3x resolution)`);
-        }, 'image/png');
-    } catch (err) {
-        console.error('Projector image export failed:', err);
-        showError('Image export failed: ' + err.message);
-    }
-
-    document.body.removeChild(wrapper);
+    document.head.removeChild(projectorCSS);
 }
 
 window.togglePhase = togglePhase;
@@ -3101,7 +3066,6 @@ window.expandAllPhases = expandAllPhases;
 window.collapseAllPhases = collapseAllPhases;
 window.exportTimelinePDF = exportTimelinePDF;
 window.exportTimelineImage = exportTimelineImage;
-window.exportTimelineImageLight = exportTimelineImageLight;
 
 // ============================================
 // GROUP LEAD MANAGEMENT
