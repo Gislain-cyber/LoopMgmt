@@ -1596,23 +1596,29 @@ function renderProjectTimeline() {
             phase.categories.forEach((category, catIndex) => {
                 const categoryProgress = calculateCategoryProgress(category);
                 
-                // Calculate category dates from its stations/tasks
-                let catStartDate = phaseStart;
-                let catEndDate = phaseEnd;
-                if (category.stations && category.stations.length > 0) {
-                    // Find earliest task start and latest task end
-                    category.stations.forEach(station => {
-                        if (station.tasks) {
-                            station.tasks.forEach(task => {
-                                if (task.startDate && (!catStartDate || task.startDate < catStartDate)) {
-                                    catStartDate = task.startDate;
-                                }
-                                if (task.endDate && (!catEndDate || task.endDate > catEndDate)) {
-                                    catEndDate = task.endDate;
-                                }
-                            });
-                        }
-                    });
+                let catStartDate = category.startDate || null;
+                let catEndDate = category.endDate || null;
+                if (!catStartDate || !catEndDate) {
+                    let calcStart = phaseStart;
+                    let calcEnd = phaseEnd;
+                    if (category.stations && category.stations.length > 0) {
+                        category.stations.forEach(station => {
+                            if (station.startDate) {
+                                if (!calcStart || station.startDate < calcStart) calcStart = station.startDate;
+                            }
+                            if (station.endDate) {
+                                if (!calcEnd || station.endDate > calcEnd) calcEnd = station.endDate;
+                            }
+                            if (station.tasks) {
+                                station.tasks.forEach(task => {
+                                    if (task.startDate && (!calcStart || task.startDate < calcStart)) calcStart = task.startDate;
+                                    if (task.endDate && (!calcEnd || task.endDate > calcEnd)) calcEnd = task.endDate;
+                                });
+                            }
+                        });
+                    }
+                    if (!catStartDate) catStartDate = calcStart;
+                    if (!catEndDate) catEndDate = calcEnd;
                 }
                 
                 const catBarLeft = getDatePosition(catStartDate, timelineStart);
@@ -1661,14 +1667,19 @@ function renderProjectTimeline() {
                     category.stations.forEach((station, stationIndex) => {
                         const stationProgress = calculateStationTasksProgress(station);
                         
-                        // Calculate station dates from its tasks
-                        let stationStartDate = catStartDate;
-                        let stationEndDate = catEndDate;
-                        if (station.tasks && station.tasks.length > 0) {
-                            const taskStarts = station.tasks.filter(t => t.startDate).map(t => t.startDate);
-                            const taskEnds = station.tasks.filter(t => t.endDate).map(t => t.endDate);
-                            if (taskStarts.length > 0) stationStartDate = taskStarts.sort()[0];
-                            if (taskEnds.length > 0) stationEndDate = taskEnds.sort().reverse()[0];
+                        let stationStartDate = station.startDate || null;
+                        let stationEndDate = station.endDate || null;
+                        if (!stationStartDate || !stationEndDate) {
+                            let calcStart = catStartDate;
+                            let calcEnd = catEndDate;
+                            if (station.tasks && station.tasks.length > 0) {
+                                const taskStarts = station.tasks.filter(t => t.startDate).map(t => t.startDate);
+                                const taskEnds = station.tasks.filter(t => t.endDate).map(t => t.endDate);
+                                if (taskStarts.length > 0) calcStart = taskStarts.sort()[0];
+                                if (taskEnds.length > 0) calcEnd = taskEnds.sort().reverse()[0];
+                            }
+                            if (!stationStartDate) stationStartDate = calcStart;
+                            if (!stationEndDate) stationEndDate = calcEnd;
                         }
                         
                         const stationBarLeft = getDatePosition(stationStartDate, timelineStart);
@@ -1995,75 +2006,15 @@ function updatePhaseName(phaseId, newName) {
     }
 }
 
-function shiftDateStr(dateStr, deltaDays) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + deltaDays);
-    return d.toISOString().split('T')[0];
-}
-
-function rescaleChildDates(tasks, oldStart, oldEnd, newStart, newEnd) {
-    const oldS = new Date(oldStart).getTime();
-    const oldE = new Date(oldEnd).getTime();
-    const newS = new Date(newStart).getTime();
-    const newE = new Date(newEnd).getTime();
-    const oldRange = oldE - oldS;
-    const newRange = newE - newS;
-
-    tasks.forEach(task => {
-        if (task.startDate) {
-            if (oldRange > 0) {
-                const ratio = (new Date(task.startDate).getTime() - oldS) / oldRange;
-                const mapped = new Date(newS + ratio * newRange);
-                task.startDate = mapped.toISOString().split('T')[0];
-            } else {
-                task.startDate = newStart;
-            }
-        }
-        if (task.endDate) {
-            if (oldRange > 0) {
-                const ratio = (new Date(task.endDate).getTime() - oldS) / oldRange;
-                const mapped = new Date(newS + ratio * newRange);
-                task.endDate = mapped.toISOString().split('T')[0];
-            } else {
-                task.endDate = newEnd;
-            }
-        }
-    });
-}
-
-function getChildDateRange(stations) {
-    let earliest = null, latest = null;
-    stations.forEach(station => {
-        if (station.tasks) {
-            station.tasks.forEach(task => {
-                if (task.startDate && (!earliest || task.startDate < earliest)) earliest = task.startDate;
-                if (task.endDate && (!latest || task.endDate > latest)) latest = task.endDate;
-            });
-        }
-    });
-    return { earliest, latest };
-}
-
 function updatePhaseDate(phaseId, dateType, newDate) {
     if (!isAdmin) return;
     const phase = projectPhases.find(p => p.id === phaseId);
-    if (!phase || !newDate) return;
-
-    const oldStart = phase.startDate;
-    const oldEnd = phase.endDate;
-    phase[dateType] = newDate;
-    const updatedStart = phase.startDate;
-    const updatedEnd = phase.endDate;
-
-    phase.categories.forEach(cat => {
-        cat.stations.forEach(station => {
-            rescaleChildDates(station.tasks, oldStart, oldEnd, updatedStart, updatedEnd);
-        });
-    });
-
-    saveProjectPhases();
-    renderProjectTimeline();
-    showSuccess('Phase dates updated — all children shifted');
+    if (phase && newDate) {
+        phase[dateType] = newDate;
+        saveProjectPhases();
+        renderProjectTimeline();
+        showSuccess('Phase date updated');
+    }
 }
 
 function updateCategoryDate(phaseId, categoryId, dateType, newDate) {
@@ -2071,22 +2022,12 @@ function updateCategoryDate(phaseId, categoryId, dateType, newDate) {
     const phase = projectPhases.find(p => p.id === phaseId);
     if (!phase) return;
     const category = phase.categories.find(c => c.id === categoryId);
-    if (!category || !newDate) return;
-
-    const { earliest, latest } = getChildDateRange(category.stations);
-    const oldStart = earliest || phase.startDate;
-    const oldEnd = latest || phase.endDate;
-
-    const updatedStart = dateType === 'startDate' ? newDate : oldStart;
-    const updatedEnd = dateType === 'endDate' ? newDate : oldEnd;
-
-    category.stations.forEach(station => {
-        rescaleChildDates(station.tasks, oldStart, oldEnd, updatedStart, updatedEnd);
-    });
-
-    saveProjectPhases();
-    renderProjectTimeline();
-    showSuccess('Category dates updated — tasks shifted');
+    if (category && newDate) {
+        category[dateType] = newDate;
+        saveProjectPhases();
+        renderProjectTimeline();
+        showSuccess('Category date updated');
+    }
 }
 
 function updateStationDate(phaseId, categoryId, stationId, dateType, newDate) {
@@ -2096,21 +2037,12 @@ function updateStationDate(phaseId, categoryId, stationId, dateType, newDate) {
     const category = phase.categories.find(c => c.id === categoryId);
     if (!category) return;
     const station = category.stations.find(s => s.id === stationId);
-    if (!station || !newDate) return;
-
-    const taskStarts = station.tasks.filter(t => t.startDate).map(t => t.startDate).sort();
-    const taskEnds = station.tasks.filter(t => t.endDate).map(t => t.endDate).sort().reverse();
-    const oldStart = taskStarts[0] || phase.startDate;
-    const oldEnd = taskEnds[0] || phase.endDate;
-
-    const updatedStart = dateType === 'startDate' ? newDate : oldStart;
-    const updatedEnd = dateType === 'endDate' ? newDate : oldEnd;
-
-    rescaleChildDates(station.tasks, oldStart, oldEnd, updatedStart, updatedEnd);
-
-    saveProjectPhases();
-    renderProjectTimeline();
-    showSuccess('Station dates updated — tasks shifted');
+    if (station && newDate) {
+        station[dateType] = newDate;
+        saveProjectPhases();
+        renderProjectTimeline();
+        showSuccess('Station date updated');
+    }
 }
 
 function completePhase(phaseId) {
