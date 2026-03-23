@@ -1939,20 +1939,6 @@ function expandAllPhases() {
     renderProjectTimeline();
 }
 
-function resetProjectPhases() {
-    if (!isAdmin) {
-        showError('Admin access required');
-        return;
-    }
-    
-    if (confirm('⚠️ This will reset ALL project timeline data to default phases (Phase 2-5). Your current progress will be lost. Continue?')) {
-        projectPhases = JSON.parse(JSON.stringify(defaultPhases));
-        saveProjectPhases();
-        renderProjectTimeline();
-        showSuccess('Project timeline reset to default phases');
-    }
-}
-
 function collapseAllPhases() {
     projectPhases.forEach(phase => {
         phase.expanded = false;
@@ -2250,7 +2236,6 @@ window.addTimelineStation = addTimelineStation;
 window.deleteTimelineStation = deleteTimelineStation;
 window.addTimelineTask = addTimelineTask;
 window.deleteTimelineTask = deleteTimelineTask;
-window.resetProjectPhases = resetProjectPhases;
 window.completePhase = completePhase;
 
 function exportTimelinePDF() {
