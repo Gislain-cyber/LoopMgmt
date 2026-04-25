@@ -206,6 +206,9 @@ const defaultStations = [
 let teamMembers = [];
 let stations = [];
 
+// Global timesheet — array of time log entries
+let timesheetEntries = [];
+
 // Group Leads Data Structure
 const defaultGroupLeads = [
     // Mechanical Group Leads (one per station)
@@ -643,7 +646,8 @@ async function initializeFirebase() {
                 setupTeamMembersListener();
                 setupStationsListener();
                 setupProjectPhasesListener();
-                
+                setupTimesheetListener();
+
                 // Check if data exists, if not, initialize with defaults
                 const teamDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project'));
                 if (!teamDoc.exists()) {
@@ -856,6 +860,22 @@ function setupProjectPhasesListener() {
     });
 }
 
+function setupTimesheetListener() {
+    if (!firebaseEnabled || !db) return;
+    const tsDocRef = window.firebaseDoc(db, 'projects', 'main-project-timesheet');
+    window.firebaseOnSnapshot(tsDocRef, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            if (data.entries) {
+                timesheetEntries = data.entries;
+                localStorage.setItem('loopTimesheetEntries', JSON.stringify(timesheetEntries));
+            }
+        }
+    }, (error) => {
+        console.error('Error listening to timesheet entries:', error);
+    });
+}
+
 async function saveTeamMembers(members) {
     if (isSyncing) return;
     isSyncing = true;
@@ -1040,6 +1060,18 @@ async function saveData() {
         saveTeamMembers(teamMembers),
         saveStations(stations)
     ]);
+}
+
+async function saveTimesheetEntries() {
+    localStorage.setItem('loopTimesheetEntries', JSON.stringify(timesheetEntries));
+    if (firebaseEnabled && db) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-timesheet'), {
+                entries: timesheetEntries,
+                lastUpdated: new Date().toISOString()
+            }, { merge: true });
+        } catch (e) { console.warn('Timesheet Firebase save failed:', e); }
+    }
 }
 
 function parseDate(dateStr) {
@@ -1795,7 +1827,7 @@ async function saveProjectPhases() {
 // EMAIL SERVICE (EmailJS — browser-side, no CORS issues)
 // ============================================
 
-async function sendEmail(to, subject, htmlBody) {
+async function sendEmail(to, subject, body) {
     const publicKey = localStorage.getItem('loopEmailPublicKey');
     const serviceId = localStorage.getItem('loopEmailServiceId');
     const templateId = localStorage.getItem('loopEmailTemplateId');
@@ -1809,10 +1841,11 @@ async function sendEmail(to, subject, htmlBody) {
     }
     try {
         const toAddr = Array.isArray(to) ? to.join(',') : to;
+        const escaped = body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
         await emailjs.send(serviceId, templateId, {
             to_email: toAddr,
             subject: subject,
-            message_html: htmlBody
+            message_html: `<div style="font-family:Consolas,monospace;font-size:14px;line-height:1.5;white-space:pre-wrap;color:#222;">${escaped}</div>`
         }, publicKey);
         console.log(`Email sent to ${toAddr}: ${subject}`);
         return true;
@@ -1822,91 +1855,66 @@ async function sendEmail(to, subject, htmlBody) {
     }
 }
 
-function buildEmailTemplate(title, bodyContent) {
-    return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #0f1923; border-radius: 12px; overflow: hidden; border: 1px solid #1e3a5f;">
-        <div style="background: linear-gradient(135deg, #1a2d42, #0f1923); padding: 24px 32px; border-bottom: 2px solid #00d4aa;">
-            <h1 style="margin: 0; color: #00d4aa; font-size: 20px; font-weight: 700;">
-                ◈ Loop Automation
-            </h1>
-        </div>
-        <div style="padding: 32px;">
-            <h2 style="color: #ffffff; margin: 0 0 20px 0; font-size: 18px;">${title}</h2>
-            <div style="color: #b8c9d9; font-size: 14px; line-height: 1.6;">
-                ${bodyContent}
-            </div>
-        </div>
-        <div style="padding: 16px 32px; background: #0a1219; border-top: 1px solid #1e3a5f; text-align: center;">
-            <p style="margin: 0; color: #5a7a94; font-size: 12px;">
-                Loop Automation Project Management &bull; Sent automatically
-            </p>
-        </div>
-    </div>`;
+function buildPlainEmail(title, lines) {
+    const dashboardUrl = `${window.location.origin}${window.location.pathname}`;
+    return [
+        `LOOP AUTOMATION — ${title}`,
+        '─'.repeat(40),
+        '',
+        ...lines,
+        '',
+        '─'.repeat(40),
+        `Dashboard: ${dashboardUrl}`,
+        '',
+        'This is an automated message from Loop Automation Project Management.'
+    ].join('\n');
 }
 
 async function sendTaskNotificationEmail(memberName, taskName, phaseName, newStatus) {
     const member = teamMembers.find(m => m.name === memberName);
     if (!member || !member.email) return;
 
-    const statusColors = {
-        'Complete': '#28a745',
-        'In Progress': '#ffc107',
-        'Not Started': '#6c757d',
-        'On Hold': '#dc3545',
-        'Delayed': '#dc3545'
-    };
-    const color = statusColors[newStatus] || '#00d4aa';
+    const body = buildPlainEmail('Task Status Updated', [
+        `Hi ${memberName},`,
+        '',
+        'A task assigned to you has been updated:',
+        '',
+        `  Task:   ${taskName}`,
+        `  Phase:  ${phaseName}`,
+        `  Status: ${newStatus}`,
+        '',
+        'Please log in to the dashboard to view details.'
+    ]);
 
-    const body = `
-        <p>Hi <strong style="color:#ffffff">${memberName}</strong>,</p>
-        <p>A task assigned to you has been updated:</p>
-        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid ${color};">
-            <p style="margin: 0 0 8px 0; color: #ffffff; font-weight: 600;">${taskName}</p>
-            <p style="margin: 0 0 4px 0;">Phase: <strong style="color:#00d4aa">${phaseName}</strong></p>
-            <p style="margin: 0;">Status: <span style="color: ${color}; font-weight: 600;">${newStatus}</span></p>
-        </div>
-        <p>
-            <a href="${window.location.origin}${window.location.pathname}" 
-               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Open Project Dashboard
-            </a>
-        </p>`;
-
-    await sendEmail(member.email, `Task Update: ${taskName} → ${newStatus}`, buildEmailTemplate('Task Status Updated', body));
+    await sendEmail(member.email, `Task Update: ${taskName} - ${newStatus}`, body);
 }
 
 async function sendInvitationEmail(email, memberName, role, username, password) {
-    const credentialsBlock = (username && password) ? `
-        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #3b82f6;">
-            <p style="margin: 0 0 10px 0; color: #ffffff; font-weight: 600;">Your Login Credentials</p>
-            <table style="font-size: 14px;">
-                <tr><td style="padding: 4px 12px 4px 0; color: #5a7a94;">Username</td><td style="color: #ffffff; font-weight: 600;">${username}</td></tr>
-                <tr><td style="padding: 4px 12px 4px 0; color: #5a7a94;">Password</td><td style="color: #ffffff; font-weight: 600;">${password}</td></tr>
-            </table>
-            <p style="margin: 10px 0 0 0; color: #5a7a94; font-size: 12px;">Use the <strong>Member Login</strong> button on the sidebar to sign in.</p>
-        </div>` : '';
+    const credLines = (username && password) ? [
+        '',
+        'YOUR LOGIN CREDENTIALS:',
+        `  Username: ${username}`,
+        `  Password: ${password}`,
+        '',
+        'Use the "Member Login" button on the sidebar to sign in.',
+    ] : [];
 
-    const body = `
-        <p>Hi <strong style="color:#ffffff">${memberName}</strong>,</p>
-        <p>You've been added to the <strong style="color:#00d4aa">Loop Automation</strong> project team as a <strong style="color:#ffffff">${role}</strong>.</p>
-        ${credentialsBlock}
-        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 0 0 8px 0; color: #ffffff;">What you can do:</p>
-            <ul style="margin: 0; padding-left: 20px;">
-                <li>View the project timeline and phase progress</li>
-                <li>Track your assigned tasks</li>
-                <li>Update task status and progress</li>
-                <li>Edit your profile and add your email</li>
-            </ul>
-        </div>
-        <p>
-            <a href="${window.location.origin}${window.location.pathname}" 
-               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Join the Project
-            </a>
-        </p>`;
+    const body = buildPlainEmail('Welcome to the Team!', [
+        `Hi ${memberName},`,
+        '',
+        `You've been added to the Loop Automation project team as: ${role}`,
+        ...credLines,
+        '',
+        'What you can do:',
+        '  - View the project timeline and phase progress',
+        '  - Track your assigned tasks',
+        '  - Update task status and progress',
+        '  - Edit your profile and add your email',
+        '',
+        'Log in to the dashboard to get started.'
+    ]);
 
-    return await sendEmail(email, `You've been added to Loop Automation`, buildEmailTemplate('Welcome to the Team!', body));
+    return await sendEmail(email, `You've been added to Loop Automation`, body);
 }
 
 async function sendDeadlineAlerts() {
@@ -1960,98 +1968,62 @@ async function sendDeadlineAlerts() {
         return;
     }
 
-    let overdueHTML = '';
+    const lines = [];
     if (overdue.length > 0) {
-        overdueHTML = `
-            <h3 style="color: #dc3545; margin: 20px 0 12px 0;">Overdue Tasks (${overdue.length})</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr style="border-bottom: 1px solid #1e3a5f;">
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Task</th>
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Phase</th>
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Due</th>
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Overdue</th>
-                </tr>
-                ${overdue.map(t => `
-                    <tr style="border-bottom: 1px solid #1e3a5f20;">
-                        <td style="padding: 8px; color: #ffffff;">${t.taskName}</td>
-                        <td style="padding: 8px;">${t.phaseName}</td>
-                        <td style="padding: 8px;">${t.endDate}</td>
-                        <td style="padding: 8px; color: #dc3545; font-weight: 600;">${Math.abs(t.daysLeft)} days</td>
-                    </tr>
-                `).join('')}
-            </table>`;
+        lines.push(`OVERDUE TASKS (${overdue.length}):`);
+        overdue.forEach(t => {
+            lines.push(`  - ${t.taskName} | ${t.phaseName} | Due: ${t.endDate} | ${Math.abs(t.daysLeft)} days overdue | ${t.assignedTo}`);
+        });
+        lines.push('');
     }
-
-    let upcomingHTML = '';
     if (upcoming.length > 0) {
-        upcomingHTML = `
-            <h3 style="color: #ffc107; margin: 20px 0 12px 0;">Upcoming Deadlines (${upcoming.length})</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr style="border-bottom: 1px solid #1e3a5f;">
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Task</th>
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Phase</th>
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Due</th>
-                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Days Left</th>
-                </tr>
-                ${upcoming.map(t => `
-                    <tr style="border-bottom: 1px solid #1e3a5f20;">
-                        <td style="padding: 8px; color: #ffffff;">${t.taskName}</td>
-                        <td style="padding: 8px;">${t.phaseName}</td>
-                        <td style="padding: 8px;">${t.endDate}</td>
-                        <td style="padding: 8px; color: #ffc107; font-weight: 600;">${t.daysLeft} days</td>
-                    </tr>
-                `).join('')}
-            </table>`;
+        lines.push(`UPCOMING DEADLINES (${upcoming.length}):`);
+        upcoming.forEach(t => {
+            lines.push(`  - ${t.taskName} | ${t.phaseName} | Due: ${t.endDate} | ${t.daysLeft} days left | ${t.assignedTo}`);
+        });
     }
 
-    const body = `
-        <p>Here is the current deadline report for <strong style="color:#00d4aa">Loop Automation</strong>:</p>
-        ${overdueHTML}
-        ${upcomingHTML}
-        <p style="margin-top: 20px;">
-            <a href="${window.location.origin}${window.location.pathname}" 
-               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Open Dashboard
-            </a>
-        </p>`;
+    const body = buildPlainEmail('Deadline Alert Report', [
+        'Here is the current deadline report for Loop Automation:',
+        '',
+        ...lines
+    ]);
 
     let sentCount = 0;
     for (const member of adminMembers) {
-        const sent = await sendEmail(member.email, `Deadline Alert: ${overdue.length} overdue, ${upcoming.length} upcoming`, buildEmailTemplate('Deadline Alert Report', body));
+        const sent = await sendEmail(member.email, `Deadline Alert: ${overdue.length} overdue, ${upcoming.length} upcoming`, body);
         if (sent) sentCount++;
     }
 
     if (sentCount > 0) {
         showSuccess(`Deadline alerts sent to ${sentCount} team lead(s)`);
     } else {
-        showError('Failed to send deadline alerts. Check Firebase connection.');
+        showError('Failed to send deadline alerts. Check email settings.');
     }
 }
 
 async function sendTaskAssignedEmail(toEmail, memberName, taskName, phaseName, categoryName, stationName, startDate, endDate, status) {
-    const body = `
-        <p>Hi <strong style="color:#ffffff">${memberName}</strong>,</p>
-        <p>You have been assigned a new task on the <strong style="color:#00d4aa">Loop Automation</strong> project:</p>
-        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #00d4aa;">
-            <p style="margin: 0 0 8px 0; color: #ffffff; font-size: 16px; font-weight: 600;">${taskName}</p>
-            <table style="width: 100%; font-size: 13px;">
-                <tr><td style="padding: 4px 0; color: #5a7a94; width: 100px;">Phase</td><td style="color: #ffffff;">${phaseName}</td></tr>
-                ${categoryName ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Category</td><td style="color: #ffffff;">${categoryName}</td></tr>` : ''}
-                ${stationName ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Station</td><td style="color: #ffffff;">${stationName}</td></tr>` : ''}
-                ${startDate ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Start Date</td><td style="color: #ffffff;">${startDate}</td></tr>` : ''}
-                ${endDate ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Due Date</td><td style="color: #dc3545; font-weight: 600;">${endDate}</td></tr>` : ''}
-                <tr><td style="padding: 4px 0; color: #5a7a94;">Status</td><td style="color: #ffc107;">${status}</td></tr>
-            </table>
-        </div>
-        <p>Please log in to the dashboard to view full details and update your progress.</p>
-        <p>
-            <a href="${window.location.origin}${window.location.pathname}"
-               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Open Dashboard
-            </a>
-        </p>`;
+    const details = [
+        `  Task:       ${taskName}`,
+        `  Phase:      ${phaseName}`,
+    ];
+    if (categoryName) details.push(`  Category:   ${categoryName}`);
+    if (stationName) details.push(`  Station:    ${stationName}`);
+    if (startDate) details.push(`  Start Date: ${startDate}`);
+    if (endDate) details.push(`  Due Date:   ${endDate}`);
+    details.push(`  Status:     ${status}`);
 
-    return await sendEmail(toEmail, `New Task Assigned: ${taskName}`, buildEmailTemplate('New Task Assignment', body));
+    const body = buildPlainEmail('New Task Assignment', [
+        `Hi ${memberName},`,
+        '',
+        'You have been assigned a new task on the Loop Automation project:',
+        '',
+        ...details,
+        '',
+        'Please log in to the dashboard to view full details and update your progress.'
+    ]);
+
+    return await sendEmail(toEmail, `New Task Assigned: ${taskName}`, body);
 }
 
 async function sendTaskCompletedEmailToAdmins(memberName, taskName, phaseName) {
@@ -2061,25 +2033,17 @@ async function sendTaskCompletedEmailToAdmins(memberName, taskName, phaseName) {
     const now = new Date();
     const timestamp = now.toLocaleString();
 
-    const body = `
-        <p>A task has been marked as <strong style="color:#28a745">Complete</strong>:</p>
-        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #28a745;">
-            <p style="margin: 0 0 8px 0; color: #ffffff; font-size: 16px; font-weight: 600;">${taskName}</p>
-            <table style="width: 100%; font-size: 13px;">
-                <tr><td style="padding: 4px 0; color: #5a7a94; width: 120px;">Completed By</td><td style="color: #ffffff; font-weight: 600;">${memberName}</td></tr>
-                <tr><td style="padding: 4px 0; color: #5a7a94;">Phase</td><td style="color: #ffffff;">${phaseName}</td></tr>
-                <tr><td style="padding: 4px 0; color: #5a7a94;">Completed At</td><td style="color: #ffffff;">${timestamp}</td></tr>
-            </table>
-        </div>
-        <p>
-            <a href="${window.location.origin}${window.location.pathname}"
-               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Open Dashboard
-            </a>
-        </p>`;
+    const body = buildPlainEmail('Task Completed', [
+        'A task has been marked as Complete:',
+        '',
+        `  Task:         ${taskName}`,
+        `  Phase:        ${phaseName}`,
+        `  Completed By: ${memberName}`,
+        `  Completed At: ${timestamp}`,
+    ]);
 
     const emails = adminMembers.map(m => m.email);
-    await sendEmail(emails, `Task Completed: ${taskName} by ${memberName}`, buildEmailTemplate('Task Completed', body));
+    await sendEmail(emails, `Task Completed: ${taskName} by ${memberName}`, body);
 }
 
 // ============================================
@@ -3643,6 +3607,10 @@ function renderTeam() {
     if (emailSettingsBtn) {
         emailSettingsBtn.style.display = isAdmin ? 'flex' : 'none';
     }
+    const exportTsBtn = document.getElementById('export-timesheet-btn');
+    if (exportTsBtn) {
+        exportTsBtn.style.display = isAdmin ? 'flex' : 'none';
+    }
     
     grid.innerHTML = teamMembers.map((member, index) => {
         const assignedHours = getAssignedHours(member.name);
@@ -3887,6 +3855,8 @@ function openMemberTasks(memberName, memberIndex) {
                 <h3>Assigned Tasks</h3>
                 ${tasksHTML}
             </div>
+
+            ${buildTimesheetSection(memberName, member)}
         </div>
     `;
     
@@ -4339,10 +4309,16 @@ async function testEmailSettings() {
     }
 
     try {
+        const testBody = buildPlainEmail('Test Email', [
+            'If you received this, your email settings are configured correctly.',
+            '',
+            'Email service is working!'
+        ]);
+        const escaped = testBody.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
         await emailjs.send(serviceId, templateId, {
             to_email: testTo,
-            subject: 'Loop Automation — Test Email',
-            message_html: buildEmailTemplate('Test Email', '<p>If you received this, your email settings are configured correctly.</p><p style="color:#00d4aa;font-weight:600;">Email service is working!</p>')
+            subject: 'Loop Automation - Test Email',
+            message_html: `<div style="font-family:Consolas,monospace;font-size:14px;line-height:1.5;white-space:pre-wrap;color:#222;">${escaped}</div>`
         }, publicKey);
         if (statusEl) statusEl.innerHTML = `<span style="color:#28a745">Test email sent to ${testTo}</span>`;
     } catch (e) {
@@ -5860,6 +5836,327 @@ function buildTimesheetComparison() {
     return { ganttByPerson, ganttSummary, timesheetSummary };
 }
 
+// ============================================
+// GLOBAL TIMESHEET — LOG HOURS & EXPORT
+// ============================================
+
+function buildTimesheetSection(memberName, member) {
+    const canLog = isAdmin || currentGroupLead || (currentMember && currentMember.name === memberName);
+    const entries = timesheetEntries.filter(e => e.memberName === memberName);
+    entries.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.startTime || '').localeCompare(a.startTime || ''));
+
+    const stationOptions = stations.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    const categoryOptions = ['Administrative', 'Mechanical', 'Controls', 'General'].map(c =>
+        `<option value="${c}">${c}</option>`).join('');
+    const worksetOptions = ['Administrative Tasks', 'Project Meeting', 'Meeting With Faculty', 'Meeting With Leadership',
+        'CAD Modelling', 'R&D', 'Brainstorming', 'Prototyping', 'Assembly Setup', 'Troubleshooting',
+        'Electrical Design', 'Electrical Drafting', 'Product Design', 'Time Sheets', 'Mechanical Minor Team Meeting',
+        'Mechanical Major Team Meeting', 'Attending Presentations', 'Meeting Minutes', 'Concept Testing',
+        'Detailing', 'Mentoring/Helping', 'Other'].map(w =>
+        `<option value="${w}">${w}</option>`).join('');
+
+    const phaseOptions = projectPhases.map(p =>
+        `<option value="${p.name}">${p.name}</option>`).join('');
+
+    let logFormHTML = '';
+    if (canLog) {
+        logFormHTML = `
+        <div style="background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:10px;padding:16px;margin-bottom:16px;">
+            <h4 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-primary);">Log New Time Entry</h4>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Phase</label>
+                    <select id="ts-phase" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">${phaseOptions}</select></div>
+                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Date</label>
+                    <input type="date" id="ts-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;"></div>
+                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Start Time</label>
+                    <input type="time" id="ts-start" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;"></div>
+                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">End Time</label>
+                    <input type="time" id="ts-end" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;"></div>
+                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Station</label>
+                    <select id="ts-station" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">
+                        <option value="Other">Other</option>${stationOptions}</select></div>
+                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Workset</label>
+                    <select id="ts-workset" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">${categoryOptions}</select></div>
+                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Category</label>
+                    <select id="ts-category" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">${worksetOptions}</select></div>
+            </div>
+            <div style="margin-top:8px;">
+                <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Description</label>
+                <input type="text" id="ts-description" placeholder="What did you work on?" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">
+            </div>
+            <button onclick="addTimesheetEntry('${memberName.replace(/'/g, "\\'")}')" style="margin-top:10px;padding:7px 18px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.82rem;">Add Entry</button>
+        </div>`;
+    }
+
+    let entriesHTML = '';
+    if (entries.length > 0) {
+        entriesHTML = `
+        <div style="overflow-x:auto;max-height:300px;overflow-y:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+                <thead><tr style="background:var(--bg-primary);position:sticky;top:0;">
+                    <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">Phase</th>
+                    <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">Date</th>
+                    <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">Start</th>
+                    <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">End</th>
+                    <th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">Hours</th>
+                    <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">Station</th>
+                    <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">Category</th>
+                    <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border-primary);color:var(--text-muted);">Description</th>
+                    ${canLog ? '<th style="padding:6px 8px;border-bottom:1px solid var(--border-primary);"></th>' : ''}
+                </tr></thead>
+                <tbody>
+                    ${entries.map(e => `<tr style="border-bottom:1px solid var(--border-primary)20;">
+                        <td style="padding:5px 8px;color:var(--text-secondary);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${e.phase || ''}">${(e.phase || '').replace(/^(PHASE \d+).*/, '$1')}</td>
+                        <td style="padding:5px 8px;color:var(--text-primary);white-space:nowrap;">${e.date || ''}</td>
+                        <td style="padding:5px 8px;color:var(--text-secondary);">${e.startTime || ''}</td>
+                        <td style="padding:5px 8px;color:var(--text-secondary);">${e.endTime || ''}</td>
+                        <td style="padding:5px 8px;color:var(--accent);text-align:right;font-weight:600;">${(e.hours || 0).toFixed(2)}</td>
+                        <td style="padding:5px 8px;color:var(--text-secondary);white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;">${e.station || ''}</td>
+                        <td style="padding:5px 8px;color:var(--text-secondary);">${e.category || ''}</td>
+                        <td style="padding:5px 8px;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${(e.description || '').replace(/"/g, '&quot;')}">${e.description || ''}</td>
+                        ${canLog ? `<td style="padding:5px 4px;text-align:center;"><button onclick="deleteTimesheetEntry('${e.id}','${memberName.replace(/'/g, "\\'")}')" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:1rem;" title="Delete entry">&times;</button></td>` : ''}
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    } else {
+        entriesHTML = `<p style="text-align:center;color:var(--text-muted);padding:16px 0;font-size:0.85rem;">No time entries logged yet.</p>`;
+    }
+
+    const totalLogged = entries.reduce((s, e) => s + (e.hours || 0), 0);
+
+    return `
+        <div class="member-tasks-body" style="margin-top:0;">
+            <h3 style="display:flex;justify-content:space-between;align-items:center;">
+                Timesheet Log
+                <span style="font-size:0.85rem;font-weight:600;color:var(--accent);">${totalLogged.toFixed(1)}h logged</span>
+            </h3>
+            ${logFormHTML}
+            ${entriesHTML}
+        </div>`;
+}
+
+function parseTimeToDecimal(t) {
+    if (!t) return 0;
+    const [h, m] = t.split(':').map(Number);
+    return h + (m || 0) / 60;
+}
+
+async function addTimesheetEntry(memberName) {
+    const phase = document.getElementById('ts-phase')?.value || '';
+    const date = document.getElementById('ts-date')?.value || '';
+    const startTime = document.getElementById('ts-start')?.value || '';
+    const endTime = document.getElementById('ts-end')?.value || '';
+    const station = document.getElementById('ts-station')?.value || 'Other';
+    const workset = document.getElementById('ts-workset')?.value || '';
+    const category = document.getElementById('ts-category')?.value || '';
+    const description = document.getElementById('ts-description')?.value || '';
+
+    if (!date) { showError('Please enter a date.'); return; }
+    if (!startTime || !endTime) { showError('Please enter start and end times.'); return; }
+
+    let hours = parseTimeToDecimal(endTime) - parseTimeToDecimal(startTime);
+    if (hours <= 0) hours += 24;
+
+    const entry = {
+        id: 'ts-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        memberName,
+        phase, date, startTime, endTime,
+        hours: Math.round(hours * 100) / 100,
+        station, workset, category, description,
+        createdAt: new Date().toISOString()
+    };
+
+    timesheetEntries.push(entry);
+    await saveTimesheetEntries();
+    showSuccess(`Logged ${entry.hours.toFixed(2)}h for ${date}`);
+
+    const memberIndex = teamMembers.findIndex(m => m.name === memberName);
+    if (memberIndex >= 0) openMemberTasks(memberName, memberIndex);
+}
+
+async function deleteTimesheetEntry(entryId, memberName) {
+    timesheetEntries = timesheetEntries.filter(e => e.id !== entryId);
+    await saveTimesheetEntries();
+
+    const memberIndex = teamMembers.findIndex(m => m.name === memberName);
+    if (memberIndex >= 0) openMemberTasks(memberName, memberIndex);
+}
+
+function getWeekNumber(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const startOfYear = new Date(d.getFullYear(), 0, 1);
+    const days = Math.floor((d - startOfYear) / 86400000);
+    return Math.ceil((days + startOfYear.getDay() + 1) / 7);
+}
+
+function exportGlobalTimesheet() {
+    if (!isAdmin) { showError('Only admins can export timesheets.'); return; }
+    if (timesheetEntries.length === 0) { showError('No timesheet entries to export. Members need to log hours first.'); return; }
+
+    const wb = XLSX.utils.book_new();
+
+    const memberEntries = {};
+    timesheetEntries.forEach(e => {
+        if (!memberEntries[e.memberName]) memberEntries[e.memberName] = [];
+        memberEntries[e.memberName].push(e);
+    });
+
+    // Collect all unique weeks across all entries
+    const weekSet = new Set();
+    timesheetEntries.forEach(e => { if (e.date) weekSet.add(getWeekNumber(e.date)); });
+    const allWeeks = [...weekSet].sort((a, b) => a - b);
+
+    // Determine current phase groupings from entries
+    const phaseGroups = {};
+    timesheetEntries.forEach(e => {
+        const phaseKey = (e.phase || 'Unknown').replace(/^(PHASE \d+).*$/i, '$1').toUpperCase();
+        if (!phaseGroups[phaseKey]) phaseGroups[phaseKey] = new Set();
+        if (e.date) phaseGroups[phaseKey].add(getWeekNumber(e.date));
+    });
+
+    // Build Breakdown Summary sheet
+    const summaryRows = [[''], ['']];
+
+    Object.keys(phaseGroups).sort().forEach(phaseKey => {
+        const phaseWeeks = [...phaseGroups[phaseKey]].sort((a, b) => a - b);
+
+        // Phase header row
+        const headerRow = ['', `${phaseKey} Summary`, '', ''];
+        summaryRows.push(headerRow);
+        summaryRows.push(['']);
+
+        // Column headers: #, Names, Class/Role, Week N Summary..., Scheduled Hours, Actual/Estimate..., Grand Total
+        const colHeaders = ['', '', 'Names', 'Role'];
+        phaseWeeks.forEach(w => {
+            colHeaders.push(`Week ${w} Summary`);
+            colHeaders.push('Scheduled Hours');
+            colHeaders.push(`Actual/Estimate*100% WK ${w}`);
+        });
+        colHeaders.push('Grand Total');
+        summaryRows.push(colHeaders);
+
+        // One data row per member
+        let rowNum = 0;
+        teamMembers.forEach(member => {
+            const mEntries = (memberEntries[member.name] || []).filter(e => {
+                const pk = (e.phase || '').replace(/^(PHASE \d+).*$/i, '$1').toUpperCase();
+                return pk === phaseKey;
+            });
+            if (mEntries.length === 0) return;
+
+            rowNum++;
+            const row = ['', rowNum, member.name, member.role];
+            let grandTotal = 0;
+            phaseWeeks.forEach(w => {
+                const weekHours = mEntries.filter(e => e.date && getWeekNumber(e.date) === w)
+                    .reduce((s, e) => s + (e.hours || 0), 0);
+                grandTotal += weekHours;
+                const scheduled = member.targetHours || 40;
+                const pct = scheduled > 0 ? (weekHours / scheduled) * 100 : 0;
+                row.push(Math.round(weekHours * 100) / 100);
+                row.push(scheduled);
+                row.push(Math.round(pct * 100) / 100);
+            });
+            row.push(Math.round(grandTotal * 100) / 100);
+            summaryRows.push(row);
+        });
+        summaryRows.push(['']);
+    });
+
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+    summarySheet['!cols'] = [{ wch: 3 }, { wch: 4 }, { wch: 25 }, { wch: 12 },
+        ...Array(allWeeks.length * 3 + 1).fill({ wch: 16 })];
+    XLSX.utils.book_append_sheet(wb, summarySheet, 'Breakdown Summary');
+
+    // Per-member sheets
+    teamMembers.forEach(member => {
+        const entries = (memberEntries[member.name] || []).sort((a, b) =>
+            (a.date || '').localeCompare(b.date || '') || (a.startTime || '').localeCompare(b.startTime || ''));
+        if (entries.length === 0) return;
+
+        const rows = [];
+        rows.push(['']);
+        rows.push(['']);
+        rows.push(['', '', '2026 CAPSTONE AUTOMATION PROJECT - TIME TRACKING']);
+        rows.push(['']);
+        // Calculate hours by phase
+        const phaseHours = {};
+        let totalHours = 0;
+        entries.forEach(e => {
+            const pk = (e.phase || 'Unknown').replace(/^(PHASE \d+).*$/i, '$1');
+            phaseHours[pk] = (phaseHours[pk] || 0) + (e.hours || 0);
+            totalHours += (e.hours || 0);
+        });
+        const sortedPhases = Object.keys(phaseHours).sort();
+
+        // Rows 5-11 (idx 4-10): Name/Student/Email/Program/Role/Station/blank + HOURS SUMMARY on right
+        // col E(4)='HOURS SUMMARY', col F(5)=label, col G(6)=value
+        rows.push(['', 'Name', '', member.name, '', 'HOURS SUMMARY']);  // row 5
+        rows.push(['', 'Student #', '', '']);  // row 6
+        rows.push(['', 'Email', '', member.email || '']);  // row 7
+        rows.push(['', 'Program', '', '']);  // row 8
+        rows.push(['', 'Role', '', member.role]);  // row 9
+        rows.push(['', 'Station Focus', '', '']);  // row 10
+
+        sortedPhases.forEach((pk, i) => {
+            const rowIdx = 6 + i; // rows 7,8,9... (0-indexed: 6,7,8...)
+            while (rows.length <= rowIdx) rows.push([]);
+            rows[rowIdx][6] = pk;
+            rows[rowIdx][7] = Math.round(phaseHours[pk] * 100) / 100;
+        });
+        rows.push(['', '', '', '', '', 'Total Hours', '', Math.round(totalHours * 100) / 100]);
+
+        // Weekly breakdown on right side
+        const weekHrs = {};
+        entries.forEach(e => {
+            if (e.date) {
+                const w = getWeekNumber(e.date);
+                weekHrs[w] = (weekHrs[w] || 0) + (e.hours || 0);
+            }
+        });
+        const memberWeeks = Object.keys(weekHrs).sort((a, b) => a - b);
+        memberWeeks.forEach((w, i) => {
+            const r = 4 + i;
+            while (rows.length <= r) rows.push([]);
+            rows[r][9] = `WEEK ${w}`;
+            rows[r][10] = Math.round(weekHrs[w] * 100) / 100;
+        });
+
+        rows.push(['']);
+        rows.push(['']);
+        rows.push(['', 'Phase', 'Week', 'Date', 'Start Time', 'End Time', 'Hours ', 'Station', 'Workset', 'Category', 'Description']);
+
+        entries.forEach(e => {
+            rows.push([
+                '',
+                (e.phase || '').replace(/^(PHASE \d+).*$/i, '$1'),
+                e.date ? getWeekNumber(e.date) : '',
+                e.date || '',
+                e.startTime || '',
+                e.endTime || '',
+                e.hours || 0,
+                e.station || '',
+                e.workset || '',
+                e.category || '',
+                e.description || ''
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [{ wch: 3 }, { wch: 14 }, { wch: 14 }, { wch: 22 }, { wch: 12 },
+            { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 18 }, { wch: 14 }, { wch: 10 },
+            { wch: 22 }, { wch: 50 }];
+
+        const sheetName = member.name.substring(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    const fileName = `Time_Sheet_Summary_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showSuccess(`Timesheet exported: ${fileName}`);
+}
+
 function generateExcelReport(analysis, comparisonData) {
     const wb = XLSX.utils.book_new();
     
@@ -6034,6 +6331,9 @@ window.toggleTimesheetUpload = toggleTimesheetUpload;
 window.handleTimesheetFiles = handleTimesheetFiles;
 window.removeTimesheet = removeTimesheet;
 window.analyzeTimesheets = analyzeTimesheets;
+window.addTimesheetEntry = addTimesheetEntry;
+window.deleteTimesheetEntry = deleteTimesheetEntry;
+window.exportGlobalTimesheet = exportGlobalTimesheet;
 
 // ============================================
 // INITIALIZATION
@@ -6062,6 +6362,9 @@ function init() {
         
         // Load group leads
         groupLeads = JSON.parse(localStorage.getItem('loopGroupLeads')) || JSON.parse(JSON.stringify(defaultGroupLeads));
+
+        // Load timesheet entries
+        timesheetEntries = JSON.parse(localStorage.getItem('loopTimesheetEntries')) || [];
         
         // Render initial views
         renderAllViews();
