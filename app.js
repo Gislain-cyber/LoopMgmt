@@ -820,30 +820,36 @@ function setupStationsListener() {
     });
 }
 
+let _skipNextSnapshot = false;
+
 function setupProjectPhasesListener() {
     if (!firebaseEnabled || !db) return;
     
     const phasesDocRef = window.firebaseDoc(db, 'projects', 'main-project-phases');
     
     window.firebaseOnSnapshot(phasesDocRef, (docSnapshot) => {
+        if (_skipNextSnapshot) {
+            _skipNextSnapshot = false;
+            return;
+        }
         if (docSnapshot.exists()) {
             const data = docSnapshot.data();
             if (data.phases) {
                 projectPhases = data.phases;
                 const hasSemB = projectPhases.some(p => p.id === 'sb-phase0');
-                const changed = ensureSemesterBPhases(projectPhases);
-                if (!hasSemB || changed) {
-                    console.log('Semester B phases missing from Firebase — saving updated data');
+                if (!hasSemB) {
+                    ensureSemesterBPhases(projectPhases);
+                    console.log('Semester B phases missing from Firebase — saving once');
+                    _skipNextSnapshot = true;
                     saveProjectPhases();
                 }
                 if (!isLoading) {
-                    console.log('Project phases updated from server');
                     renderProjectTimeline();
                 }
             }
         } else {
-            // No phases in Firebase yet, save current phases
             console.log('No phases in Firebase, initializing...');
+            _skipNextSnapshot = true;
             saveProjectPhases();
         }
     }, (error) => {
