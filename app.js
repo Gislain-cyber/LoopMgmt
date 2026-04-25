@@ -519,7 +519,7 @@ const defaultPhases = [
     }
 ];
 
-const DATA_VERSION = 4; // Bump to force-replace Semester B phases with correct 2026 dates
+const DATA_VERSION = 5; // Bump to force-replace Semester B phases + push to Firebase
 
 let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSON.parse(JSON.stringify(defaultPhases));
 
@@ -656,23 +656,28 @@ async function initializeFirebase() {
                 
                 // Check if phases exist in Firebase or need Semester B migration
                 const phasesDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project-phases'));
+                const didMigrate = (storedVersion < DATA_VERSION) || (parseInt(localStorage.getItem('loopDataVersion') || '0') >= DATA_VERSION && projectPhases.some(p => p.id === 'sb-phase0' && p.startDate === '2026-04-25'));
                 if (!phasesDoc.exists()) {
                     console.log('Initializing project phases in Firebase...');
                     ensureSemesterBPhases(projectPhases);
+                    _migrationPushInProgress = true;
                     await saveProjectPhases();
+                    _migrationPushInProgress = false;
+                } else if (didMigrate) {
+                    console.log('Pushing locally-migrated Semester B phases to Firebase');
+                    _migrationPushInProgress = true;
+                    await saveProjectPhases();
+                    _migrationPushInProgress = false;
                 } else {
                     const fbPhases = phasesDoc.data().phases || [];
-                    const fbVersion = parseInt(localStorage.getItem('loopDataVersion') || '0');
-                    const needsReplace = fbVersion >= DATA_VERSION;
                     const hasSemB = fbPhases.some(p => p.id === 'sb-phase0');
                     if (!hasSemB) {
                         console.log('Semester B missing from Firebase — adding');
                         projectPhases = fbPhases;
                         ensureSemesterBPhases(projectPhases);
+                        _migrationPushInProgress = true;
                         await saveProjectPhases();
-                    } else if (needsReplace) {
-                        console.log('Pushing updated Semester B phases to Firebase');
-                        await saveProjectPhases();
+                        _migrationPushInProgress = false;
                     }
                 }
                 
@@ -840,6 +845,7 @@ function setupStationsListener() {
 }
 
 let _lastLocalRenderTime = 0;
+let _migrationPushInProgress = false;
 
 function setupProjectPhasesListener() {
     if (!firebaseEnabled || !db) return;
@@ -847,6 +853,7 @@ function setupProjectPhasesListener() {
     const phasesDocRef = window.firebaseDoc(db, 'projects', 'main-project-phases');
     
     window.firebaseOnSnapshot(phasesDocRef, (docSnapshot) => {
+        if (_migrationPushInProgress) return;
         if (docSnapshot.exists()) {
             const data = docSnapshot.data();
             if (data.phases) {
