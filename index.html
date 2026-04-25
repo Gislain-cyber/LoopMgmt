@@ -14,6 +14,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Excel Read/Write Library (SheetJS) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <!-- EmailJS - Browser Email Service -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -336,23 +338,29 @@
 
                 <!-- Email Settings Panel -->
                 <div class="modal-overlay" id="email-settings-modal">
-                    <div class="modal" style="max-width: 500px;">
+                    <div class="modal" style="max-width: 520px;">
                         <div class="modal-header">
-                            <h2>Email Settings (Resend)</h2>
+                            <h2>Email Settings (EmailJS)</h2>
                             <button class="modal-close" onclick="closeModal('email-settings-modal')">&times;</button>
                         </div>
                         <div class="modal-body" style="padding: 24px;">
                             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
-                                Sign up at <a href="https://resend.com" target="_blank" style="color: #00d4aa;">resend.com</a> (free: 3,000 emails/month), create an API key, and paste it below.
+                                Sign up at <a href="https://www.emailjs.com" target="_blank" style="color: #00d4aa;">emailjs.com</a> (free: 200 emails/month). Create a service, a template, and copy your keys below.
                             </p>
                             <div class="form-group" style="margin-bottom: 16px;">
-                                <label for="email-api-key" style="display:block; margin-bottom: 6px; font-weight: 600;">Resend API Key</label>
-                                <input type="password" id="email-api-key" placeholder="re_xxxxxxxxx..." style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;">
+                                <label for="emailjs-public-key" style="display:block; margin-bottom: 6px; font-weight: 600;">Public Key</label>
+                                <input type="text" id="emailjs-public-key" placeholder="e.g. aBcDeFgHiJkLm" style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;">
+                                <span style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Account > API Keys > Public Key</span>
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
-                                <label for="email-from-address" style="display:block; margin-bottom: 6px; font-weight: 600;">From Address</label>
-                                <input type="text" id="email-from-address" placeholder="Loop Automation <onboarding@resend.dev>" style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;">
-                                <span style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Use <code>onboarding@resend.dev</code> for testing, or verify your own domain on Resend.</span>
+                                <label for="emailjs-service-id" style="display:block; margin-bottom: 6px; font-weight: 600;">Service ID</label>
+                                <input type="text" id="emailjs-service-id" placeholder="e.g. service_xxxxxx" style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;">
+                                <span style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Email Services > your service > Service ID</span>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="emailjs-template-id" style="display:block; margin-bottom: 6px; font-weight: 600;">Template ID</label>
+                                <input type="text" id="emailjs-template-id" placeholder="e.g. template_xxxxxx" style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;">
+                                <span style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Email Templates > your template > Template ID. Use variables: <code>{{to_email}}</code>, <code>{{subject}}</code>, <code>{{message_html}}</code></span>
                             </div>
                             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
                                 <button class="btn-secondary" onclick="testEmailSettings()" style="background: #00d4aa20; color: #00d4aa; border-color: #00d4aa40;">Send Test Email</button>

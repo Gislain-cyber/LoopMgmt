@@ -1783,39 +1783,32 @@ async function saveProjectPhases() {
 }
 
 // ============================================
-// EMAIL SERVICE (Resend API)
+// EMAIL SERVICE (EmailJS — browser-side, no CORS issues)
 // ============================================
 
 async function sendEmail(to, subject, htmlBody) {
-    const apiKey = localStorage.getItem('loopEmailApiKey');
-    const fromAddr = localStorage.getItem('loopEmailFrom') || 'Loop Automation <onboarding@resend.dev>';
-    if (!apiKey) {
-        console.warn('No Resend API key configured — email not sent');
+    const publicKey = localStorage.getItem('loopEmailPublicKey');
+    const serviceId = localStorage.getItem('loopEmailServiceId');
+    const templateId = localStorage.getItem('loopEmailTemplateId');
+    if (!publicKey || !serviceId || !templateId) {
+        console.warn('EmailJS not configured — email not sent');
+        return false;
+    }
+    if (typeof emailjs === 'undefined') {
+        console.warn('EmailJS SDK not loaded');
         return false;
     }
     try {
-        const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                from: fromAddr,
-                to: Array.isArray(to) ? to : [to],
-                subject,
-                html: htmlBody
-            })
-        });
-        if (res.ok) {
-            console.log(`Email sent to ${to}: ${subject}`);
-            return true;
-        }
-        const err = await res.json().catch(() => ({}));
-        console.error('Resend API error:', err);
-        return false;
+        const toAddr = Array.isArray(to) ? to.join(',') : to;
+        await emailjs.send(serviceId, templateId, {
+            to_email: toAddr,
+            subject: subject,
+            message_html: htmlBody
+        }, publicKey);
+        console.log(`Email sent to ${toAddr}: ${subject}`);
+        return true;
     } catch (error) {
-        console.error('Failed to send email:', error);
+        console.error('EmailJS send failed:', error);
         return false;
     }
 }
@@ -4039,39 +4032,40 @@ async function resendInvite(index) {
 
 function openEmailSettings() {
     if (!isAdmin) return;
-    const keyInput = document.getElementById('email-api-key');
-    const fromInput = document.getElementById('email-from-address');
+    document.getElementById('emailjs-public-key').value = localStorage.getItem('loopEmailPublicKey') || '';
+    document.getElementById('emailjs-service-id').value = localStorage.getItem('loopEmailServiceId') || '';
+    document.getElementById('emailjs-template-id').value = localStorage.getItem('loopEmailTemplateId') || '';
     const statusEl = document.getElementById('email-settings-status');
-    if (keyInput) keyInput.value = localStorage.getItem('loopEmailApiKey') || '';
-    if (fromInput) fromInput.value = localStorage.getItem('loopEmailFrom') || '';
     if (statusEl) statusEl.textContent = '';
     openModal('email-settings-modal');
 }
 
 function saveEmailSettings() {
-    const apiKey = document.getElementById('email-api-key').value.trim();
-    const fromAddr = document.getElementById('email-from-address').value.trim();
-    if (apiKey) {
-        localStorage.setItem('loopEmailApiKey', apiKey);
-    } else {
-        localStorage.removeItem('loopEmailApiKey');
-    }
-    if (fromAddr) {
-        localStorage.setItem('loopEmailFrom', fromAddr);
-    } else {
-        localStorage.removeItem('loopEmailFrom');
-    }
+    const publicKey = document.getElementById('emailjs-public-key').value.trim();
+    const serviceId = document.getElementById('emailjs-service-id').value.trim();
+    const templateId = document.getElementById('emailjs-template-id').value.trim();
+
+    const store = (key, val) => val ? localStorage.setItem(key, val) : localStorage.removeItem(key);
+    store('loopEmailPublicKey', publicKey);
+    store('loopEmailServiceId', serviceId);
+    store('loopEmailTemplateId', templateId);
+
     closeModal('email-settings-modal');
     showSuccess('Email settings saved');
 }
 
 async function testEmailSettings() {
-    const apiKey = document.getElementById('email-api-key').value.trim();
-    const fromAddr = document.getElementById('email-from-address').value.trim() || 'Loop Automation <onboarding@resend.dev>';
+    const publicKey = document.getElementById('emailjs-public-key').value.trim();
+    const serviceId = document.getElementById('emailjs-service-id').value.trim();
+    const templateId = document.getElementById('emailjs-template-id').value.trim();
     const statusEl = document.getElementById('email-settings-status');
 
-    if (!apiKey) {
-        if (statusEl) statusEl.innerHTML = '<span style="color:#dc3545">Enter an API key first</span>';
+    if (!publicKey || !serviceId || !templateId) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:#dc3545">Fill in all three fields first</span>';
+        return;
+    }
+    if (typeof emailjs === 'undefined') {
+        if (statusEl) statusEl.innerHTML = '<span style="color:#dc3545">EmailJS SDK not loaded — check internet connection</span>';
         return;
     }
 
@@ -4085,27 +4079,15 @@ async function testEmailSettings() {
     }
 
     try {
-        const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                from: fromAddr,
-                to: [testTo],
-                subject: 'Loop Automation — Test Email',
-                html: buildEmailTemplate('Test Email', '<p>If you received this, your email settings are configured correctly.</p><p style="color:#00d4aa;font-weight:600;">Email service is working!</p>')
-            })
-        });
-        if (res.ok) {
-            if (statusEl) statusEl.innerHTML = `<span style="color:#28a745">Test email sent to ${testTo}</span>`;
-        } else {
-            const err = await res.json().catch(() => ({}));
-            if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545">Failed: ${err.message || res.statusText}</span>`;
-        }
+        await emailjs.send(serviceId, templateId, {
+            to_email: testTo,
+            subject: 'Loop Automation — Test Email',
+            message_html: buildEmailTemplate('Test Email', '<p>If you received this, your email settings are configured correctly.</p><p style="color:#00d4aa;font-weight:600;">Email service is working!</p>')
+        }, publicKey);
+        if (statusEl) statusEl.innerHTML = `<span style="color:#28a745">Test email sent to ${testTo}</span>`;
     } catch (e) {
-        if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545">Error: ${e.message}</span>`;
+        const msg = e.text || e.message || 'Unknown error';
+        if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545">Failed: ${msg}</span>`;
     }
 }
 
