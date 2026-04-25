@@ -820,7 +820,7 @@ function setupStationsListener() {
     });
 }
 
-let _skipNextSnapshot = false;
+let _semBMigrationDone = false;
 
 function setupProjectPhasesListener() {
     if (!firebaseEnabled || !db) return;
@@ -828,28 +828,24 @@ function setupProjectPhasesListener() {
     const phasesDocRef = window.firebaseDoc(db, 'projects', 'main-project-phases');
     
     window.firebaseOnSnapshot(phasesDocRef, (docSnapshot) => {
-        if (_skipNextSnapshot) {
-            _skipNextSnapshot = false;
-            return;
-        }
         if (docSnapshot.exists()) {
             const data = docSnapshot.data();
             if (data.phases) {
                 projectPhases = data.phases;
-                const hasSemB = projectPhases.some(p => p.id === 'sb-phase0');
-                if (!hasSemB) {
+                if (!_semBMigrationDone && !projectPhases.some(p => p.id === 'sb-phase0')) {
+                    _semBMigrationDone = true;
                     ensureSemesterBPhases(projectPhases);
-                    console.log('Semester B phases missing from Firebase — saving once');
-                    _skipNextSnapshot = true;
+                    console.log('Semester B phases added to Firebase (one-time)');
                     saveProjectPhases();
                 }
+                _semBMigrationDone = true;
                 if (!isLoading) {
                     renderProjectTimeline();
                 }
             }
-        } else {
+        } else if (!_semBMigrationDone) {
+            _semBMigrationDone = true;
             console.log('No phases in Firebase, initializing...');
-            _skipNextSnapshot = true;
             saveProjectPhases();
         }
     }, (error) => {
