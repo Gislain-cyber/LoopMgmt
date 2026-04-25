@@ -842,7 +842,6 @@ function setupProjectPhasesListener() {
                 projectPhases = data.phases;
                 ensureSemesterBPhases(projectPhases);
                 if (!isLoading) {
-                    _saveTimelineScroll();
                     renderProjectTimeline();
                 }
             }
@@ -1244,12 +1243,10 @@ function renderProjectTimeline() {
     const container = document.getElementById('timeline-container');
     if (!container) return;
     
-    // Save scroll position before re-render
-    const prevScrollTop = container.scrollTop;
-    const prevScrollLeft = container.scrollLeft;
-    const phaseContainer = container.closest('.phase-gantt-container') || container.parentElement;
-    const parentScrollTop = phaseContainer ? phaseContainer.scrollTop : 0;
-    const parentScrollLeft = phaseContainer ? phaseContainer.scrollLeft : 0;
+    // Save scroll position of the view wrapper (the actual scrollable element)
+    const viewEl = document.getElementById('timeline-view');
+    const viewScrollTop = viewEl ? viewEl.scrollTop : 0;
+    const viewScrollLeft = viewEl ? viewEl.scrollLeft : 0;
     
     // Get the project timeline range
     const { minDate, maxDate } = getProjectTimelineRange();
@@ -1584,21 +1581,9 @@ function renderProjectTimeline() {
     
     // Restore scroll position after re-render
     requestAnimationFrame(() => {
-        container.scrollTop = prevScrollTop;
-        container.scrollLeft = prevScrollLeft;
-        if (phaseContainer) {
-            phaseContainer.scrollTop = parentScrollTop;
-            phaseContainer.scrollLeft = parentScrollLeft;
-        }
-        const viewEl = document.getElementById('timeline-view');
-        if (viewEl && viewEl._savedScrollTop !== undefined) {
-            viewEl.scrollTop = viewEl._savedScrollTop;
-            delete viewEl._savedScrollTop;
-        }
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent && mainContent._savedScrollTop !== undefined) {
-            mainContent.scrollTop = mainContent._savedScrollTop;
-            delete mainContent._savedScrollTop;
+        if (viewEl) {
+            viewEl.scrollTop = viewScrollTop;
+            viewEl.scrollLeft = viewScrollLeft;
         }
     });
 }
@@ -1639,18 +1624,10 @@ function calculateStationTasksProgress(station) {
     return Math.round(total / station.tasks.length);
 }
 
-function _saveTimelineScroll() {
-    const viewEl = document.getElementById('timeline-view');
-    if (viewEl) viewEl._savedScrollTop = viewEl.scrollTop;
-    const mainContent = document.querySelector('.main-content');
-    if (mainContent) mainContent._savedScrollTop = mainContent.scrollTop;
-}
-
 function togglePhase(phaseId) {
     const phase = projectPhases.find(p => p.id === phaseId);
     if (phase) {
         phase.expanded = !phase.expanded;
-        _saveTimelineScroll();
         saveProjectPhases();
         renderProjectTimeline();
     }
@@ -1662,7 +1639,6 @@ function toggleCategory(phaseId, categoryId) {
         const category = phase.categories.find(c => c.id === categoryId);
         if (category) {
             category.expanded = !category.expanded;
-            _saveTimelineScroll();
             saveProjectPhases();
             renderProjectTimeline();
         }
@@ -1677,7 +1653,6 @@ function toggleTimelineStation(phaseId, categoryId, stationId) {
             const station = category.stations.find(s => s.id === stationId);
             if (station) {
                 station.expanded = !station.expanded;
-                _saveTimelineScroll();
                 saveProjectPhases();
                 renderProjectTimeline();
             }
@@ -1753,7 +1728,6 @@ function expandAllPhases() {
             });
         });
     });
-    _saveTimelineScroll();
     saveProjectPhases();
     renderProjectTimeline();
 }
@@ -1768,7 +1742,6 @@ function collapseAllPhases() {
             });
         });
     });
-    _saveTimelineScroll();
     saveProjectPhases();
     renderProjectTimeline();
 }
