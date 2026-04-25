@@ -1114,10 +1114,38 @@ function getAllTasks() {
     return stations.flatMap(s => s.tasks);
 }
 
+function getTimelineTasksForMember(memberName) {
+    const tasks = [];
+    (projectPhases || []).forEach(phase => {
+        (phase.categories || []).forEach(cat => {
+            (cat.stations || []).forEach(stn => {
+                (stn.tasks || []).forEach(task => {
+                    if (task.assignedTo === memberName) {
+                        tasks.push({
+                            ...task,
+                            phaseName: phase.name,
+                            categoryName: cat.name,
+                            stationName: stn.name,
+                            phaseId: phase.id,
+                            categoryId: cat.id,
+                            stationId: stn.id,
+                            phaseColor: phase.color || cat.color || '#888'
+                        });
+                    }
+                });
+            });
+        });
+    });
+    return tasks;
+}
+
 function getAssignedHours(memberName) {
-    return getAllTasks()
+    const stationHours = getAllTasks()
         .filter(t => t.assignedTo === memberName)
         .reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
+    const timelineHours = getTimelineTasksForMember(memberName)
+        .reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
+    return stationHours + timelineHours;
 }
 
 function getStatusClass(status) {
@@ -3614,7 +3642,9 @@ function renderTeam() {
     
     grid.innerHTML = teamMembers.map((member, index) => {
         const assignedHours = getAssignedHours(member.name);
-        const taskCount = getAllTasks().filter(t => t.assignedTo === member.name).length;
+        const stationTaskCount = getAllTasks().filter(t => t.assignedTo === member.name).length;
+        const timelineTasks = getTimelineTasksForMember(member.name);
+        const taskCount = stationTaskCount + timelineTasks.length;
         const loadPercent = member.targetHours > 0 ? (assignedHours / member.targetHours) * 100 : 0;
         
         let loadColor = '#28a745';
@@ -3635,6 +3665,23 @@ function renderTeam() {
                 <div style="margin-left:auto;" onclick="event.stopPropagation()">
                     <button onclick="editMemberProfile(); event.stopPropagation();" style="padding:4px 10px;font-size:0.7rem;background:${member.color}15;color:${member.color};border:1px solid ${member.color}30;border-radius:5px;cursor:pointer;font-family:inherit;">Edit Profile</button>
                 </div>`;
+        }
+
+        // Build assigned tasks preview (show up to 4 task names from timeline)
+        let taskListHTML = '';
+        if (timelineTasks.length > 0) {
+            const shown = timelineTasks.slice(0, 4);
+            const remaining = timelineTasks.length - shown.length;
+            taskListHTML = `<div style="padding:0 16px 8px;display:flex;flex-direction:column;gap:3px;">
+                ${shown.map(t => {
+                    const statusDot = t.status === 'Complete' ? '#28a745' : t.status === 'In Progress' ? '#ffc107' : '#6c757d';
+                    return `<div style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--text-secondary);line-height:1.3;">
+                        <span style="flex-shrink:0;width:6px;height:6px;border-radius:50%;background:${statusDot};"></span>
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.name}">${t.name}</span>
+                    </div>`;
+                }).join('')}
+                ${remaining > 0 ? `<div style="font-size:0.68rem;color:var(--text-muted);padding-left:12px;">+${remaining} more</div>` : ''}
+            </div>`;
         }
         
         return `
@@ -3657,6 +3704,7 @@ function renderTeam() {
                         <span class="team-stat-label">Hours</span>
                     </div>
                 </div>
+                ${taskListHTML}
                 <div class="team-progress">
                     <div class="team-progress-bar">
                         <div class="team-progress-fill" style="width: ${Math.min(loadPercent, 100)}%; background: ${loadColor}"></div>
@@ -3719,20 +3767,33 @@ function openMemberTasks(memberName, memberIndex) {
     currentMemberName = memberName;
     const member = teamMembers[memberIndex];
     
-    // Get all tasks assigned to this member
+    // Get all tasks assigned to this member from stations
     const memberTasks = [];
     stations.forEach(station => {
         station.tasks.forEach(task => {
             if (task.assignedTo === memberName) {
                 memberTasks.push({
                     ...task,
+                    source: 'station',
                     stationId: station.id,
                     stationName: station.name,
                     stationColor: station.color
                 });
-        }
+            }
+        });
     });
-});
+
+    // Also get tasks from project timeline phases
+    const tlTasks = getTimelineTasksForMember(memberName);
+    tlTasks.forEach(t => {
+        memberTasks.push({
+            ...t,
+            source: 'timeline',
+            stationColor: t.phaseColor,
+            estHours: t.estHours || 0,
+            actualHours: t.actualHours || 0
+        });
+    });
 
     // Calculate stats
     const totalTasks = memberTasks.length;
@@ -3757,14 +3818,25 @@ function openMemberTasks(memberName, memberIndex) {
         <div class="member-tasks-list">
             ${memberTasks.map(task => {
                 const statusClass = getStatusClass(task.status);
-                const taskProgress = task.estHours > 0 ? Math.round((task.actualHours / task.estHours) * 100) : 0;
+                const taskProgress = task.estHours > 0 ? Math.round(((task.actualHours || 0) / task.estHours) * 100) : (task.progress || 0);
+                const isTimeline = task.source === 'timeline';
+                const displayName = isTimeline
+                    ? `<span style="font-size:0.68rem;color:var(--text-muted);display:block;">${(task.phaseName || '').replace(/^(PHASE \d+).*$/i,'$1')} &rsaquo; ${task.categoryName || ''}</span>${task.stationName || ''}`
+                    : task.stationName;
+                const uniqueKey = `${task.stationId}-${task.id}`;
+                const saveHandler = isTimeline
+                    ? `saveTimelineTaskUpdate('${task.phaseId}','${task.categoryId}','${task.stationId}','${task.id}')`
+                    : `saveMemberTaskUpdate('${task.stationId}', '${task.id}')`;
+                const commitHandler = isTimeline
+                    ? `commitTimelineTaskToTimesheet('${task.phaseId}','${task.categoryId}','${task.stationId}','${task.id}','${memberName.replace(/'/g, "\\'")}')`
+                    : `commitTaskToTimesheet('${task.stationId}', '${task.id}', '${memberName.replace(/'/g, "\\'")}')`;
                 
                 return `
                 <div class="member-task-card" data-station="${task.stationId}" data-task="${task.id}">
                     <div class="member-task-header">
                         <div class="member-task-station" style="color: ${task.stationColor}">
                             <span style="display:inline-block;width:8px;height:8px;background:${task.stationColor};border-radius:2px;margin-right:6px"></span>
-                            ${task.stationName}
+                            ${displayName}
                         </div>
                         <span class="status-badge ${statusClass}">${task.status}</span>
                     </div>
@@ -3777,8 +3849,8 @@ function openMemberTasks(memberName, memberIndex) {
                     <div class="member-task-progress-section">
                         <div class="member-task-hours">
                             <label>Hours: </label>
-                            <input type="number" min="0" value="${task.actualHours || 0}" 
-                                id="hours-${task.stationId}-${task.id}"
+                            <input type="number" min="0" step="0.5" value="${task.actualHours || 0}" 
+                                id="hours-${uniqueKey}"
                                 style="width:60px"> / ${task.estHours || 0}h
                         </div>
                         <div class="member-task-progress-bar">
@@ -3788,14 +3860,14 @@ function openMemberTasks(memberName, memberIndex) {
                     </div>
                     <div class="member-task-status-update">
                         <label>Status:</label>
-                        <select id="status-${task.stationId}-${task.id}">
+                        <select id="status-${uniqueKey}">
                             <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
                             <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                             <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
                             <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
                             <option value="Delayed" ${task.status === 'Delayed' ? 'selected' : ''}>Delayed</option>
                         </select>
-                        <button class="btn-save-task" onclick="saveMemberTaskUpdate('${task.stationId}', '${task.id}')">
+                        <button class="btn-save-task" onclick="${saveHandler}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
                                 <polyline points="17 21 17 13 7 13 7 21"/>
@@ -3803,7 +3875,7 @@ function openMemberTasks(memberName, memberIndex) {
                             </svg>
                             Save
                         </button>
-                        <button class="btn-save-task" onclick="commitTaskToTimesheet('${task.stationId}', '${task.id}', '${memberName.replace(/'/g, "\\'")}')" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);" title="Save task and add hours to timesheet">
+                        <button class="btn-save-task" onclick="${commitHandler}" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);" title="Save task and add hours to timesheet">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                                 <line x1="16" y1="2" x2="16" y2="6"/>
@@ -6128,6 +6200,90 @@ async function commitTaskToTimesheet(stationId, taskId, memberName) {
     }
 }
 
+function findTimelineTask(phaseId, categoryId, stationId, taskId) {
+    const phase = (projectPhases || []).find(p => p.id === phaseId);
+    if (!phase) return null;
+    const cat = (phase.categories || []).find(c => c.id === categoryId);
+    if (!cat) return null;
+    const stn = (cat.stations || []).find(s => s.id === stationId);
+    if (!stn) return null;
+    const task = (stn.tasks || []).find(t => t.id === taskId);
+    if (!task) return null;
+    return { phase, cat, stn, task };
+}
+
+async function saveTimelineTaskUpdate(phaseId, categoryId, stationId, taskId) {
+    const found = findTimelineTask(phaseId, categoryId, stationId, taskId);
+    if (!found) { showError('Task not found in timeline.'); return; }
+    const { task } = found;
+
+    const uniqueKey = `${stationId}-${taskId}`;
+    const statusSelect = document.getElementById(`status-${uniqueKey}`);
+    const hoursInput = document.getElementById(`hours-${uniqueKey}`);
+
+    if (statusSelect) task.status = statusSelect.value;
+    if (hoursInput) task.actualHours = parseFloat(hoursInput.value) || 0;
+
+    if (task.status === 'Complete') task.progress = 100;
+    else if (task.status === 'Not Started') task.progress = 0;
+    else if (task.status === 'In Progress' && (task.progress || 0) === 0) task.progress = 10;
+
+    await saveProjectPhases();
+    showSuccess(`Task "${task.name}" saved!`);
+
+    if (currentMemberName) {
+        const memberIndex = teamMembers.findIndex(m => m.name === currentMemberName);
+        if (memberIndex >= 0) setTimeout(() => openMemberTasks(currentMemberName, memberIndex), 100);
+    }
+}
+
+async function commitTimelineTaskToTimesheet(phaseId, categoryId, stationId, taskId, memberName) {
+    const found = findTimelineTask(phaseId, categoryId, stationId, taskId);
+    if (!found) { showError('Task not found in timeline.'); return; }
+    const { phase, cat, stn, task } = found;
+
+    // Save form values first
+    const uniqueKey = `${stationId}-${taskId}`;
+    const statusSelect = document.getElementById(`status-${uniqueKey}`);
+    const hoursInput = document.getElementById(`hours-${uniqueKey}`);
+    if (statusSelect) task.status = statusSelect.value;
+    if (hoursInput) task.actualHours = parseFloat(hoursInput.value) || 0;
+    if (task.status === 'Complete') task.progress = 100;
+    await saveProjectPhases();
+
+    const hours = task.actualHours || 0;
+    if (hours <= 0) { showError('Enter actual hours on the task before committing to timesheet.'); return; }
+
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const endTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const startDate = new Date(now);
+    startDate.setMinutes(startDate.getMinutes() - Math.round(hours * 60));
+    const startTimeStr = `${String(startDate.getHours()).padStart(2,'0')}:${String(startDate.getMinutes()).padStart(2,'0')}`;
+
+    const entry = {
+        id: 'ts-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        memberName,
+        phase: phase.name || '',
+        date: today,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        hours: Math.round(hours * 100) / 100,
+        station: stn.name || 'Other',
+        workset: cat.name || '',
+        category: task.name,
+        description: `Task: ${task.name} | Status: ${task.status}`,
+        createdAt: new Date().toISOString()
+    };
+
+    timesheetEntries.push(entry);
+    await saveTimesheetEntries();
+    showSuccess(`${hours}h committed to timesheet for "${task.name}"`);
+
+    const memberIndex = teamMembers.findIndex(m => m.name === memberName);
+    if (memberIndex >= 0) setTimeout(() => openMemberTasks(memberName, memberIndex), 100);
+}
+
 function getWeekNumber(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     const startOfYear = new Date(d.getFullYear(), 0, 1);
@@ -6482,6 +6638,8 @@ window.editTimesheetEntry = editTimesheetEntry;
 window.saveTimesheetEdit = saveTimesheetEdit;
 window.cancelTimesheetEdit = cancelTimesheetEdit;
 window.commitTaskToTimesheet = commitTaskToTimesheet;
+window.saveTimelineTaskUpdate = saveTimelineTaskUpdate;
+window.commitTimelineTaskToTimesheet = commitTimelineTaskToTimesheet;
 window.exportGlobalTimesheet = exportGlobalTimesheet;
 
 // ============================================
