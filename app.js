@@ -3704,13 +3704,13 @@ function renderTeam() {
                         <div class="team-progress-fill" style="width: ${Math.min(loadPercent, 100)}%; background: ${loadColor}"></div>
                     </div>
                 </div>
+                ${actionsHTML}
                 <div class="team-card-click-hint">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
                         <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
                     </svg>
                     Click to view tasks
                 </div>
-                ${actionsHTML}
             </div>
         `;
     }).join('');

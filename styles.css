@@ -2150,7 +2150,6 @@ body {
     padding: 20px;
     transition: var(--transition-normal);
     position: relative;
-    overflow: hidden;
 }
 
 .team-card::before {
@@ -2161,6 +2160,7 @@ body {
     right: 0;
     height: 4px;
     background: var(--member-color, var(--accent-primary));
+    border-radius: 12px 12px 0 0;
 }
 
 .team-card:hover {
