@@ -521,45 +521,45 @@ const defaultPhases = [
     }
 ];
 
+const DATA_VERSION = 2; // Bump this to force Semester B phases to appear
+
 let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSON.parse(JSON.stringify(defaultPhases));
 
 const REQUIRED_PHASE_IDS = ['phase2', 'phase3', 'phase4a', 'phase4b', 'phase4c', 'phase5',
     'sb-phase0', 'sb-phase1', 'sb-phase2', 'sb-phase3', 'sb-phase4', 'sb-phase5'];
 
-function migrateProjectPhases() {
-    let needsSave = false;
-    const existingPhaseIds = projectPhases.map(p => p.id);
+function ensureSemesterBPhases(phases) {
+    let changed = false;
+    const ids = phases.map(p => p.id);
 
-    projectPhases.forEach(p => {
+    phases.forEach(p => {
         if (!p.semester) {
             p.semester = p.id.startsWith('sb-') ? 'B' : 'A';
-            needsSave = true;
+            changed = true;
         }
     });
 
     REQUIRED_PHASE_IDS.forEach(phaseId => {
-        if (!existingPhaseIds.includes(phaseId)) {
+        if (!ids.includes(phaseId)) {
             const defaultPhase = defaultPhases.find(p => p.id === phaseId);
             if (defaultPhase) {
-                projectPhases.push(JSON.parse(JSON.stringify(defaultPhase)));
-                needsSave = true;
+                phases.push(JSON.parse(JSON.stringify(defaultPhase)));
+                changed = true;
                 console.log(`Added missing phase: ${phaseId}`);
             }
         }
     });
 
-    // Sort so Semester A comes first, then Semester B, preserving order within each
-    const phaseOrder = REQUIRED_PHASE_IDS;
-    projectPhases.sort((a, b) => {
-        const ai = phaseOrder.indexOf(a.id);
-        const bi = phaseOrder.indexOf(b.id);
+    phases.sort((a, b) => {
+        const ai = REQUIRED_PHASE_IDS.indexOf(a.id);
+        const bi = REQUIRED_PHASE_IDS.indexOf(b.id);
         if (ai === -1 && bi === -1) return 0;
         if (ai === -1) return 1;
         if (bi === -1) return -1;
         return ai - bi;
     });
 
-    projectPhases.forEach(phase => {
+    phases.forEach(phase => {
         if (phase.categories) {
             phase.categories.forEach(category => {
                 if (category.stations) {
@@ -570,15 +570,12 @@ function migrateProjectPhases() {
                             } else if (category.id.includes('controls') || category.id.includes('ctrl') || category.id.includes('electrical') || category.id.includes('panel') || category.id.includes('comm')) {
                                 station.groupLeadId = `ctrl-lead-${station.stationNum}`;
                             }
-                            needsSave = true;
+                            changed = true;
                         }
                         if (station.tasks) {
                             station.tasks.forEach(task => {
-                                if (!task.startDate || !task.endDate) {
-                                    if (!task.startDate) task.startDate = phase.startDate || '2026-01-20';
-                                    if (!task.endDate) task.endDate = phase.endDate || '2026-04-18';
-                                    needsSave = true;
-                                }
+                                if (!task.startDate) { task.startDate = phase.startDate || '2026-01-20'; changed = true; }
+                                if (!task.endDate) { task.endDate = phase.endDate || '2026-04-18'; changed = true; }
                             });
                         }
                     });
@@ -587,13 +584,18 @@ function migrateProjectPhases() {
         }
     });
 
-    if (needsSave) {
-        localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
-        console.log('Migrated projectPhases with new phases and data');
-    }
-    return needsSave;
+    return changed;
 }
-migrateProjectPhases();
+
+// Force migration if data version is outdated
+const storedVersion = parseInt(localStorage.getItem('loopDataVersion') || '0');
+if (storedVersion < DATA_VERSION) {
+    console.log(`Data version ${storedVersion} < ${DATA_VERSION}, forcing Semester B migration`);
+    ensureSemesterBPhases(projectPhases);
+    localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
+    localStorage.setItem('loopDataVersion', String(DATA_VERSION));
+}
+ensureSemesterBPhases(projectPhases);
 
 // Current state
 let currentStationId = null;
@@ -828,8 +830,10 @@ function setupProjectPhasesListener() {
             const data = docSnapshot.data();
             if (data.phases) {
                 projectPhases = data.phases;
-                const migrated = migrateProjectPhases();
-                if (migrated) {
+                const hasSemB = projectPhases.some(p => p.id === 'sb-phase0');
+                const changed = ensureSemesterBPhases(projectPhases);
+                if (!hasSemB || changed) {
+                    console.log('Semester B phases missing from Firebase — saving updated data');
                     saveProjectPhases();
                 }
                 if (!isLoading) {
