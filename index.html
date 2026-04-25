@@ -284,6 +284,13 @@
                             </svg>
                             Export HD Image
                         </button>
+                        <button class="btn-secondary" id="deadline-alerts-btn" onclick="sendDeadlineAlerts()" title="Email overdue and upcoming deadline alerts to team leads" style="display:none; background: #ffc10720; color: #ffc107; border-color: #ffc10740;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                            </svg>
+                            Deadline Alerts
+                        </button>
                     </div>
                 </header>
 
@@ -308,6 +315,13 @@
                             </svg>
                             Clear All Task Data
                         </button>
+                        <button class="btn-secondary" id="email-settings-btn" onclick="openEmailSettings()" title="Configure email service (Resend API)" style="display:none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            Email Settings
+                        </button>
                         <button class="btn-primary" onclick="addNewTeamMember()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
@@ -319,6 +333,35 @@
                 </header>
 
                 <div class="team-grid" id="team-grid"></div>
+
+                <!-- Email Settings Panel -->
+                <div class="modal-overlay" id="email-settings-modal">
+                    <div class="modal" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <h2>Email Settings (Resend)</h2>
+                            <button class="modal-close" onclick="closeModal('email-settings-modal')">&times;</button>
+                        </div>
+                        <div class="modal-body" style="padding: 24px;">
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+                                Sign up at <a href="https://resend.com" target="_blank" style="color: #00d4aa;">resend.com</a> (free: 3,000 emails/month), create an API key, and paste it below.
+                            </p>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="email-api-key" style="display:block; margin-bottom: 6px; font-weight: 600;">Resend API Key</label>
+                                <input type="password" id="email-api-key" placeholder="re_xxxxxxxxx..." style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="email-from-address" style="display:block; margin-bottom: 6px; font-weight: 600;">From Address</label>
+                                <input type="text" id="email-from-address" placeholder="Loop Automation <onboarding@resend.dev>" style="width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; color: var(--text-primary); font-size: 0.9rem;">
+                                <span style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Use <code>onboarding@resend.dev</code> for testing, or verify your own domain on Resend.</span>
+                            </div>
+                            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                                <button class="btn-secondary" onclick="testEmailSettings()" style="background: #00d4aa20; color: #00d4aa; border-color: #00d4aa40;">Send Test Email</button>
+                                <button class="btn-primary" onclick="saveEmailSettings()">Save Settings</button>
+                            </div>
+                            <div id="email-settings-status" style="margin-top: 12px; font-size: 0.85rem;"></div>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
 

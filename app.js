@@ -1248,6 +1248,9 @@ function renderProjectTimeline() {
     
     _lastLocalRenderTime = Date.now();
 
+    const deadlineBtn = document.getElementById('deadline-alerts-btn');
+    if (deadlineBtn) deadlineBtn.style.display = isAdmin ? 'flex' : 'none';
+
     // Capture inner scroller position (the .phase-gantt-container that will be replaced)
     const innerScroller = container.querySelector('.phase-gantt-container');
     const innerScrollTop = innerScroller ? innerScroller.scrollTop : 0;
@@ -1690,12 +1693,12 @@ function updatePhaseTaskStatus(phaseId, categoryId, stationId, taskId, newStatus
                 const task = station.tasks.find(t => t.id === taskId);
                 if (task) {
                     task.status = newStatus;
-                    // Auto-set progress based on status
                     if (newStatus === 'Complete') task.progress = 100;
                     else if (newStatus === 'Not Started') task.progress = 0;
                     saveProjectPhases();
                     renderProjectTimeline();
                     showSuccess('Task status updated');
+                    sendTaskNotificationEmail(task.assignedTo || '', task.name, phase.name, newStatus);
                 }
             }
         }
@@ -1776,6 +1779,238 @@ async function saveProjectPhases() {
             console.error('Error saving project phases to Firebase:', error);
             showError('Changes saved locally. Cloud sync failed.');
         }
+    }
+}
+
+// ============================================
+// EMAIL SERVICE (Resend API)
+// ============================================
+
+async function sendEmail(to, subject, htmlBody) {
+    const apiKey = localStorage.getItem('loopEmailApiKey');
+    const fromAddr = localStorage.getItem('loopEmailFrom') || 'Loop Automation <onboarding@resend.dev>';
+    if (!apiKey) {
+        console.warn('No Resend API key configured — email not sent');
+        return false;
+    }
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                from: fromAddr,
+                to: Array.isArray(to) ? to : [to],
+                subject,
+                html: htmlBody
+            })
+        });
+        if (res.ok) {
+            console.log(`Email sent to ${to}: ${subject}`);
+            return true;
+        }
+        const err = await res.json().catch(() => ({}));
+        console.error('Resend API error:', err);
+        return false;
+    } catch (error) {
+        console.error('Failed to send email:', error);
+        return false;
+    }
+}
+
+function buildEmailTemplate(title, bodyContent) {
+    return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #0f1923; border-radius: 12px; overflow: hidden; border: 1px solid #1e3a5f;">
+        <div style="background: linear-gradient(135deg, #1a2d42, #0f1923); padding: 24px 32px; border-bottom: 2px solid #00d4aa;">
+            <h1 style="margin: 0; color: #00d4aa; font-size: 20px; font-weight: 700;">
+                ◈ Loop Automation
+            </h1>
+        </div>
+        <div style="padding: 32px;">
+            <h2 style="color: #ffffff; margin: 0 0 20px 0; font-size: 18px;">${title}</h2>
+            <div style="color: #b8c9d9; font-size: 14px; line-height: 1.6;">
+                ${bodyContent}
+            </div>
+        </div>
+        <div style="padding: 16px 32px; background: #0a1219; border-top: 1px solid #1e3a5f; text-align: center;">
+            <p style="margin: 0; color: #5a7a94; font-size: 12px;">
+                Loop Automation Project Management &bull; Sent automatically
+            </p>
+        </div>
+    </div>`;
+}
+
+async function sendTaskNotificationEmail(memberName, taskName, phaseName, newStatus) {
+    const member = teamMembers.find(m => m.name === memberName);
+    if (!member || !member.email) return;
+
+    const statusColors = {
+        'Complete': '#28a745',
+        'In Progress': '#ffc107',
+        'Not Started': '#6c757d',
+        'On Hold': '#dc3545',
+        'Delayed': '#dc3545'
+    };
+    const color = statusColors[newStatus] || '#00d4aa';
+
+    const body = `
+        <p>Hi <strong style="color:#ffffff">${memberName}</strong>,</p>
+        <p>A task assigned to you has been updated:</p>
+        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid ${color};">
+            <p style="margin: 0 0 8px 0; color: #ffffff; font-weight: 600;">${taskName}</p>
+            <p style="margin: 0 0 4px 0;">Phase: <strong style="color:#00d4aa">${phaseName}</strong></p>
+            <p style="margin: 0;">Status: <span style="color: ${color}; font-weight: 600;">${newStatus}</span></p>
+        </div>
+        <p>
+            <a href="${window.location.origin}${window.location.pathname}" 
+               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Open Project Dashboard
+            </a>
+        </p>`;
+
+    await sendEmail(member.email, `Task Update: ${taskName} → ${newStatus}`, buildEmailTemplate('Task Status Updated', body));
+}
+
+async function sendInvitationEmail(email, memberName, role) {
+    const body = `
+        <p>Hi <strong style="color:#ffffff">${memberName}</strong>,</p>
+        <p>You've been added to the <strong style="color:#00d4aa">Loop Automation</strong> project team as a <strong style="color:#ffffff">${role}</strong>.</p>
+        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 0 0 8px 0; color: #ffffff;">What you can do:</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                <li>View the project timeline and phase progress</li>
+                <li>Track your assigned tasks</li>
+                <li>Update task status and progress</li>
+            </ul>
+        </div>
+        <p>
+            <a href="${window.location.origin}${window.location.pathname}" 
+               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Join the Project
+            </a>
+        </p>`;
+
+    return await sendEmail(email, `You've been added to Loop Automation`, buildEmailTemplate('Welcome to the Team!', body));
+}
+
+async function sendDeadlineAlerts() {
+    if (!isAdmin) {
+        showError('Admin access required');
+        return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const alertDays = 7;
+    const upcoming = [];
+    const overdue = [];
+
+    projectPhases.forEach(phase => {
+        if (!phase.categories) return;
+        phase.categories.forEach(category => {
+            if (!category.stations) return;
+            category.stations.forEach(station => {
+                if (!station.tasks) return;
+                station.tasks.forEach(task => {
+                    if (task.status === 'Complete') return;
+                    if (!task.endDate) return;
+                    const end = new Date(task.endDate);
+                    end.setHours(0, 0, 0, 0);
+                    const daysLeft = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+                    const entry = {
+                        taskName: task.name,
+                        phaseName: phase.name,
+                        categoryName: category.name,
+                        endDate: task.endDate,
+                        status: task.status,
+                        daysLeft,
+                        assignedTo: task.assignedTo || 'Unassigned'
+                    };
+                    if (daysLeft < 0) overdue.push(entry);
+                    else if (daysLeft <= alertDays) upcoming.push(entry);
+                });
+            });
+        });
+    });
+
+    if (overdue.length === 0 && upcoming.length === 0) {
+        showSuccess('No deadline alerts — all tasks are on track!');
+        return;
+    }
+
+    const adminMembers = teamMembers.filter(m => m.email && (m.role === 'PM' || m.role === 'Lead'));
+    if (adminMembers.length === 0) {
+        showError('No team members with PM/Lead role have email addresses set. Add emails in Team Members.');
+        return;
+    }
+
+    let overdueHTML = '';
+    if (overdue.length > 0) {
+        overdueHTML = `
+            <h3 style="color: #dc3545; margin: 20px 0 12px 0;">Overdue Tasks (${overdue.length})</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #1e3a5f;">
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Task</th>
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Phase</th>
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Due</th>
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Overdue</th>
+                </tr>
+                ${overdue.map(t => `
+                    <tr style="border-bottom: 1px solid #1e3a5f20;">
+                        <td style="padding: 8px; color: #ffffff;">${t.taskName}</td>
+                        <td style="padding: 8px;">${t.phaseName}</td>
+                        <td style="padding: 8px;">${t.endDate}</td>
+                        <td style="padding: 8px; color: #dc3545; font-weight: 600;">${Math.abs(t.daysLeft)} days</td>
+                    </tr>
+                `).join('')}
+            </table>`;
+    }
+
+    let upcomingHTML = '';
+    if (upcoming.length > 0) {
+        upcomingHTML = `
+            <h3 style="color: #ffc107; margin: 20px 0 12px 0;">Upcoming Deadlines (${upcoming.length})</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #1e3a5f;">
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Task</th>
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Phase</th>
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Due</th>
+                    <th style="text-align: left; padding: 8px; color: #5a7a94; font-size: 12px;">Days Left</th>
+                </tr>
+                ${upcoming.map(t => `
+                    <tr style="border-bottom: 1px solid #1e3a5f20;">
+                        <td style="padding: 8px; color: #ffffff;">${t.taskName}</td>
+                        <td style="padding: 8px;">${t.phaseName}</td>
+                        <td style="padding: 8px;">${t.endDate}</td>
+                        <td style="padding: 8px; color: #ffc107; font-weight: 600;">${t.daysLeft} days</td>
+                    </tr>
+                `).join('')}
+            </table>`;
+    }
+
+    const body = `
+        <p>Here is the current deadline report for <strong style="color:#00d4aa">Loop Automation</strong>:</p>
+        ${overdueHTML}
+        ${upcomingHTML}
+        <p style="margin-top: 20px;">
+            <a href="${window.location.origin}${window.location.pathname}" 
+               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Open Dashboard
+            </a>
+        </p>`;
+
+    let sentCount = 0;
+    for (const member of adminMembers) {
+        const sent = await sendEmail(member.email, `Deadline Alert: ${overdue.length} overdue, ${upcoming.length} upcoming`, buildEmailTemplate('Deadline Alert Report', body));
+        if (sent) sentCount++;
+    }
+
+    if (sentCount > 0) {
+        showSuccess(`Deadline alerts sent to ${sentCount} team lead(s)`);
+    } else {
+        showError('Failed to send deadline alerts. Check Firebase connection.');
     }
 }
 
@@ -3177,6 +3412,10 @@ function renderTeam() {
     if (clearTaskBtn) {
         clearTaskBtn.style.display = isAdmin ? 'flex' : 'none';
     }
+    const emailSettingsBtn = document.getElementById('email-settings-btn');
+    if (emailSettingsBtn) {
+        emailSettingsBtn.style.display = isAdmin ? 'flex' : 'none';
+    }
     
     grid.innerHTML = teamMembers.map((member, index) => {
         const assignedHours = getAssignedHours(member.name);
@@ -3191,6 +3430,7 @@ function renderTeam() {
         const actionsHTML = isAdmin ? `
             <div class="team-card-actions admin-actions" onclick="event.stopPropagation()">
                 <button onclick="editTeamMember(${index}); event.stopPropagation();">Edit</button>
+                ${member.email ? `<button onclick="resendInvite(${index}); event.stopPropagation();" title="Send invitation email to ${member.email}" style="background: #00d4aa20; color: #00d4aa;">Invite</button>` : ''}
                 <button class="delete" onclick="deleteTeamMember(${index}); event.stopPropagation();">Remove</button>
             </div>
         ` : `
@@ -3752,7 +3992,13 @@ document.getElementById('team-form').addEventListener('submit', async (e) => {
     
     await saveTeamMembers(teamMembers);
     closeModal('team-modal');
-    showSuccess(memberIndex === '' ? 'Team member added' : 'Team member updated');
+
+    if (memberIndex === '' && memberData.email) {
+        const sent = await sendInvitationEmail(memberData.email, memberData.name, memberData.role);
+        showSuccess(sent ? `Team member added — invitation sent to ${memberData.email}` : 'Team member added (email not sent — check Firebase email setup)');
+    } else {
+        showSuccess(memberIndex === '' ? 'Team member added' : 'Team member updated');
+    }
 });
 
 async function deleteTeamMember(index) {
@@ -3773,6 +4019,93 @@ async function deleteTeamMember(index) {
         teamMembers.splice(index, 1);
         await saveTeamMembers(teamMembers);
         showSuccess('Team member removed');
+    }
+}
+
+async function resendInvite(index) {
+    if (!isAdmin) return;
+    const member = teamMembers[index];
+    if (!member || !member.email) {
+        showError('This member has no email address. Edit the member to add one.');
+        return;
+    }
+    const sent = await sendInvitationEmail(member.email, member.name, member.role);
+    if (sent) {
+        showSuccess(`Invitation sent to ${member.email}`);
+    } else {
+        showError('Failed to send invitation. Configure email settings in Team Members page.');
+    }
+}
+
+function openEmailSettings() {
+    if (!isAdmin) return;
+    const keyInput = document.getElementById('email-api-key');
+    const fromInput = document.getElementById('email-from-address');
+    const statusEl = document.getElementById('email-settings-status');
+    if (keyInput) keyInput.value = localStorage.getItem('loopEmailApiKey') || '';
+    if (fromInput) fromInput.value = localStorage.getItem('loopEmailFrom') || '';
+    if (statusEl) statusEl.textContent = '';
+    openModal('email-settings-modal');
+}
+
+function saveEmailSettings() {
+    const apiKey = document.getElementById('email-api-key').value.trim();
+    const fromAddr = document.getElementById('email-from-address').value.trim();
+    if (apiKey) {
+        localStorage.setItem('loopEmailApiKey', apiKey);
+    } else {
+        localStorage.removeItem('loopEmailApiKey');
+    }
+    if (fromAddr) {
+        localStorage.setItem('loopEmailFrom', fromAddr);
+    } else {
+        localStorage.removeItem('loopEmailFrom');
+    }
+    closeModal('email-settings-modal');
+    showSuccess('Email settings saved');
+}
+
+async function testEmailSettings() {
+    const apiKey = document.getElementById('email-api-key').value.trim();
+    const fromAddr = document.getElementById('email-from-address').value.trim() || 'Loop Automation <onboarding@resend.dev>';
+    const statusEl = document.getElementById('email-settings-status');
+
+    if (!apiKey) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:#dc3545">Enter an API key first</span>';
+        return;
+    }
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ffc107">Sending test email...</span>';
+
+    const adminMember = teamMembers.find(m => m.email && (m.role === 'PM' || m.role === 'Lead'));
+    const testTo = adminMember ? adminMember.email : prompt('Enter an email address to send the test to:');
+    if (!testTo) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:#dc3545">No email address provided</span>';
+        return;
+    }
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                from: fromAddr,
+                to: [testTo],
+                subject: 'Loop Automation — Test Email',
+                html: buildEmailTemplate('Test Email', '<p>If you received this, your email settings are configured correctly.</p><p style="color:#00d4aa;font-weight:600;">Email service is working!</p>')
+            })
+        });
+        if (res.ok) {
+            if (statusEl) statusEl.innerHTML = `<span style="color:#28a745">Test email sent to ${testTo}</span>`;
+        } else {
+            const err = await res.json().catch(() => ({}));
+            if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545">Failed: ${err.message || res.statusText}</span>`;
+        }
+    } catch (e) {
+        if (statusEl) statusEl.innerHTML = `<span style="color:#dc3545">Error: ${e.message}</span>`;
     }
 }
 
@@ -5427,6 +5760,11 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.addNewTeamMember = addNewTeamMember;
 window.clearAllTaskData = clearAllTaskData;
+window.resendInvite = resendInvite;
+window.openEmailSettings = openEmailSettings;
+window.saveEmailSettings = saveEmailSettings;
+window.testEmailSettings = testEmailSettings;
+window.sendDeadlineAlerts = sendDeadlineAlerts;
 window.editTeamMember = editTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.validateProject = validateProject;
