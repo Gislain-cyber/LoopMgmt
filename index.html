@@ -66,6 +66,18 @@
             </nav>
 
             <div class="sidebar-footer">
+                <!-- Member Login Button -->
+                <button class="btn-group-lead" id="member-login-btn" onclick="showMemberLoginModal()" style="display: flex;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    Member Login
+                </button>
+
+                <!-- Member Indicator (shown when a member is logged in) -->
+                <div id="member-indicator" style="display: none; flex-direction: column; gap: 8px;"></div>
+
                 <!-- Group Lead Login Button -->
                 <button class="btn-group-lead" id="groupLead-login-btn" onclick="showGroupLeadLoginModal()" style="display: flex;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -538,6 +550,16 @@
                     <div class="form-group">
                         <label for="member-email">Email</label>
                         <input type="email" id="member-email">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="member-username">Username</label>
+                        <input type="text" id="member-username" placeholder="For member login">
+                    </div>
+                    <div class="form-group">
+                        <label for="member-password">Password</label>
+                        <input type="text" id="member-password" placeholder="For member login">
                     </div>
                 </div>
                 <div class="form-row">

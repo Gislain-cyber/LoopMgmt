@@ -93,21 +93,23 @@ async function initFirebaseSDK() {
 // ============================================
 
 const defaultTeamMembers = [
-    { name: "Bander Bakalka", role: "PM", color: "#ff5757", email: "", targetHours: 40 },
-    { name: "Jon Klomfass", role: "Lead", color: "#ffbd59", email: "", targetHours: 40 },
-    { name: "Gislain Hotcho Nkenga", role: "Lead", color: "#ffd666", email: "", targetHours: 40 },
-    { name: "Cirex Peroche", role: "Member", color: "#64b5f6", email: "", targetHours: 40 },
-    { name: "Davis Oliver", role: "Member", color: "#81c784", email: "", targetHours: 40 },
-    { name: "Josh Kavanagh", role: "Member", color: "#ba68c8", email: "", targetHours: 40 },
-    { name: "Lucas Pasia", role: "Member", color: "#ff8a80", email: "", targetHours: 40 },
-    { name: "Luke Kivell", role: "Member", color: "#80deea", email: "", targetHours: 40 },
-    { name: "Sebastian Chandler", role: "Member", color: "#ffb74d", email: "", targetHours: 40 },
-    { name: "Anmol Singh Saini", role: "Member", color: "#aed581", email: "", targetHours: 40 },
-    { name: "Anton Makaranka", role: "Member", color: "#9575cd", email: "", targetHours: 40 },
-    { name: "Blake Alexander", role: "Member", color: "#4dd0e1", email: "", targetHours: 40 },
-    { name: "Joel Reyes", role: "Member", color: "#ffa726", email: "", targetHours: 40 },
-    { name: "Ren Falkenrath", role: "Member", color: "#ec407a", email: "", targetHours: 40 }
+    { name: "Bander Bakalka", role: "PM", color: "#ff5757", email: "", targetHours: 40, username: "bander", password: "bander123" },
+    { name: "Jon Klomfass", role: "Lead", color: "#ffbd59", email: "", targetHours: 40, username: "jon", password: "jon123" },
+    { name: "Gislain Hotcho Nkenga", role: "Lead", color: "#ffd666", email: "", targetHours: 40, username: "gislain", password: "gislain123" },
+    { name: "Cirex Peroche", role: "Member", color: "#64b5f6", email: "", targetHours: 40, username: "cirex", password: "cirex123" },
+    { name: "Davis Oliver", role: "Member", color: "#81c784", email: "", targetHours: 40, username: "davis", password: "davis123" },
+    { name: "Josh Kavanagh", role: "Member", color: "#ba68c8", email: "", targetHours: 40, username: "josh", password: "josh123" },
+    { name: "Lucas Pasia", role: "Member", color: "#ff8a80", email: "", targetHours: 40, username: "lucas", password: "lucas123" },
+    { name: "Luke Kivell", role: "Member", color: "#80deea", email: "", targetHours: 40, username: "luke", password: "luke123" },
+    { name: "Sebastian Chandler", role: "Member", color: "#ffb74d", email: "", targetHours: 40, username: "sebastian", password: "sebastian123" },
+    { name: "Anmol Singh Saini", role: "Member", color: "#aed581", email: "", targetHours: 40, username: "anmol", password: "anmol123" },
+    { name: "Anton Makaranka", role: "Member", color: "#9575cd", email: "", targetHours: 40, username: "anton", password: "anton123" },
+    { name: "Blake Alexander", role: "Member", color: "#4dd0e1", email: "", targetHours: 40, username: "blake", password: "blake123" },
+    { name: "Joel Reyes", role: "Member", color: "#ffa726", email: "", targetHours: 40, username: "joel", password: "joel123" },
+    { name: "Ren Falkenrath", role: "Member", color: "#ec407a", email: "", targetHours: 40, username: "ren", password: "ren123" }
 ];
+
+let currentMember = null;
 
 // Stations with their tasks
 const defaultStations = [
@@ -698,36 +700,36 @@ function updateUIForAuthState() {
     const logoutBtn = document.getElementById('admin-logout-btn');
     const adminIndicator = document.getElementById('admin-indicator');
     const groupLeadBtn = document.getElementById('groupLead-login-btn');
+    const memberLoginBtn = document.getElementById('member-login-btn');
     
-    // Get all admin-only elements
     const adminOnlyElements = document.querySelectorAll('.admin-only');
     
     if (isAdmin) {
         adminBtn.style.display = 'none';
         logoutBtn.style.display = 'flex';
         adminIndicator.style.display = 'flex';
-        // Hide group lead login when admin is logged in
         if (groupLeadBtn) groupLeadBtn.style.display = 'none';
-        // Clear any group lead session when admin logs in
+        if (memberLoginBtn) memberLoginBtn.style.display = 'none';
         currentGroupLead = null;
+        currentMember = null;
         updateGroupLeadUI();
-        // Show admin-only elements
+        updateMemberUI();
         adminOnlyElements.forEach(el => el.style.display = 'inline-flex');
         console.log('Admin mode enabled');
     } else {
         adminBtn.style.display = 'flex';
         logoutBtn.style.display = 'none';
         adminIndicator.style.display = 'none';
-        // Show group lead login only if not logged in as group lead
-        if (groupLeadBtn && !currentGroupLead) {
+        if (groupLeadBtn && !currentGroupLead && !currentMember) {
             groupLeadBtn.style.display = 'flex';
         }
-        // Hide admin-only elements
+        if (memberLoginBtn && !currentGroupLead && !currentMember) {
+            memberLoginBtn.style.display = 'flex';
+        }
         adminOnlyElements.forEach(el => el.style.display = 'none');
         console.log('Public view mode');
     }
     
-    // Re-render current view
     renderAllViews();
 }
 
@@ -1531,15 +1533,21 @@ function renderProjectTimeline() {
                                 const taskBarLeft = getDatePosition(taskStart, timelineStart);
                                 const taskBarWidth = getDateWidth(taskStart, taskEnd);
                                 
-                                // Check if current user can edit this station
                                 const canEdit = canEditStation(category.id, station.id);
+                                const canEditTask = canEdit || canMemberEditTask(task);
                                 
-                                // Task row
-                                html += `<div class="phase-gantt-row task-row ${canEdit ? 'editable' : ''}" data-task="${task.id}">`;
+                                html += `<div class="phase-gantt-row task-row ${canEditTask ? 'editable' : ''}" data-task="${task.id}">`;
                                 html += '<div class="phase-gantt-info-cells">';
+                                const assignedMember = task.assignedTo ? teamMembers.find(m => m.name === task.assignedTo) : null;
+                                const assignBadge = task.assignedTo ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:${assignedMember?.color || '#666'}30;color:${assignedMember?.color || '#aaa'};white-space:nowrap;" title="Assigned to ${task.assignedTo}">${task.assignedTo.split(' ')[0]}</span>` : '';
                                 html += `<div class="pg-col pg-col-name pg-task-name">
                                     <span class="pg-task-bullet" style="background: ${station.color}"></span>
                                     <span class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateTimelineTaskName('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.textContent)"` : ''}>${task.name}</span>
+                                    ${assignBadge}
+                                    ${isAdmin ? `<select class="pg-assign-select" onchange="updateTaskAssignment('${phase.id}','${category.id}','${station.id}','${task.id}',this.value)" title="Assign to member" style="font-size:0.65rem;padding:1px 2px;max-width:70px;background:var(--bg-primary);color:var(--text-secondary);border:1px solid var(--border-primary);border-radius:3px;cursor:pointer;">
+                                        <option value="">—</option>
+                                        ${teamMembers.map(m => `<option value="${m.name}" ${task.assignedTo === m.name ? 'selected' : ''}>${m.name.split(' ')[0]}</option>`).join('')}
+                                    </select>` : ''}
                                     ${isAdmin ? `<button class="pg-delete-btn small" onclick="deleteTimelineTask('${phase.id}', '${category.id}', '${station.id}', '${task.id}')" title="Delete Task">×</button>` : ''}
                                 </div>`;
                                 html += `<div class="pg-col pg-col-dates">
@@ -1549,7 +1557,7 @@ function renderProjectTimeline() {
                                     ${canEdit ? `<input type="date" class="pg-date-input small" value="${taskEnd}" onchange="updateTaskDate('${phase.id}', '${category.id}', '${station.id}', '${task.id}', 'endDate', this.value)">` : `<span class="pg-date-display">${formatDate(taskEnd)}</span>`}
                                 </div>`;
                                 html += `<div class="pg-col pg-col-status">
-                                    <select class="pg-status-select" onchange="updatePhaseTaskStatus('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEdit ? '' : 'disabled'}>
+                                    <select class="pg-status-select" onchange="updatePhaseTaskStatus('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEditTask ? '' : 'disabled'}>
                                         <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
                                         <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                                         <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
@@ -1558,7 +1566,7 @@ function renderProjectTimeline() {
                                 </div>`;
                                 html += `<div class="pg-col pg-col-progress">
                                     <input type="range" min="0" max="100" value="${task.progress}" class="pg-progress-slider" 
-                                        onchange="updatePhaseTaskProgress('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEdit ? '' : 'disabled'}>
+                                        onchange="updatePhaseTaskProgress('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.value)" ${canEditTask ? '' : 'disabled'}>
                                     <span class="pg-progress-text">${task.progress}%</span>
                                 </div>`;
                                 html += '</div>';
@@ -1677,60 +1685,61 @@ function toggleTimelineStation(phaseId, categoryId, stationId) {
 }
 
 function updatePhaseTaskStatus(phaseId, categoryId, stationId, taskId, newStatus) {
-    // Check permissions
-    if (!canEditStation(categoryId, stationId)) {
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (!phase) return;
+    const category = phase.categories.find(c => c.id === categoryId);
+    if (!category) return;
+    const station = category.stations.find(s => s.id === stationId);
+    if (!station) return;
+    const task = station.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    if (!canEditStation(categoryId, stationId) && !canMemberEditTask(task)) {
         showError('You do not have permission to edit this task');
-        renderProjectTimeline(); // Re-render to reset the dropdown
+        renderProjectTimeline();
         return;
     }
-    
-    const phase = projectPhases.find(p => p.id === phaseId);
-    if (phase) {
-        const category = phase.categories.find(c => c.id === categoryId);
-        if (category) {
-            const station = category.stations.find(s => s.id === stationId);
-            if (station) {
-                const task = station.tasks.find(t => t.id === taskId);
-                if (task) {
-                    task.status = newStatus;
-                    if (newStatus === 'Complete') task.progress = 100;
-                    else if (newStatus === 'Not Started') task.progress = 0;
-                    saveProjectPhases();
-                    renderProjectTimeline();
-                    showSuccess('Task status updated');
-                    sendTaskNotificationEmail(task.assignedTo || '', task.name, phase.name, newStatus);
-                }
-            }
-        }
+
+    const oldStatus = task.status;
+    task.status = newStatus;
+    if (newStatus === 'Complete') task.progress = 100;
+    else if (newStatus === 'Not Started') task.progress = 0;
+    saveProjectPhases();
+    renderProjectTimeline();
+    showSuccess('Task status updated');
+    sendTaskNotificationEmail(task.assignedTo || '', task.name, phase.name, newStatus);
+
+    if (newStatus === 'Complete' && oldStatus !== 'Complete' && currentMember) {
+        sendTaskCompletedEmailToAdmins(currentMember.name, task.name, phase.name);
     }
 }
 
 function updatePhaseTaskProgress(phaseId, categoryId, stationId, taskId, newProgress) {
-    // Check permissions
-    if (!canEditStation(categoryId, stationId)) {
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (!phase) return;
+    const category = phase.categories.find(c => c.id === categoryId);
+    if (!category) return;
+    const station = category.stations.find(s => s.id === stationId);
+    if (!station) return;
+    const task = station.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    if (!canEditStation(categoryId, stationId) && !canMemberEditTask(task)) {
         showError('You do not have permission to edit this task');
-        renderProjectTimeline(); // Re-render to reset the slider
+        renderProjectTimeline();
         return;
     }
-    
-    const phase = projectPhases.find(p => p.id === phaseId);
-    if (phase) {
-        const category = phase.categories.find(c => c.id === categoryId);
-        if (category) {
-            const station = category.stations.find(s => s.id === stationId);
-            if (station) {
-                const task = station.tasks.find(t => t.id === taskId);
-                if (task) {
-                    task.progress = parseInt(newProgress);
-                    // Auto-update status based on progress
-                    if (task.progress === 100) task.status = 'Complete';
-                    else if (task.progress > 0) task.status = 'In Progress';
-                    else task.status = 'Not Started';
-                    saveProjectPhases();
-                    renderProjectTimeline();
-                }
-            }
-        }
+
+    const oldStatus = task.status;
+    task.progress = parseInt(newProgress);
+    if (task.progress === 100) task.status = 'Complete';
+    else if (task.progress > 0) task.status = 'In Progress';
+    else task.status = 'Not Started';
+    saveProjectPhases();
+    renderProjectTimeline();
+
+    if (task.status === 'Complete' && oldStatus !== 'Complete' && currentMember) {
+        sendTaskCompletedEmailToAdmins(currentMember.name, task.name, phase.name);
     }
 }
 
@@ -2007,6 +2016,60 @@ async function sendDeadlineAlerts() {
     }
 }
 
+async function sendTaskAssignedEmail(toEmail, memberName, taskName, phaseName, categoryName, stationName, startDate, endDate, status) {
+    const body = `
+        <p>Hi <strong style="color:#ffffff">${memberName}</strong>,</p>
+        <p>You have been assigned a new task on the <strong style="color:#00d4aa">Loop Automation</strong> project:</p>
+        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #00d4aa;">
+            <p style="margin: 0 0 8px 0; color: #ffffff; font-size: 16px; font-weight: 600;">${taskName}</p>
+            <table style="width: 100%; font-size: 13px;">
+                <tr><td style="padding: 4px 0; color: #5a7a94; width: 100px;">Phase</td><td style="color: #ffffff;">${phaseName}</td></tr>
+                ${categoryName ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Category</td><td style="color: #ffffff;">${categoryName}</td></tr>` : ''}
+                ${stationName ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Station</td><td style="color: #ffffff;">${stationName}</td></tr>` : ''}
+                ${startDate ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Start Date</td><td style="color: #ffffff;">${startDate}</td></tr>` : ''}
+                ${endDate ? `<tr><td style="padding: 4px 0; color: #5a7a94;">Due Date</td><td style="color: #dc3545; font-weight: 600;">${endDate}</td></tr>` : ''}
+                <tr><td style="padding: 4px 0; color: #5a7a94;">Status</td><td style="color: #ffc107;">${status}</td></tr>
+            </table>
+        </div>
+        <p>Please log in to the dashboard to view full details and update your progress.</p>
+        <p>
+            <a href="${window.location.origin}${window.location.pathname}"
+               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Open Dashboard
+            </a>
+        </p>`;
+
+    return await sendEmail(toEmail, `New Task Assigned: ${taskName}`, buildEmailTemplate('New Task Assignment', body));
+}
+
+async function sendTaskCompletedEmailToAdmins(memberName, taskName, phaseName) {
+    const adminMembers = teamMembers.filter(m => m.email && (m.role === 'PM' || m.role === 'Lead'));
+    if (adminMembers.length === 0) return;
+
+    const now = new Date();
+    const timestamp = now.toLocaleString();
+
+    const body = `
+        <p>A task has been marked as <strong style="color:#28a745">Complete</strong>:</p>
+        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #28a745;">
+            <p style="margin: 0 0 8px 0; color: #ffffff; font-size: 16px; font-weight: 600;">${taskName}</p>
+            <table style="width: 100%; font-size: 13px;">
+                <tr><td style="padding: 4px 0; color: #5a7a94; width: 120px;">Completed By</td><td style="color: #ffffff; font-weight: 600;">${memberName}</td></tr>
+                <tr><td style="padding: 4px 0; color: #5a7a94;">Phase</td><td style="color: #ffffff;">${phaseName}</td></tr>
+                <tr><td style="padding: 4px 0; color: #5a7a94;">Completed At</td><td style="color: #ffffff;">${timestamp}</td></tr>
+            </table>
+        </div>
+        <p>
+            <a href="${window.location.origin}${window.location.pathname}"
+               style="display: inline-block; background: #00d4aa; color: #0f1923; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Open Dashboard
+            </a>
+        </p>`;
+
+    const emails = adminMembers.map(m => m.email);
+    await sendEmail(emails, `Task Completed: ${taskName} by ${memberName}`, buildEmailTemplate('Task Completed', body));
+}
+
 // ============================================
 // PROJECT TIMELINE EDITING FUNCTIONS (Admin Only)
 // ============================================
@@ -2266,6 +2329,37 @@ function addTimelineTask(phaseId, categoryId, stationId) {
     }
 }
 
+async function updateTaskAssignment(phaseId, categoryId, stationId, taskId, newAssignee) {
+    if (!isAdmin) return;
+    const phase = projectPhases.find(p => p.id === phaseId);
+    if (!phase) return;
+    const category = phase.categories.find(c => c.id === categoryId);
+    if (!category) return;
+    const station = category.stations.find(s => s.id === stationId);
+    if (!station) return;
+    const task = station.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const oldAssignee = task.assignedTo;
+    task.assignedTo = newAssignee;
+    saveProjectPhases();
+    renderProjectTimeline();
+
+    if (newAssignee && newAssignee !== oldAssignee) {
+        const member = teamMembers.find(m => m.name === newAssignee);
+        if (member && member.email) {
+            const taskStart = task.startDate || station.startDate || category.startDate || phase.startDate || '';
+            const taskEnd = task.endDate || station.endDate || category.endDate || phase.endDate || '';
+            await sendTaskAssignedEmail(member.email, member.name, task.name, phase.name, category.name || '', station.name || '', taskStart, taskEnd, task.status || 'Not Started');
+            showSuccess(`Task assigned to ${newAssignee} — email sent`);
+        } else {
+            showSuccess(`Task assigned to ${newAssignee}`);
+        }
+    } else {
+        showSuccess('Task assignment updated');
+    }
+}
+
 function deleteTimelineTask(phaseId, categoryId, stationId, taskId) {
     if (!isAdmin) return;
     if (!confirm('Delete this task?')) return;
@@ -2299,6 +2393,7 @@ window.deleteCategory = deleteCategory;
 window.addTimelineStation = addTimelineStation;
 window.deleteTimelineStation = deleteTimelineStation;
 window.addTimelineTask = addTimelineTask;
+window.updateTaskAssignment = updateTaskAssignment;
 window.deleteTimelineTask = deleteTimelineTask;
 window.completePhase = completePhase;
 
@@ -3023,28 +3118,22 @@ function saveGroupLeads() {
 }
 
 function canEditStation(categoryId, stationId) {
-    // Admin can edit everything
-    if (isAdmin) {
-        console.log('canEditStation: Admin has full access');
-        return true;
-    }
+    if (isAdmin) return true;
     
-    // Group lead can only edit their assigned station
     if (currentGroupLead) {
         const station = findStationInPhases(categoryId, stationId);
-        console.log('canEditStation check:', {
-            categoryId,
-            stationId,
-            stationFound: !!station,
-            stationGroupLeadId: station?.groupLeadId,
-            currentGroupLeadId: currentGroupLead.id,
-            match: station?.groupLeadId === currentGroupLead.id
-        });
         if (station && station.groupLeadId === currentGroupLead.id) {
             return true;
         }
     }
     
+    return false;
+}
+
+function canMemberEditTask(task) {
+    if (isAdmin) return true;
+    if (currentGroupLead) return true;
+    if (currentMember && task.assignedTo === currentMember.name) return true;
     return false;
 }
 
@@ -3131,9 +3220,13 @@ function groupLeadLogout() {
 function updateGroupLeadUI() {
     const loginBtn = document.getElementById('groupLead-login-btn');
     const indicator = document.getElementById('groupLead-indicator');
+    const memberLoginBtn = document.getElementById('member-login-btn');
     
     if (currentGroupLead) {
         if (loginBtn) loginBtn.style.display = 'none';
+        if (memberLoginBtn) memberLoginBtn.style.display = 'none';
+        currentMember = null;
+        updateMemberUI();
         if (indicator) {
             indicator.style.display = 'flex';
             indicator.innerHTML = `
@@ -3159,8 +3252,137 @@ function updateGroupLeadUI() {
         }
     } else {
         if (loginBtn) loginBtn.style.display = isAdmin ? 'none' : 'flex';
+        if (memberLoginBtn && !isAdmin && !currentMember) memberLoginBtn.style.display = 'flex';
         if (indicator) indicator.style.display = 'none';
     }
+}
+
+// ============================================
+// MEMBER LOGIN
+// ============================================
+
+function showMemberLoginModal() {
+    let modal = document.getElementById('member-login-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'member-login-modal';
+        modal.className = 'modal-overlay';
+        modal.onclick = (e) => { if (e.target === modal) closeModal('member-login-modal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Member Login</h2>
+                <button class="modal-close" onclick="closeModal('member-login-modal')">&times;</button>
+            </div>
+            <form id="member-login-form" class="modal-body" onsubmit="memberLogin(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ml-username">Username</label>
+                        <input type="text" id="ml-username" required placeholder="Enter your username">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ml-password">Password</label>
+                        <input type="password" id="ml-password" required placeholder="Enter your password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('member-login-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Login</button>
+                </div>
+            </form>
+        </div>
+    `;
+    openModal('member-login-modal');
+}
+
+function memberLogin(event) {
+    event.preventDefault();
+    const username = document.getElementById('ml-username').value.trim();
+    const password = document.getElementById('ml-password').value;
+
+    const member = teamMembers.find(m => m.username === username && m.password === password);
+    if (member) {
+        currentMember = member;
+        closeModal('member-login-modal');
+        updateMemberUI();
+        renderAllViews();
+        showSuccess(`Welcome, ${member.name}!`);
+    } else {
+        showError('Invalid username or password');
+    }
+}
+
+function memberLogout() {
+    currentMember = null;
+    updateMemberUI();
+    renderAllViews();
+    showSuccess('Logged out');
+}
+
+function updateMemberUI() {
+    const loginBtn = document.getElementById('member-login-btn');
+    const indicator = document.getElementById('member-indicator');
+    const groupLeadBtn = document.getElementById('groupLead-login-btn');
+
+    if (currentMember) {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (groupLeadBtn) groupLeadBtn.style.display = 'none';
+        if (indicator) {
+            indicator.style.display = 'flex';
+            indicator.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: ${currentMember.color}15; border-radius: 6px; border: 1px solid ${currentMember.color}40;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: ${currentMember.color}; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: #fff;">
+                        ${currentMember.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                    </div>
+                    <div>
+                        <div style="color: ${currentMember.color}; font-size: 0.8rem; font-weight: 600;">${currentMember.name}</div>
+                        <div style="color: var(--text-muted); font-size: 0.65rem;">${currentMember.role}</div>
+                    </div>
+                </div>
+                <button class="btn-logout" onclick="memberLogout()" style="margin-top: 4px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Logout
+                </button>
+            `;
+        }
+    } else {
+        if (loginBtn) loginBtn.style.display = (isAdmin || currentGroupLead) ? 'none' : 'flex';
+        if (indicator) indicator.style.display = 'none';
+        if (groupLeadBtn && !isAdmin) groupLeadBtn.style.display = currentGroupLead ? 'none' : 'flex';
+    }
+}
+
+function editMemberProfile() {
+    if (!currentMember) return;
+    const index = teamMembers.findIndex(m => m.name === currentMember.name);
+    if (index === -1) return;
+
+    const member = teamMembers[index];
+    document.getElementById('team-modal-title').textContent = 'Edit My Profile';
+    document.getElementById('member-index').value = index;
+    document.getElementById('member-name').value = member.name;
+    document.getElementById('member-role').value = member.role;
+    document.getElementById('member-target').value = member.targetHours;
+    document.getElementById('member-email').value = member.email || '';
+    document.getElementById('member-username').value = member.username || '';
+    document.getElementById('member-password').value = member.password || '';
+    document.getElementById('member-color').value = member.color;
+
+    // Disable admin-only fields for self-edit
+    document.getElementById('member-role').disabled = true;
+    document.getElementById('member-target').disabled = true;
+    document.getElementById('member-username').disabled = true;
+    document.getElementById('member-password').disabled = true;
+
+    openModal('team-modal');
 }
 
 // Admin function to manage group leads
@@ -3419,24 +3641,32 @@ function renderTeam() {
         if (loadPercent > 80 && loadPercent <= 100) loadColor = '#00d4aa';
         if (loadPercent > 100) loadColor = '#dc3545';
         
-        // Only show edit/delete buttons for admins
-        const actionsHTML = isAdmin ? `
-            <div class="team-card-actions admin-actions" onclick="event.stopPropagation()">
-                <button onclick="editTeamMember(${index}); event.stopPropagation();">Edit</button>
-                ${member.email ? `<button onclick="resendInvite(${index}); event.stopPropagation();" title="Send invitation email to ${member.email}" style="background: #00d4aa20; color: #00d4aa;">Invite</button>` : ''}
-                <button class="delete" onclick="deleteTeamMember(${index}); event.stopPropagation();">Remove</button>
-            </div>
-        ` : `
-            <div class="team-card-actions public-actions">
-                <span style="color: var(--text-muted); font-size: 0.8rem;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
-                        <rect x="3" y="11" width="18" height="11" rx="2"/>
-                        <path d="M7 11V7a5 5 0 0110 0v4"/>
-                    </svg>
-                    Admin only
-                </span>
-            </div>
-        `;
+        const isOwnCard = currentMember && currentMember.name === member.name;
+        let actionsHTML;
+        if (isAdmin) {
+            actionsHTML = `
+                <div class="team-card-actions admin-actions" onclick="event.stopPropagation()">
+                    <button onclick="editTeamMember(${index}); event.stopPropagation();">Edit</button>
+                    ${member.email ? `<button onclick="resendInvite(${index}); event.stopPropagation();" title="Send invitation email to ${member.email}" style="background: #00d4aa20; color: #00d4aa;">Invite</button>` : ''}
+                    <button class="delete" onclick="deleteTeamMember(${index}); event.stopPropagation();">Remove</button>
+                </div>`;
+        } else if (isOwnCard) {
+            actionsHTML = `
+                <div class="team-card-actions" onclick="event.stopPropagation()">
+                    <button onclick="editMemberProfile(); event.stopPropagation();" style="background: ${member.color}20; color: ${member.color};">Edit My Profile</button>
+                </div>`;
+        } else {
+            actionsHTML = `
+                <div class="team-card-actions public-actions">
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
+                            <rect x="3" y="11" width="18" height="11" rx="2"/>
+                            <path d="M7 11V7a5 5 0 0110 0v4"/>
+                        </svg>
+                        Admin only
+                    </span>
+                </div>`;
+        }
         
         return `
             <div class="team-card" style="--member-color: ${member.color}" onclick="openMemberTasks('${member.name.replace(/'/g, "\\'")}', ${index})">
@@ -3913,12 +4143,20 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
     });
 });
 
+function resetTeamFormFieldStates() {
+    document.getElementById('member-role').disabled = false;
+    document.getElementById('member-target').disabled = false;
+    document.getElementById('member-username').disabled = false;
+    document.getElementById('member-password').disabled = false;
+}
+
 function addNewTeamMember() {
     if (!isAdmin) {
         showError('Admin access required');
         return;
     }
     
+    resetTeamFormFieldStates();
     document.getElementById('team-modal-title').textContent = 'Add Team Member';
     document.getElementById('team-form').reset();
     document.getElementById('member-index').value = '';
@@ -3933,6 +4171,7 @@ function editTeamMember(index) {
         return;
     }
     
+    resetTeamFormFieldStates();
     const member = teamMembers[index];
     
     document.getElementById('team-modal-title').textContent = 'Edit Team Member';
@@ -3941,6 +4180,8 @@ function editTeamMember(index) {
     document.getElementById('member-role').value = member.role;
     document.getElementById('member-target').value = member.targetHours;
     document.getElementById('member-email').value = member.email || '';
+    document.getElementById('member-username').value = member.username || '';
+    document.getElementById('member-password').value = member.password || '';
     document.getElementById('member-color').value = member.color;
     
     openModal('team-modal');
@@ -3949,22 +4190,35 @@ function editTeamMember(index) {
 document.getElementById('team-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    if (!isAdmin) {
-        showError('Admin access required');
+    const memberIndex = document.getElementById('member-index').value;
+    const isSelfEdit = currentMember && memberIndex !== '' && teamMembers[memberIndex]?.name === currentMember.name;
+
+    if (!isAdmin && !isSelfEdit) {
+        showError('Access denied');
         closeModal('team-modal');
         return;
     }
     
-    const memberIndex = document.getElementById('member-index').value;
     const oldName = memberIndex !== '' ? teamMembers[memberIndex].name : null;
     
-    const memberData = {
-        name: document.getElementById('member-name').value,
-        role: document.getElementById('member-role').value,
-        targetHours: parseInt(document.getElementById('member-target').value) || 40,
-        email: document.getElementById('member-email').value,
-        color: document.getElementById('member-color').value
-    };
+    if (isAdmin) {
+        var memberData = {
+            name: document.getElementById('member-name').value,
+            role: document.getElementById('member-role').value,
+            targetHours: parseInt(document.getElementById('member-target').value) || 40,
+            email: document.getElementById('member-email').value,
+            username: document.getElementById('member-username').value,
+            password: document.getElementById('member-password').value,
+            color: document.getElementById('member-color').value
+        };
+    } else {
+        var memberData = {
+            ...teamMembers[memberIndex],
+            name: document.getElementById('member-name').value,
+            email: document.getElementById('member-email').value,
+            color: document.getElementById('member-color').value
+        };
+    }
     
     if (memberIndex === '') {
         teamMembers.push(memberData);
@@ -3983,6 +4237,10 @@ document.getElementById('team-form').addEventListener('submit', async (e) => {
         }
     }
     
+    if (isSelfEdit && currentMember) {
+        currentMember = memberData;
+    }
+
     await saveTeamMembers(teamMembers);
     closeModal('team-modal');
 
@@ -5747,6 +6005,10 @@ window.openEmailSettings = openEmailSettings;
 window.saveEmailSettings = saveEmailSettings;
 window.testEmailSettings = testEmailSettings;
 window.sendDeadlineAlerts = sendDeadlineAlerts;
+window.showMemberLoginModal = showMemberLoginModal;
+window.memberLogin = memberLogin;
+window.memberLogout = memberLogout;
+window.editMemberProfile = editMemberProfile;
 window.editTeamMember = editTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.validateProject = validateProject;
@@ -5787,6 +6049,15 @@ function init() {
         teamMembers = JSON.parse(localStorage.getItem('loopTeamMembers')) || [...defaultTeamMembers];
         stations = JSON.parse(localStorage.getItem('loopStations')) || JSON.parse(JSON.stringify(defaultStations));
         
+        // Migrate: ensure each team member has username/password fields
+        teamMembers.forEach((m, i) => {
+            if (!m.username) {
+                const def = defaultTeamMembers.find(d => d.name === m.name);
+                m.username = def ? def.username : m.name.split(' ')[0].toLowerCase();
+                m.password = def ? def.password : m.username + '123';
+            }
+        });
+        
         // Load group leads
         groupLeads = JSON.parse(localStorage.getItem('loopGroupLeads')) || JSON.parse(JSON.stringify(defaultGroupLeads));
         
@@ -5796,6 +6067,7 @@ function init() {
         
         // Initialize group lead UI
         updateGroupLeadUI();
+        updateMemberUI();
         
         // Setup timesheet drag-drop
         setupTimesheetDragDrop();
