@@ -3849,6 +3849,13 @@ function openMemberTasks(memberName, memberIndex) {
                 <div class="member-header-info">
                     <h2>${memberName}</h2>
                     <span class="member-role-badge">${member.role}</span>
+                    ${isAdmin ? `<div style="display:flex;gap:6px;margin-top:8px;">
+                        <button onclick="closeModal('member-tasks-modal'); editTeamMember(${memberIndex});" style="padding:5px 14px;font-size:0.8rem;background:rgba(0,212,170,0.15);color:#00d4aa;border:1px solid rgba(0,212,170,0.3);border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">Edit Member</button>
+                        <button onclick="closeModal('member-tasks-modal'); deleteTeamMember(${memberIndex});" style="padding:5px 14px;font-size:0.8rem;background:rgba(220,53,69,0.15);color:#dc3545;border:1px solid rgba(220,53,69,0.3);border-radius:6px;cursor:pointer;font-family:inherit;">Remove</button>
+                    </div>` : ''}
+                    ${(currentMember && currentMember.name === memberName) ? `<div style="margin-top:8px;">
+                        <button onclick="closeModal('member-tasks-modal'); editMemberProfile();" style="padding:5px 14px;font-size:0.8rem;background:${member.color}20;color:${member.color};border:1px solid ${member.color}40;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">Edit My Profile</button>
+                    </div>` : ''}
                 </div>
                 <button class="modal-close" onclick="closeModal('member-tasks-modal')">&times;</button>
             </div>
