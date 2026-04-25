@@ -1875,16 +1875,28 @@ async function sendTaskNotificationEmail(memberName, taskName, phaseName, newSta
     await sendEmail(member.email, `Task Update: ${taskName} → ${newStatus}`, buildEmailTemplate('Task Status Updated', body));
 }
 
-async function sendInvitationEmail(email, memberName, role) {
+async function sendInvitationEmail(email, memberName, role, username, password) {
+    const credentialsBlock = (username && password) ? `
+        <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #3b82f6;">
+            <p style="margin: 0 0 10px 0; color: #ffffff; font-weight: 600;">Your Login Credentials</p>
+            <table style="font-size: 14px;">
+                <tr><td style="padding: 4px 12px 4px 0; color: #5a7a94;">Username</td><td style="color: #ffffff; font-weight: 600;">${username}</td></tr>
+                <tr><td style="padding: 4px 12px 4px 0; color: #5a7a94;">Password</td><td style="color: #ffffff; font-weight: 600;">${password}</td></tr>
+            </table>
+            <p style="margin: 10px 0 0 0; color: #5a7a94; font-size: 12px;">Use the <strong>Member Login</strong> button on the sidebar to sign in.</p>
+        </div>` : '';
+
     const body = `
         <p>Hi <strong style="color:#ffffff">${memberName}</strong>,</p>
         <p>You've been added to the <strong style="color:#00d4aa">Loop Automation</strong> project team as a <strong style="color:#ffffff">${role}</strong>.</p>
+        ${credentialsBlock}
         <div style="background: #1a2d42; border-radius: 8px; padding: 16px; margin: 16px 0;">
             <p style="margin: 0 0 8px 0; color: #ffffff;">What you can do:</p>
             <ul style="margin: 0; padding-left: 20px;">
                 <li>View the project timeline and phase progress</li>
                 <li>Track your assigned tasks</li>
                 <li>Update task status and progress</li>
+                <li>Edit your profile and add your email</li>
             </ul>
         </div>
         <p>
@@ -4245,8 +4257,8 @@ document.getElementById('team-form').addEventListener('submit', async (e) => {
     closeModal('team-modal');
 
     if (memberIndex === '' && memberData.email) {
-        const sent = await sendInvitationEmail(memberData.email, memberData.name, memberData.role);
-        showSuccess(sent ? `Team member added — invitation sent to ${memberData.email}` : 'Team member added (email not sent — check Firebase email setup)');
+        const sent = await sendInvitationEmail(memberData.email, memberData.name, memberData.role, memberData.username, memberData.password);
+        showSuccess(sent ? `Team member added — invitation sent to ${memberData.email}` : 'Team member added (email not sent — check email settings)');
     } else {
         showSuccess(memberIndex === '' ? 'Team member added' : 'Team member updated');
     }
@@ -4280,7 +4292,7 @@ async function resendInvite(index) {
         showError('This member has no email address. Edit the member to add one.');
         return;
     }
-    const sent = await sendInvitationEmail(member.email, member.name, member.role);
+    const sent = await sendInvitationEmail(member.email, member.name, member.role, member.username, member.password);
     if (sent) {
         showSuccess(`Invitation sent to ${member.email}`);
     } else {
