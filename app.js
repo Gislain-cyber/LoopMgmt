@@ -3803,6 +3803,16 @@ function openMemberTasks(memberName, memberIndex) {
                             </svg>
                             Save
                         </button>
+                        <button class="btn-save-task" onclick="commitTaskToTimesheet('${task.stationId}', '${task.id}', '${memberName.replace(/'/g, "\\'")}')" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);" title="Save task and add hours to timesheet">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                <polyline points="9,16 11,18 15,14"/>
+                            </svg>
+                            Commit to Timesheet
+                        </button>
                     </div>
                 </div>`;
             }).join('')}
@@ -5905,7 +5915,10 @@ function buildTimesheetSection(memberName, member) {
                     ${canLog ? '<th style="padding:6px 8px;border-bottom:1px solid var(--border-primary);"></th>' : ''}
                 </tr></thead>
                 <tbody>
-                    ${entries.map(e => `<tr style="border-bottom:1px solid var(--border-primary)20;">
+                    ${entries.map(e => {
+                        const esc = s => (s || '').replace(/"/g, '&quot;').replace(/'/g, "\\'");
+                        const mEsc = memberName.replace(/'/g, "\\'");
+                        return `<tr id="ts-row-${e.id}" style="border-bottom:1px solid var(--border-primary)20;">
                         <td style="padding:5px 8px;color:var(--text-secondary);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${e.phase || ''}">${(e.phase || '').replace(/^(PHASE \d+).*/, '$1')}</td>
                         <td style="padding:5px 8px;color:var(--text-primary);white-space:nowrap;">${e.date || ''}</td>
                         <td style="padding:5px 8px;color:var(--text-secondary);">${e.startTime || ''}</td>
@@ -5914,8 +5927,12 @@ function buildTimesheetSection(memberName, member) {
                         <td style="padding:5px 8px;color:var(--text-secondary);white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;">${e.station || ''}</td>
                         <td style="padding:5px 8px;color:var(--text-secondary);">${e.category || ''}</td>
                         <td style="padding:5px 8px;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${(e.description || '').replace(/"/g, '&quot;')}">${e.description || ''}</td>
-                        ${canLog ? `<td style="padding:5px 4px;text-align:center;"><button onclick="deleteTimesheetEntry('${e.id}','${memberName.replace(/'/g, "\\'")}')" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:1rem;" title="Delete entry">&times;</button></td>` : ''}
-                    </tr>`).join('')}
+                        ${canLog ? `<td style="padding:5px 4px;text-align:center;white-space:nowrap;">
+                            <button onclick="editTimesheetEntry('${e.id}','${mEsc}')" style="background:none;border:none;color:#3b82f6;cursor:pointer;font-size:0.85rem;" title="Edit entry">&#9998;</button>
+                            <button onclick="deleteTimesheetEntry('${e.id}','${mEsc}')" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:1rem;margin-left:2px;" title="Delete entry">&times;</button>
+                        </td>` : ''}
+                    </tr>`;
+                    }).join('')}
                 </tbody>
             </table>
         </div>`;
@@ -5981,6 +5998,134 @@ async function deleteTimesheetEntry(entryId, memberName) {
 
     const memberIndex = teamMembers.findIndex(m => m.name === memberName);
     if (memberIndex >= 0) openMemberTasks(memberName, memberIndex);
+}
+
+function editTimesheetEntry(entryId, memberName) {
+    const entry = timesheetEntries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const row = document.getElementById('ts-row-' + entryId);
+    if (!row) return;
+
+    const inp = (type, id, val, w) =>
+        `<input type="${type}" id="${id}" value="${val || ''}" style="width:${w};padding:3px 5px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:4px;color:var(--text-primary);font-size:0.78rem;">`;
+    const mEsc = memberName.replace(/'/g, "\\'");
+
+    row.innerHTML = `
+        <td style="padding:4px 4px;">${inp('text', 'tse-phase-' + entryId, entry.phase, '80px')}</td>
+        <td style="padding:4px 4px;">${inp('date', 'tse-date-' + entryId, entry.date, '110px')}</td>
+        <td style="padding:4px 4px;">${inp('time', 'tse-start-' + entryId, entry.startTime, '85px')}</td>
+        <td style="padding:4px 4px;">${inp('time', 'tse-end-' + entryId, entry.endTime, '85px')}</td>
+        <td style="padding:4px 4px;">${inp('number', 'tse-hours-' + entryId, entry.hours, '55px')}</td>
+        <td style="padding:4px 4px;">${inp('text', 'tse-station-' + entryId, entry.station, '90px')}</td>
+        <td style="padding:4px 4px;">${inp('text', 'tse-category-' + entryId, entry.category, '80px')}</td>
+        <td style="padding:4px 4px;">${inp('text', 'tse-desc-' + entryId, entry.description, '120px')}</td>
+        <td style="padding:4px 4px;white-space:nowrap;">
+            <button onclick="saveTimesheetEdit('${entryId}','${mEsc}')" style="background:none;border:none;color:#00d4aa;cursor:pointer;font-size:0.85rem;font-weight:700;" title="Save">&#10003;</button>
+            <button onclick="cancelTimesheetEdit('${mEsc}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;" title="Cancel">&#10007;</button>
+        </td>`;
+}
+
+async function saveTimesheetEdit(entryId, memberName) {
+    const entry = timesheetEntries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const val = id => document.getElementById(id)?.value || '';
+
+    entry.phase = val('tse-phase-' + entryId);
+    entry.date = val('tse-date-' + entryId);
+    entry.startTime = val('tse-start-' + entryId);
+    entry.endTime = val('tse-end-' + entryId);
+    entry.station = val('tse-station-' + entryId);
+    entry.category = val('tse-category-' + entryId);
+    entry.description = val('tse-desc-' + entryId);
+
+    const manualHours = parseFloat(val('tse-hours-' + entryId));
+    if (!isNaN(manualHours) && manualHours > 0) {
+        entry.hours = Math.round(manualHours * 100) / 100;
+    } else if (entry.startTime && entry.endTime) {
+        let h = parseTimeToDecimal(entry.endTime) - parseTimeToDecimal(entry.startTime);
+        if (h <= 0) h += 24;
+        entry.hours = Math.round(h * 100) / 100;
+    }
+
+    await saveTimesheetEntries();
+    showSuccess('Timesheet entry updated.');
+
+    const memberIndex = teamMembers.findIndex(m => m.name === memberName);
+    if (memberIndex >= 0) openMemberTasks(memberName, memberIndex);
+}
+
+function cancelTimesheetEdit(memberName) {
+    const memberIndex = teamMembers.findIndex(m => m.name === memberName);
+    if (memberIndex >= 0) openMemberTasks(memberName, memberIndex);
+}
+
+async function commitTaskToTimesheet(stationId, taskId, memberName) {
+    let foundStation = null;
+    let foundTask = null;
+    for (const s of stations) {
+        if (String(s.id) === String(stationId)) {
+            foundStation = s;
+            foundTask = s.tasks.find(t => String(t.id) === String(taskId));
+            break;
+        }
+    }
+    if (!foundTask) { showError('Task not found.'); return; }
+
+    // Also save the current form values first
+    const statusSelect = document.getElementById(`status-${stationId}-${taskId}`);
+    const hoursInput = document.getElementById(`hours-${stationId}-${taskId}`);
+    if (statusSelect && hoursInput) {
+        foundTask.status = statusSelect.value;
+        foundTask.actualHours = parseFloat(hoursInput.value) || 0;
+        if (foundTask.status === 'Complete') foundTask.progress = 100;
+        localStorage.setItem('loopStations', JSON.stringify(stations));
+        if (firebaseEnabled && db) {
+            try {
+                await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-stations'), {
+                    stations, lastUpdated: new Date().toISOString()
+                });
+            } catch (e) { console.warn('Firebase station save:', e); }
+        }
+    }
+
+    const hours = foundTask.actualHours || 0;
+    if (hours <= 0) { showError('Enter actual hours on the task before committing to timesheet.'); return; }
+
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const endTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const startH = now.getHours() - Math.floor(hours);
+    const startM = now.getMinutes() - Math.round((hours % 1) * 60);
+    const startDate = new Date(now);
+    startDate.setHours(startH, startM);
+    const startTimeStr = `${String(startDate.getHours()).padStart(2,'0')}:${String(startDate.getMinutes()).padStart(2,'0')}`;
+
+    const entry = {
+        id: 'ts-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        memberName,
+        phase: '',
+        date: today,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        hours: Math.round(hours * 100) / 100,
+        station: foundStation ? foundStation.name : 'Other',
+        workset: 'Mechanical',
+        category: foundTask.name,
+        description: `Task: ${foundTask.name} | Status: ${foundTask.status}`,
+        createdAt: new Date().toISOString()
+    };
+
+    timesheetEntries.push(entry);
+    await saveTimesheetEntries();
+    showSuccess(`${hours}h committed to timesheet for "${foundTask.name}"`);
+
+    renderDashboard();
+    const memberIndex = teamMembers.findIndex(m => m.name === memberName);
+    if (memberIndex >= 0) {
+        setTimeout(() => openMemberTasks(memberName, memberIndex), 100);
+    }
 }
 
 function getWeekNumber(dateStr) {
@@ -6333,6 +6478,10 @@ window.removeTimesheet = removeTimesheet;
 window.analyzeTimesheets = analyzeTimesheets;
 window.addTimesheetEntry = addTimesheetEntry;
 window.deleteTimesheetEntry = deleteTimesheetEntry;
+window.editTimesheetEntry = editTimesheetEntry;
+window.saveTimesheetEdit = saveTimesheetEdit;
+window.cancelTimesheetEdit = cancelTimesheetEdit;
+window.commitTaskToTimesheet = commitTaskToTimesheet;
 window.exportGlobalTimesheet = exportGlobalTimesheet;
 
 // ============================================
