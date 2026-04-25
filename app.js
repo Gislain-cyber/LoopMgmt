@@ -650,11 +650,21 @@ async function initializeFirebase() {
                     await saveStations(JSON.parse(JSON.stringify(defaultStations)));
                 }
                 
-                // Check if phases exist in Firebase
+                // Check if phases exist in Firebase or need Semester B migration
                 const phasesDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project-phases'));
                 if (!phasesDoc.exists()) {
                     console.log('Initializing project phases in Firebase...');
+                    ensureSemesterBPhases(projectPhases);
                     await saveProjectPhases();
+                } else {
+                    const fbPhases = phasesDoc.data().phases || [];
+                    const hasSemB = fbPhases.some(p => p.id === 'sb-phase0');
+                    if (!hasSemB) {
+                        console.log('Semester B missing from Firebase — one-time migration');
+                        projectPhases = fbPhases;
+                        ensureSemesterBPhases(projectPhases);
+                        await saveProjectPhases();
+                    }
                 }
                 
                 clearTimeout(timeoutId);
@@ -820,8 +830,6 @@ function setupStationsListener() {
     });
 }
 
-let _semBMigrationDone = false;
-
 function setupProjectPhasesListener() {
     if (!firebaseEnabled || !db) return;
     
@@ -832,21 +840,12 @@ function setupProjectPhasesListener() {
             const data = docSnapshot.data();
             if (data.phases) {
                 projectPhases = data.phases;
-                if (!_semBMigrationDone && !projectPhases.some(p => p.id === 'sb-phase0')) {
-                    _semBMigrationDone = true;
-                    ensureSemesterBPhases(projectPhases);
-                    console.log('Semester B phases added to Firebase (one-time)');
-                    saveProjectPhases();
-                }
-                _semBMigrationDone = true;
+                ensureSemesterBPhases(projectPhases);
                 if (!isLoading) {
+                    _saveTimelineScroll();
                     renderProjectTimeline();
                 }
             }
-        } else if (!_semBMigrationDone) {
-            _semBMigrationDone = true;
-            console.log('No phases in Firebase, initializing...');
-            saveProjectPhases();
         }
     }, (error) => {
         console.error('Error listening to project phases:', error);
@@ -1591,6 +1590,16 @@ function renderProjectTimeline() {
             phaseContainer.scrollTop = parentScrollTop;
             phaseContainer.scrollLeft = parentScrollLeft;
         }
+        const viewEl = document.getElementById('timeline-view');
+        if (viewEl && viewEl._savedScrollTop !== undefined) {
+            viewEl.scrollTop = viewEl._savedScrollTop;
+            delete viewEl._savedScrollTop;
+        }
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent && mainContent._savedScrollTop !== undefined) {
+            mainContent.scrollTop = mainContent._savedScrollTop;
+            delete mainContent._savedScrollTop;
+        }
     });
 }
 
@@ -1630,10 +1639,18 @@ function calculateStationTasksProgress(station) {
     return Math.round(total / station.tasks.length);
 }
 
+function _saveTimelineScroll() {
+    const viewEl = document.getElementById('timeline-view');
+    if (viewEl) viewEl._savedScrollTop = viewEl.scrollTop;
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) mainContent._savedScrollTop = mainContent.scrollTop;
+}
+
 function togglePhase(phaseId) {
     const phase = projectPhases.find(p => p.id === phaseId);
     if (phase) {
         phase.expanded = !phase.expanded;
+        _saveTimelineScroll();
         saveProjectPhases();
         renderProjectTimeline();
     }
@@ -1645,6 +1662,7 @@ function toggleCategory(phaseId, categoryId) {
         const category = phase.categories.find(c => c.id === categoryId);
         if (category) {
             category.expanded = !category.expanded;
+            _saveTimelineScroll();
             saveProjectPhases();
             renderProjectTimeline();
         }
@@ -1659,6 +1677,7 @@ function toggleTimelineStation(phaseId, categoryId, stationId) {
             const station = category.stations.find(s => s.id === stationId);
             if (station) {
                 station.expanded = !station.expanded;
+                _saveTimelineScroll();
                 saveProjectPhases();
                 renderProjectTimeline();
             }
@@ -1734,6 +1753,7 @@ function expandAllPhases() {
             });
         });
     });
+    _saveTimelineScroll();
     saveProjectPhases();
     renderProjectTimeline();
 }
@@ -1748,6 +1768,7 @@ function collapseAllPhases() {
             });
         });
     });
+    _saveTimelineScroll();
     saveProjectPhases();
     renderProjectTimeline();
 }
