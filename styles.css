@@ -2313,10 +2313,10 @@ body {
     padding: 6px;
 }
 
-.member-tasks-modal-wrapper {
-    max-width: 80vw;
-    width: 80vw;
-    max-height: 80vh;
+.modal.member-tasks-modal-wrapper {
+    max-width: 80vw !important;
+    width: 80vw !important;
+    max-height: 80vh !important;
     overflow: hidden;
     display: flex;
     flex-direction: column;

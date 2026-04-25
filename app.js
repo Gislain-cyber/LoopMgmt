@@ -5947,30 +5947,27 @@ function buildTimesheetSection(memberName, member) {
     let logFormHTML = '';
     if (canLog) {
         logFormHTML = `
-        <div style="background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:10px;padding:16px;margin-bottom:16px;">
-            <h4 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-primary);">Log New Time Entry</h4>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
-                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Phase</label>
-                    <select id="ts-phase" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">${phaseOptions}</select></div>
-                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Date</label>
-                    <input type="date" id="ts-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;"></div>
-                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Start Time</label>
-                    <input type="time" id="ts-start" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;"></div>
-                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">End Time</label>
-                    <input type="time" id="ts-end" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;"></div>
-                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Station</label>
-                    <select id="ts-station" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">
+        <div style="background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:8px;padding:10px;margin-bottom:10px;">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:end;">
+                <div style="flex:1;min-width:120px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">Phase</label>
+                    <select id="ts-phase" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;">${phaseOptions}</select></div>
+                <div style="min-width:100px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">Date</label>
+                    <input type="date" id="ts-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;"></div>
+                <div style="min-width:80px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">Start</label>
+                    <input type="time" id="ts-start" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;"></div>
+                <div style="min-width:80px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">End</label>
+                    <input type="time" id="ts-end" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;"></div>
+                <div style="min-width:100px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">Station</label>
+                    <select id="ts-station" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;">
                         <option value="Other">Other</option>${stationOptions}</select></div>
-                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Workset</label>
-                    <select id="ts-workset" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">${categoryOptions}</select></div>
-                <div><label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Category</label>
-                    <select id="ts-category" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">${worksetOptions}</select></div>
+                <div style="min-width:90px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">Workset</label>
+                    <select id="ts-workset" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;">${categoryOptions}</select></div>
+                <div style="min-width:90px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">Category</label>
+                    <select id="ts-category" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;">${worksetOptions}</select></div>
+                <div style="flex:2;min-width:140px;"><label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:2px;">Description</label>
+                    <input type="text" id="ts-description" placeholder="What did you work on?" style="width:100%;padding:4px 6px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:5px;color:var(--text-primary);font-size:0.75rem;"></div>
+                <button onclick="addTimesheetEntry('${memberName.replace(/'/g, "\\'")}')" style="padding:5px 14px;background:var(--accent);color:#000;border:none;border-radius:5px;cursor:pointer;font-weight:600;font-size:0.75rem;white-space:nowrap;height:28px;">+ Add</button>
             </div>
-            <div style="margin-top:8px;">
-                <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:3px;">Description</label>
-                <input type="text" id="ts-description" placeholder="What did you work on?" style="width:100%;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.82rem;">
-            </div>
-            <button onclick="addTimesheetEntry('${memberName.replace(/'/g, "\\'")}')" style="margin-top:10px;padding:7px 18px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.82rem;">Add Entry</button>
         </div>`;
     }
 
