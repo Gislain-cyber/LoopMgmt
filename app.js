@@ -967,10 +967,8 @@ function saveScrollPositions() {
     }
     // Save scroll for known scrollable containers by selector
     const scrollSelectors = [
-        '.dashboard-grid', '.gantt-unified', '.phase-gantt-container',
-        '.team-grid', '.gantt-table-wrapper', '.station-table-scroll',
-        '.gantt-timeline-scroll', '.tasks-detail-container', '.task-timeline-gantt',
-        '.workload-table-container'
+        '.dashboard-grid', '.phase-gantt-container',
+        '.team-grid', '.workload-table-container'
     ];
     scrollSelectors.forEach(sel => {
         const el = document.querySelector(sel);
@@ -1011,16 +1009,8 @@ function renderAllViews() {
     
     const viewId = activeView.id;
     if (viewId === 'dashboard-view') renderDashboard();
-    if (viewId === 'gantt-view') renderGanttView();
     if (viewId === 'timeline-view') renderProjectTimeline();
     if (viewId === 'team-view') renderTeam();
-    if (viewId === 'station-detail-view' && currentStationId) {
-        const station = stations.find(s => s.id === currentStationId);
-        if (station) {
-            renderStationTasks(station);
-            renderTaskTimeline(station);
-        }
-    }
     
     // Restore scroll positions after render
     restoreScrollPositions(savedScroll);
@@ -1129,7 +1119,6 @@ function switchToView(view) {
     updateViewActions();
     
     if (view === 'dashboard') renderDashboard();
-    if (view === 'gantt') renderGanttView();
     if (view === 'timeline') renderProjectTimeline();
     if (view === 'team') renderTeam();
 }
@@ -1146,11 +1135,6 @@ function updateViewActions() {
             btn.style.display = 'flex';
         }
     });
-}
-
-function backToGantt() {
-    currentStationId = null;
-    switchToView('gantt');
 }
 
 // ============================================
@@ -1198,241 +1182,6 @@ function renderDashboard() {
         `;
     }).join('');
 }
-
-// ============================================
-// GANTT VIEW - UNIFIED (Info + Timeline together)
-// ============================================
-
-// Timeline configuration
-const DAY_WIDTH = 28;
-const TIMELINE_DAYS = 90; // Show 90 days
-
-function renderGanttView() {
-    const container = document.getElementById('gantt-unified');
-    if (!container) return;
-    
-    // Save scroll position before re-render
-    const prevScrollTop = container.scrollTop;
-    const prevScrollLeft = container.scrollLeft;
-    
-    if (stations.length === 0) {
-        container.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">No stations yet. Add a station to get started.</div>';
-        return;
-    }
-    
-    // Calculate timeline range
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const allDates = stations.flatMap(s => [parseDate(s.startDate), parseDate(s.endDate)]);
-    const minDate = new Date(Math.min(...allDates));
-    const timelineStart = new Date(minDate);
-    timelineStart.setDate(timelineStart.getDate() - 7); // Start 1 week before first task
-    
-    let html = '';
-    
-    // === HEADER ROW ===
-    html += '<div class="gantt-header-row">';
-    
-    // Info header (sticky left)
-    html += '<div class="gantt-info-header">';
-    html += '<div class="col col-id">#</div>';
-    html += '<div class="col col-name">Station / Task</div>';
-    html += '<div class="col col-progress">Progress</div>';
-    html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">Start</div>`;
-    html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">End</div>`;
-    html += `<div class="col col-days ${visibleColumnGroup === 'core' ? 'hidden' : ''}">Days</div>`;
-    html += '</div>';
-    
-    // Timeline header
-    html += '<div class="gantt-timeline-header-cells">';
-    for (let i = 0; i < TIMELINE_DAYS; i++) {
-        const date = new Date(timelineStart);
-        date.setDate(date.getDate() + i);
-        const dayOfWeek = date.getDay();
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const isToday = date.getTime() === today.getTime();
-        
-        const dayClass = isToday ? 'today' : (isWeekend ? 'weekend' : '');
-        const dayNum = date.getDate();
-        const monthLabel = dayNum === 1 ? date.toLocaleDateString('en-US', {month: 'short'}) : '';
-        
-        html += `<div class="gantt-day-header ${dayClass}">`;
-        html += monthLabel ? `<div style="font-size:0.55rem;color:var(--accent-primary);font-weight:600;">${monthLabel}</div>` : '';
-        html += `<div style="font-weight:${isToday ? '700' : '400'};">${dayNum}</div>`;
-        html += '</div>';
-    }
-    html += '</div></div>';
-    
-    // === DATA ROWS ===
-    stations.forEach(station => {
-        const isExpanded = expandedStations.has(station.id);
-        const days = daysBetween(station.startDate, station.endDate);
-        const totalHours = station.tasks.reduce((s, t) => s + (t.estHours || 0), 0);
-        const actualHours = station.tasks.reduce((s, t) => s + (t.actualHours || 0), 0);
-        const progress = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
-        const hasTasks = station.tasks.length > 0;
-        
-        // Station row
-        html += `<div class="gantt-row station-row ${isExpanded ? 'expanded' : ''}" data-station="${station.id}">`;
-        
-        // Info cells (sticky)
-        html += '<div class="gantt-info-cells">';
-        html += `<div class="col col-id" style="color: ${station.color}; font-weight: 700;">`;
-        if (hasTasks) {
-            html += `<button class="gantt-expand-btn ${isExpanded ? 'expanded' : ''}" onclick="toggleStationExpand(${station.id}, event)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-            </button>`;
-        }
-        html += `${station.id}</div>`;
-        
-        html += `<div class="col col-name" style="cursor: pointer;" onclick="openStationDetail(${station.id})" title="${station.name}\n${station.description || ''}">`;
-        html += `<div class="station-name-cell">`;
-        html += `<strong style="color: ${station.color};">${station.name}</strong>`;
-        html += `<span class="description">${station.description || ''}</span>`;
-        html += `</div></div>`;
-        
-        html += '<div class="col col-progress">';
-        html += `<div class="progress-mini">`;
-        html += `<div class="progress-mini-bar"><div class="progress-mini-fill" style="width: ${progress}%; background: linear-gradient(90deg, ${station.color}, ${station.color}dd);"></div></div>`;
-        html += `<span class="progress-mini-text">${progress}%</span>`;
-        html += `</div></div>`;
-        
-        html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${formatDateDisplay(station.startDate)}</div>`;
-        html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${formatDateDisplay(station.endDate)}</div>`;
-        html += `<div class="col col-days ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${days}d</div>`;
-        html += '</div>';
-        
-        // Timeline cells
-        html += '<div class="gantt-timeline-cells">';
-        for (let i = 0; i < TIMELINE_DAYS; i++) {
-            const date = new Date(timelineStart);
-            date.setDate(date.getDate() + i);
-            const dayOfWeek = date.getDay();
-            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            const isToday = date.getTime() === today.getTime();
-            const dayClass = isToday ? 'today' : (isWeekend ? 'weekend' : '');
-            html += `<div class="gantt-day-cell ${dayClass}"></div>`;
-        }
-        
-        // Station bar
-        const stationStart = parseDate(station.startDate);
-        const stationEnd = parseDate(station.endDate);
-        const startOffset = Math.floor((stationStart - timelineStart) / (1000 * 60 * 60 * 24));
-        const duration = Math.ceil((stationEnd - stationStart) / (1000 * 60 * 60 * 24)) + 1;
-        
-        if (startOffset >= 0 && startOffset < TIMELINE_DAYS) {
-            html += `<div class="gantt-bar" style="left: ${startOffset * DAY_WIDTH}px; width: ${duration * DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${station.color}, ${station.color}cc);" onclick="openStationDetail(${station.id})" title="${station.name} (${formatDateDisplay(station.startDate)} - ${formatDateDisplay(station.endDate)})">${station.name}</div>`;
-        }
-        html += '</div></div>';
-        
-        // Subtask rows (if expanded)
-        if (isExpanded && station.tasks.length > 0) {
-            station.tasks.forEach(task => {
-                const taskDays = daysBetween(task.startDate, task.endDate);
-                const memberColor = getMemberColor(task.assignedTo);
-                
-                html += `<div class="gantt-row subtask-row" data-station="${station.id}" data-task="${task.id}">`;
-                
-                // Subtask info cells
-                html += '<div class="gantt-info-cells">';
-                html += `<div class="col col-id" style="padding-left: 25px; color: var(--text-muted);"><span style="color: ${station.color};">└</span> ${task.id}</div>`;
-                
-                html += `<div class="col col-name" style="padding-left: 20px;" title="${task.name}\nAssigned: ${task.assignedTo || 'Unassigned'}">`;
-                html += `<div class="station-name-cell">`;
-                html += `<span style="display: flex; align-items: center; gap: 6px;">`;
-                html += `<span class="assignee-dot" style="background: ${memberColor};"></span>`;
-                html += `<span class="task-name">${task.name}</span>`;
-                html += `</span>`;
-                html += `<span class="description" style="padding-left: 18px;">${task.assignedTo || 'Unassigned'}</span>`;
-                html += `</div></div>`;
-                
-                html += '<div class="col col-progress">';
-                html += `<span class="status-badge ${getStatusClass(task.status)}" style="font-size: 0.65rem; padding: 2px 6px;">${task.status}</span>`;
-                html += '</div>';
-                
-                html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${formatDateDisplay(task.startDate)}</div>`;
-                html += `<div class="col col-date ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${formatDateDisplay(task.endDate)}</div>`;
-                html += `<div class="col col-days ${visibleColumnGroup === 'core' ? 'hidden' : ''}">${taskDays}d</div>`;
-                html += '</div>';
-                
-                // Subtask timeline cells
-                html += '<div class="gantt-timeline-cells">';
-        for (let i = 0; i < TIMELINE_DAYS; i++) {
-            const date = new Date(timelineStart);
-            date.setDate(date.getDate() + i);
-            const dayOfWeek = date.getDay();
-            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            const isToday = date.getTime() === today.getTime();
-                    const dayClass = isToday ? 'today' : (isWeekend ? 'weekend' : '');
-                    html += `<div class="gantt-day-cell ${dayClass}"></div>`;
-                }
-                
-                // Task bar
-                const taskStart = parseDate(task.startDate);
-                const taskEnd = parseDate(task.endDate);
-                const taskStartOffset = Math.floor((taskStart - timelineStart) / (1000 * 60 * 60 * 24));
-                const taskDuration = Math.ceil((taskEnd - taskStart) / (1000 * 60 * 60 * 24)) + 1;
-                
-                if (taskStartOffset >= 0 && taskStartOffset < TIMELINE_DAYS) {
-                    html += `<div class="gantt-bar subtask-bar" style="left: ${taskStartOffset * DAY_WIDTH}px; width: ${taskDuration * DAY_WIDTH - 4}px; background: linear-gradient(135deg, ${memberColor}, ${memberColor}bb);" title="${task.name}\n${task.assignedTo || 'Unassigned'}\n${formatDateDisplay(task.startDate)} - ${formatDateDisplay(task.endDate)}">${task.name}</div>`;
-                }
-                html += '</div></div>';
-            });
-        }
-    });
-    
-    container.innerHTML = html;
-    
-    // Restore scroll position after re-render
-    requestAnimationFrame(() => {
-        container.scrollTop = prevScrollTop;
-        container.scrollLeft = prevScrollLeft;
-    });
-}
-
-function toggleStationExpand(stationId, event) {
-    if (event) event.stopPropagation();
-    
-    if (expandedStations.has(stationId)) {
-        expandedStations.delete(stationId);
-    } else {
-        expandedStations.add(stationId);
-    }
-    
-    renderGanttView();
-}
-
-function expandAllStations() {
-    stations.forEach(s => expandedStations.add(s.id));
-    renderGanttView();
-}
-
-function collapseAllStations() {
-    expandedStations.clear();
-    renderGanttView();
-}
-
-// Column visibility toggle
-function toggleColumnGroup(group) {
-    visibleColumnGroup = group;
-    
-    // Update toggle buttons
-    document.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.columns === group) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // Re-render to apply column visibility
-    renderGanttView();
-}
-
-window.toggleStationExpand = toggleStationExpand;
-window.expandAllStations = expandAllStations;
-window.collapseAllStations = collapseAllStations;
-window.toggleColumnGroup = toggleColumnGroup;
 
 // ============================================
 // PROJECT TIMELINE VIEW (Phase-based Gantt)
@@ -3318,176 +3067,8 @@ async function deleteStation(stationId) {
 }
 
 // ============================================
-// STATION DETAIL VIEW
+// STATION TASK MANAGEMENT
 // ============================================
-
-function openStationDetail(stationId) {
-    currentStationId = stationId;
-    const station = stations.find(s => s.id === stationId);
-    if (!station) return;
-    
-    document.getElementById('station-detail-title').textContent = station.name;
-    document.getElementById('station-detail-subtitle').textContent = `${station.tasks.length} tasks • ${station.description}`;
-    
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('station-detail-view').classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    
-    renderStationTasks(station);
-    renderTaskTimeline(station);
-}
-
-function renderStationTasks(station) {
-    const tbody = document.getElementById('station-tasks-tbody');
-    
-    if (!isAdmin) {
-        // Public view - professional read-only display
-        tbody.innerHTML = station.tasks.map((task, idx) => {
-            const days = daysBetween(task.startDate, task.endDate);
-            const remaining = (task.estHours || 0) - (task.actualHours || 0);
-            const percentDone = task.estHours > 0 ? Math.round((task.actualHours / task.estHours) * 100) : 0;
-            const memberColor = getMemberColor(task.assignedTo);
-        
-        return `
-                <tr class="public-view-row">
-                    <td>${idx + 1}</td>
-                    <td style="border-left: 3px solid ${memberColor}; padding-left: 10px; font-weight: 500;">${task.name}</td>
-                    <td>${task.assignedTo}</td>
-                    <td>${getMemberRole(task.assignedTo)}</td>
-                    <td>${formatDateDisplay(task.startDate)}</td>
-                    <td>${formatDateDisplay(task.endDate)}</td>
-                    <td>${days}</td>
-                    <td style="font-family: 'JetBrains Mono', monospace;">${task.estHours}h</td>
-                    <td style="font-family: 'JetBrains Mono', monospace;">${task.actualHours}h</td>
-                    <td style="font-family: 'JetBrains Mono', monospace;">${remaining}h</td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <div style="width: 40px; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden;">
-                                <div style="height: 100%; width: ${percentDone}%; background: ${memberColor};"></div>
-                </div>
-                            <span style="font-size: 0.8rem;">${percentDone}%</span>
-            </div>
-                    </td>
-                    <td><span class="status-badge ${getStatusClass(task.status)}">${task.status}</span></td>
-                    <td><span class="priority-badge ${getPriorityClass(task.priority)}">${task.priority}</span></td>
-                    <td style="color: var(--text-muted); font-size: 0.85rem;">${task.notes || '-'}</td>
-                    <td></td>
-                </tr>
-        `;
-    }).join('');
-        return;
-    }
-    
-    // Admin view - editable
-    const teamOptions = teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
-    
-    tbody.innerHTML = station.tasks.map((task, idx) => {
-        const days = daysBetween(task.startDate, task.endDate);
-        const remaining = (task.estHours || 0) - (task.actualHours || 0);
-        const percentDone = task.estHours > 0 ? Math.round((task.actualHours / task.estHours) * 100) : 0;
-        const role = getMemberRole(task.assignedTo);
-        
-        return `
-            <tr>
-                <td>${idx + 1}</td>
-                <td><input type="text" value="${task.name}" onchange="updateTask(${station.id}, ${task.id}, 'name', this.value)"></td>
-                <td>
-                    <select onchange="updateTask(${station.id}, ${task.id}, 'assignedTo', this.value)">
-                        ${teamMembers.map(m => `<option value="${m.name}" ${task.assignedTo === m.name ? 'selected' : ''}>${m.name}</option>`).join('')}
-                    </select>
-                </td>
-                <td>${role}</td>
-                <td><input type="date" value="${task.startDate}" onchange="updateTask(${station.id}, ${task.id}, 'startDate', this.value)"></td>
-                <td><input type="date" value="${task.endDate}" onchange="updateTask(${station.id}, ${task.id}, 'endDate', this.value)"></td>
-                <td>${days}</td>
-                <td><input type="number" value="${task.estHours}" min="0" step="0.5" onchange="updateTask(${station.id}, ${task.id}, 'estHours', parseFloat(this.value))"></td>
-                <td><input type="number" value="${task.actualHours}" min="0" step="0.5" onchange="updateTask(${station.id}, ${task.id}, 'actualHours', parseFloat(this.value))"></td>
-                <td>${remaining}h</td>
-                <td>${percentDone}%</td>
-                <td>
-                    <select onchange="updateTask(${station.id}, ${task.id}, 'status', this.value)">
-                        <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
-                        <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                        <option value="Complete" ${task.status === 'Complete' ? 'selected' : ''}>Complete</option>
-                        <option value="On Hold" ${task.status === 'On Hold' ? 'selected' : ''}>On Hold</option>
-                        <option value="Delayed" ${task.status === 'Delayed' ? 'selected' : ''}>Delayed</option>
-                    </select>
-                </td>
-                <td>
-                    <select onchange="updateTask(${station.id}, ${task.id}, 'priority', this.value)">
-                        <option value="Low" ${task.priority === 'Low' ? 'selected' : ''}>Low</option>
-                        <option value="Medium" ${task.priority === 'Medium' ? 'selected' : ''}>Medium</option>
-                        <option value="High" ${task.priority === 'High' ? 'selected' : ''}>High</option>
-                        <option value="Critical" ${task.priority === 'Critical' ? 'selected' : ''}>Critical</option>
-                    </select>
-                </td>
-                <td><input type="text" value="${task.notes || ''}" onchange="updateTask(${station.id}, ${task.id}, 'notes', this.value)"></td>
-                <td>
-                    <button class="btn-icon delete" onclick="deleteTask(${station.id}, ${task.id})" title="Delete">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                            </svg>
-                        </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function renderTaskTimeline(station) {
-    if (!station.tasks.length) {
-        document.getElementById('task-timeline-header').innerHTML = '<p style="padding: 20px; color: var(--text-muted);">No tasks in this station</p>';
-        document.getElementById('task-timeline-body').innerHTML = '';
-        return;
-    }
-    
-    const stationStart = parseDate(station.startDate);
-    const totalDays = daysBetween(station.startDate, station.endDate);
-    const daysToShow = Math.max(totalDays, 30);
-    
-    // Header
-    let headerHTML = '';
-    for (let i = 0; i < daysToShow; i++) {
-        const date = new Date(stationStart);
-        date.setDate(date.getDate() + i);
-        
-        headerHTML += `<div class="timeline-day-cell">${date.getDate()}</div>`;
-    }
-    document.getElementById('task-timeline-header').innerHTML = headerHTML;
-    
-    // Body
-    let bodyHTML = '';
-    station.tasks.forEach(task => {
-        const taskStart = parseDate(task.startDate);
-        const startOffset = Math.max(0, Math.floor((taskStart - stationStart) / (1000 * 60 * 60 * 24)));
-        const duration = daysBetween(task.startDate, task.endDate);
-        const color = getMemberColor(task.assignedTo);
-        
-        let rowHTML = '<div class="task-timeline-row-gantt">';
-        
-        for (let i = 0; i < daysToShow; i++) {
-            rowHTML += '<div class="timeline-cell"></div>';
-        }
-        
-        if (startOffset < daysToShow) {
-            const left = startOffset * DAY_WIDTH;
-            const width = Math.min(duration, daysToShow - startOffset) * DAY_WIDTH - 4;
-            
-            rowHTML += `
-                <div class="gantt-bar" 
-                     style="left: ${left + 2}px; width: ${width}px; background: ${color};"
-                     title="${task.name}">
-                    ${width > 60 ? task.name.substring(0, 8) : ''}
-                </div>
-            `;
-        }
-        
-        rowHTML += '</div>';
-        bodyHTML += rowHTML;
-    });
-    
-    document.getElementById('task-timeline-body').innerHTML = bodyHTML;
-}
 
 async function updateTask(stationId, taskId, field, value) {
     const station = stations.find(s => s.id === stationId);
@@ -3841,7 +3422,6 @@ async function updateMemberTaskStatus(stationId, taskId, newStatus) {
     showSuccess(`Task status updated to "${newStatus}"`);
     
     // Refresh views
-    renderGanttView();
     renderDashboard();
     
     // Refresh the modal
@@ -3895,7 +3475,6 @@ async function updateMemberTaskHours(stationId, taskId, newHours) {
     showSuccess('Hours updated');
     
     // Refresh views
-    renderGanttView();
     renderDashboard();
     
     // Refresh the modal
@@ -4004,7 +3583,6 @@ async function saveMemberTaskUpdate(stationId, taskId) {
     }
     
     // Refresh all views
-    renderGanttView();
     renderDashboard();
     
     // Refresh the modal to show updated data
@@ -4191,7 +3769,7 @@ function validateProject() {
 }
 
 // ============================================
-// EXPORT FUNCTIONS
+// LEGACY EXPORT FUNCTIONS (kept for data utility)
 // ============================================
 
 function exportToPDF() {
@@ -5768,8 +5346,6 @@ function generateBasicExcelReport(comparisonData) {
 // ============================================
 
 window.switchToView = switchToView;
-window.openStationDetail = openStationDetail;
-window.backToGantt = backToGantt;
 window.updateStation = updateStation;
 window.addNewStation = addNewStation;
 window.deleteStation = deleteStation;
