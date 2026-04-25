@@ -523,13 +523,12 @@ const defaultPhases = [
 
 let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSON.parse(JSON.stringify(defaultPhases));
 
-// Migration: Ensure all stations have groupLeadId
-(function migrateProjectPhases() {
+const REQUIRED_PHASE_IDS = ['phase2', 'phase3', 'phase4a', 'phase4b', 'phase4c', 'phase5',
+    'sb-phase0', 'sb-phase1', 'sb-phase2', 'sb-phase3', 'sb-phase4', 'sb-phase5'];
+
+function migrateProjectPhases() {
     let needsSave = false;
-    
     const existingPhaseIds = projectPhases.map(p => p.id);
-    const requiredPhaseIds = ['phase2', 'phase3', 'phase4a', 'phase4b', 'phase4c', 'phase5',
-        'sb-phase0', 'sb-phase1', 'sb-phase2', 'sb-phase3', 'sb-phase4', 'sb-phase5'];
 
     projectPhases.forEach(p => {
         if (!p.semester) {
@@ -537,10 +536,9 @@ let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSO
             needsSave = true;
         }
     });
-    
-    requiredPhaseIds.forEach(phaseId => {
+
+    REQUIRED_PHASE_IDS.forEach(phaseId => {
         if (!existingPhaseIds.includes(phaseId)) {
-            // Find the phase in defaultPhases and add it
             const defaultPhase = defaultPhases.find(p => p.id === phaseId);
             if (defaultPhase) {
                 projectPhases.push(JSON.parse(JSON.stringify(defaultPhase)));
@@ -549,28 +547,34 @@ let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSO
             }
         }
     });
-    
-    // Ensure groupLeadId exists on all stations
+
+    // Sort so Semester A comes first, then Semester B, preserving order within each
+    const phaseOrder = REQUIRED_PHASE_IDS;
+    projectPhases.sort((a, b) => {
+        const ai = phaseOrder.indexOf(a.id);
+        const bi = phaseOrder.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+    });
+
     projectPhases.forEach(phase => {
         if (phase.categories) {
             phase.categories.forEach(category => {
                 if (category.stations) {
                     category.stations.forEach(station => {
                         if (!station.groupLeadId) {
-                            // Assign groupLeadId based on category and station number
-                            if (category.id.includes('mechanical') || category.id.includes('mech')) {
+                            if (category.id.includes('mechanical') || category.id.includes('mech') || category.id.includes('fab') || category.id.includes('asm')) {
                                 station.groupLeadId = `mech-lead-${station.stationNum}`;
-                            } else if (category.id.includes('controls') || category.id.includes('ctrl') || category.id.includes('electrical')) {
+                            } else if (category.id.includes('controls') || category.id.includes('ctrl') || category.id.includes('electrical') || category.id.includes('panel') || category.id.includes('comm')) {
                                 station.groupLeadId = `ctrl-lead-${station.stationNum}`;
                             }
                             needsSave = true;
                         }
-                        
-                        // Ensure tasks have dates
                         if (station.tasks) {
                             station.tasks.forEach(task => {
                                 if (!task.startDate || !task.endDate) {
-                                    // Use phase dates as fallback
                                     if (!task.startDate) task.startDate = phase.startDate || '2026-01-20';
                                     if (!task.endDate) task.endDate = phase.endDate || '2026-04-18';
                                     needsSave = true;
@@ -582,12 +586,14 @@ let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSO
             });
         }
     });
-    
+
     if (needsSave) {
         localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
         console.log('Migrated projectPhases with new phases and data');
     }
-})();
+    return needsSave;
+}
+migrateProjectPhases();
 
 // Current state
 let currentStationId = null;
@@ -822,6 +828,10 @@ function setupProjectPhasesListener() {
             const data = docSnapshot.data();
             if (data.phases) {
                 projectPhases = data.phases;
+                const migrated = migrateProjectPhases();
+                if (migrated) {
+                    saveProjectPhases();
+                }
                 if (!isLoading) {
                     console.log('Project phases updated from server');
                     renderProjectTimeline();
