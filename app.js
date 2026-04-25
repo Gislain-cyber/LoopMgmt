@@ -830,6 +830,8 @@ function setupStationsListener() {
     });
 }
 
+let _lastLocalRenderTime = 0;
+
 function setupProjectPhasesListener() {
     if (!firebaseEnabled || !db) return;
     
@@ -842,6 +844,7 @@ function setupProjectPhasesListener() {
                 projectPhases = data.phases;
                 ensureSemesterBPhases(projectPhases);
                 if (!isLoading) {
+                    if (Date.now() - _lastLocalRenderTime < 2000) return;
                     renderProjectTimeline();
                 }
             }
@@ -1243,16 +1246,9 @@ function renderProjectTimeline() {
     const container = document.getElementById('timeline-container');
     if (!container) return;
     
-    // Save scroll from every scrollable ancestor before DOM wipe
-    const scrollSnapshot = [];
-    let el = container;
-    while (el) {
-        if (el.scrollTop || el.scrollLeft) {
-            scrollSnapshot.push({ el, top: el.scrollTop, left: el.scrollLeft });
-        }
-        el = el.parentElement;
-    }
-    // Also capture .phase-gantt-container inside container (child, destroyed by innerHTML)
+    _lastLocalRenderTime = Date.now();
+
+    // Capture inner scroller position (the .phase-gantt-container that will be replaced)
     const innerScroller = container.querySelector('.phase-gantt-container');
     const innerScrollTop = innerScroller ? innerScroller.scrollTop : 0;
     const innerScrollLeft = innerScroller ? innerScroller.scrollLeft : 0;
@@ -1586,18 +1582,22 @@ function renderProjectTimeline() {
     });
     
     html += '</div></div>';
-    container.innerHTML = html;
-    
-    // Restore all ancestor scroll positions
-    scrollSnapshot.forEach(s => {
-        s.el.scrollTop = s.top;
-        s.el.scrollLeft = s.left;
-    });
-    // Restore inner .phase-gantt-container scroll (new element after innerHTML)
-    const newInner = container.querySelector('.phase-gantt-container');
-    if (newInner) {
-        newInner.scrollTop = innerScrollTop;
-        newInner.scrollLeft = innerScrollLeft;
+
+    // Swap content without clearing — prevents browser from clamping scrollTop to 0
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const newContent = tmp.firstElementChild;
+    const oldContent = container.firstElementChild;
+    if (oldContent) {
+        container.replaceChild(newContent, oldContent);
+    } else {
+        container.appendChild(newContent);
+    }
+
+    // Restore inner .phase-gantt-container scroll (horizontal timeline scroll)
+    if (newContent) {
+        newContent.scrollTop = innerScrollTop;
+        newContent.scrollLeft = innerScrollLeft;
     }
 }
 
@@ -1641,8 +1641,8 @@ function togglePhase(phaseId) {
     const phase = projectPhases.find(p => p.id === phaseId);
     if (phase) {
         phase.expanded = !phase.expanded;
-        saveProjectPhases();
         renderProjectTimeline();
+        saveProjectPhases();
     }
 }
 
@@ -1652,8 +1652,8 @@ function toggleCategory(phaseId, categoryId) {
         const category = phase.categories.find(c => c.id === categoryId);
         if (category) {
             category.expanded = !category.expanded;
-            saveProjectPhases();
             renderProjectTimeline();
+            saveProjectPhases();
         }
     }
 }
@@ -1666,8 +1666,8 @@ function toggleTimelineStation(phaseId, categoryId, stationId) {
             const station = category.stations.find(s => s.id === stationId);
             if (station) {
                 station.expanded = !station.expanded;
-                saveProjectPhases();
                 renderProjectTimeline();
+                saveProjectPhases();
             }
         }
     }
