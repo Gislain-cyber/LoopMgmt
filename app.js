@@ -228,305 +228,294 @@ let currentGroupLead = null; // Currently logged in group lead
 // Project Phases Data (for Project Timeline view)
 // Dates based on semester schedule - adjust as needed
 const defaultPhases = [
-    // PHASE 2 - Concept Design (existing)
+    // ======================== SEMESTER A ========================
     {
-        id: 'phase2',
+        id: 'phase2', semester: 'A',
         name: 'PHASE 2 - CONCEPT DESIGN',
-        color: '#7c3aed',
-        startDate: '2026-01-20',
-        endDate: '2026-03-02',
-        expanded: false,
+        color: '#7c3aed', startDate: '2026-01-20', endDate: '2026-03-02', expanded: false,
         categories: [
-            {
-                id: 'p2-mechanical',
-                name: 'MECHANICAL DESIGN',
-                color: '#3b82f6',
-                expanded: false,
-                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `p2-mech-station-${stationNum}`,
-                    stationNum: stationNum,
-                    name: `STATION ${stationNum} MECHANICAL DESIGN`,
-                    color: '#60a5fa',
-                    expanded: false,
-                    groupLeadId: `mech-lead-${stationNum}`,
+            { id: 'p2-mechanical', name: 'MECHANICAL DESIGN', color: '#3b82f6', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `p2-mech-station-${n}`, stationNum: n, name: `STATION ${n} MECHANICAL DESIGN`, color: '#60a5fa', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `p2-mech-${stationNum}-1`, name: 'Create Station Ideas', status: 'Not Started', progress: 0, startDate: '2026-01-20', endDate: '2026-01-24' },
-                        { id: `p2-mech-${stationNum}-2`, name: 'Evaluation of Ideas', status: 'Not Started', progress: 0, startDate: '2026-01-27', endDate: '2026-01-31' },
-                        { id: `p2-mech-${stationNum}-3`, name: 'Finalize', status: 'Not Started', progress: 0, startDate: '2026-02-03', endDate: '2026-02-07' },
-                        { id: `p2-mech-${stationNum}-4`, name: 'Integrate into Overall', status: 'Not Started', progress: 0, startDate: '2026-02-10', endDate: '2026-02-14' },
-                        { id: `p2-mech-${stationNum}-5`, name: 'Refine Concept', status: 'Not Started', progress: 0, startDate: '2026-02-17', endDate: '2026-02-21' }
-                    ]
-                }))
+                        { id: `p2-mech-${n}-1`, name: 'Create Station Ideas', status: 'Not Started', progress: 0, startDate: '2026-01-20', endDate: '2026-01-24' },
+                        { id: `p2-mech-${n}-2`, name: 'Evaluation of Ideas', status: 'Not Started', progress: 0, startDate: '2026-01-27', endDate: '2026-01-31' },
+                        { id: `p2-mech-${n}-3`, name: 'Finalize', status: 'Not Started', progress: 0, startDate: '2026-02-03', endDate: '2026-02-07' },
+                        { id: `p2-mech-${n}-4`, name: 'Integrate into Overall', status: 'Not Started', progress: 0, startDate: '2026-02-10', endDate: '2026-02-14' },
+                        { id: `p2-mech-${n}-5`, name: 'Refine Concept', status: 'Not Started', progress: 0, startDate: '2026-02-17', endDate: '2026-02-21' }
+                    ] }))
             },
-            {
-                id: 'p2-controls',
-                name: 'CONTROLS DESIGN',
-                color: '#10b981',
-                expanded: false,
-                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `p2-ctrl-station-${stationNum}`,
-                    stationNum: stationNum,
-                    name: `STATION ${stationNum} CONTROLS DESIGN`,
-                    color: '#34d399',
-                    expanded: false,
-                    groupLeadId: `ctrl-lead-${stationNum}`,
+            { id: 'p2-controls', name: 'CONTROLS DESIGN', color: '#10b981', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `p2-ctrl-station-${n}`, stationNum: n, name: `STATION ${n} CONTROLS DESIGN`, color: '#34d399', expanded: false, groupLeadId: `ctrl-lead-${n}`,
                     tasks: [
-                        { id: `p2-ctrl-${stationNum}-1`, name: 'Control System Architecture', status: 'Not Started', progress: 0, startDate: '2026-01-20', endDate: '2026-01-24' },
-                        { id: `p2-ctrl-${stationNum}-2`, name: 'I/O Mapping', status: 'Not Started', progress: 0, startDate: '2026-01-27', endDate: '2026-01-31' },
-                        { id: `p2-ctrl-${stationNum}-3`, name: 'PLC Programming', status: 'Not Started', progress: 0, startDate: '2026-02-03', endDate: '2026-02-07' },
-                        { id: `p2-ctrl-${stationNum}-4`, name: 'HMI Design', status: 'Not Started', progress: 0, startDate: '2026-02-10', endDate: '2026-02-14' },
-                        { id: `p2-ctrl-${stationNum}-5`, name: 'Integration & Testing', status: 'Not Started', progress: 0, startDate: '2026-02-17', endDate: '2026-02-21' }
-                    ]
-                }))
+                        { id: `p2-ctrl-${n}-1`, name: 'Control System Architecture', status: 'Not Started', progress: 0, startDate: '2026-01-20', endDate: '2026-01-24' },
+                        { id: `p2-ctrl-${n}-2`, name: 'I/O Mapping', status: 'Not Started', progress: 0, startDate: '2026-01-27', endDate: '2026-01-31' },
+                        { id: `p2-ctrl-${n}-3`, name: 'PLC Programming', status: 'Not Started', progress: 0, startDate: '2026-02-03', endDate: '2026-02-07' },
+                        { id: `p2-ctrl-${n}-4`, name: 'HMI Design', status: 'Not Started', progress: 0, startDate: '2026-02-10', endDate: '2026-02-14' },
+                        { id: `p2-ctrl-${n}-5`, name: 'Integration & Testing', status: 'Not Started', progress: 0, startDate: '2026-02-17', endDate: '2026-02-21' }
+                    ] }))
             }
         ]
     },
-    
-    // PHASE 3 - Detail Design (1 month: March)
     {
-        id: 'phase3',
+        id: 'phase3', semester: 'A',
         name: 'PHASE 3 - DETAIL DESIGN (25%)',
-        color: '#f59e0b',
-        startDate: '2026-02-25',
-        endDate: '2026-03-20',
-        expanded: true,
+        color: '#f59e0b', startDate: '2026-02-25', endDate: '2026-03-20', expanded: true,
         categories: [
-            {
-                id: 'p3-mechanical',
-                name: 'MECHANICAL DETAIL DESIGN',
-                color: '#3b82f6',
-                expanded: true,
-                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `p3-mech-station-${stationNum}`,
-                    stationNum: stationNum,
-                    name: `STATION ${stationNum} MECHANICAL`,
-                    color: '#60a5fa',
-                    expanded: false,
-                    groupLeadId: `mech-lead-${stationNum}`,
+            { id: 'p3-mechanical', name: 'MECHANICAL DETAIL DESIGN', color: '#3b82f6', expanded: true,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `p3-mech-station-${n}`, stationNum: n, name: `STATION ${n} MECHANICAL`, color: '#60a5fa', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `p3-mech-${stationNum}-1`, name: 'Update concept based on feedback', status: 'Not Started', progress: 0, startDate: '2026-02-25', endDate: '2026-03-02' },
-                        { id: `p3-mech-${stationNum}-2`, name: 'Complete Mechanical BOM', status: 'Not Started', progress: 0, startDate: '2026-03-01', endDate: '2026-03-11' },
-                        { id: `p3-mech-${stationNum}-3`, name: 'Complete mechanical design', status: 'Not Started', progress: 0, startDate: '2026-03-11', endDate: '2026-03-14' },
-                        { id: `p3-mech-${stationNum}-4`, name: 'Update budgets with actual costs', status: 'Not Started', progress: 0, startDate: '2026-03-10', endDate: '2026-03-14' },
-                        { id: `p3-mech-${stationNum}-5`, name: 'Component list by power level', status: 'Not Started', progress: 0, startDate: '2026-03-05', endDate: '2026-03-12' },
-                        { id: `p3-mech-${stationNum}-6`, name: 'Safety Strategy to minimize risks', status: 'Not Started', progress: 0, startDate: '2026-03-12', endDate: '2026-03-20' }
-                    ]
-                }))
+                        { id: `p3-mech-${n}-1`, name: 'Update concept based on feedback', status: 'Not Started', progress: 0, startDate: '2026-02-25', endDate: '2026-03-02' },
+                        { id: `p3-mech-${n}-2`, name: 'Complete Mechanical BOM', status: 'Not Started', progress: 0, startDate: '2026-03-01', endDate: '2026-03-11' },
+                        { id: `p3-mech-${n}-3`, name: 'Complete mechanical design', status: 'Not Started', progress: 0, startDate: '2026-03-11', endDate: '2026-03-14' },
+                        { id: `p3-mech-${n}-4`, name: 'Update budgets with actual costs', status: 'Not Started', progress: 0, startDate: '2026-03-10', endDate: '2026-03-14' },
+                        { id: `p3-mech-${n}-5`, name: 'Component list by power level', status: 'Not Started', progress: 0, startDate: '2026-03-05', endDate: '2026-03-12' },
+                        { id: `p3-mech-${n}-6`, name: 'Safety Strategy to minimize risks', status: 'Not Started', progress: 0, startDate: '2026-03-12', endDate: '2026-03-20' }
+                    ] }))
             },
-            {
-                id: 'p3-controls',
-                name: 'CONTROLS DETAIL DESIGN',
-                color: '#10b981',
-                expanded: true,
-                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `p3-ctrl-station-${stationNum}`,
-                    stationNum: stationNum,
-                    name: `STATION ${stationNum} CONTROLS`,
-                    color: '#34d399',
-                    expanded: false,
-                    groupLeadId: `ctrl-lead-${stationNum}`,
+            { id: 'p3-controls', name: 'CONTROLS DETAIL DESIGN', color: '#10b981', expanded: true,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `p3-ctrl-station-${n}`, stationNum: n, name: `STATION ${n} CONTROLS`, color: '#34d399', expanded: false, groupLeadId: `ctrl-lead-${n}`,
                     tasks: [
-                        { id: `p3-ctrl-${stationNum}-1`, name: 'Update concept based on feedback', status: 'Not Started', progress: 0, startDate: '2026-02-25', endDate: '2026-03-02' },
-                        { id: `p3-ctrl-${stationNum}-2`, name: 'Complete IO list (panel & field)', status: 'Not Started', progress: 0, startDate: '2026-03-01', endDate: '2026-03-11' },
-                        { id: `p3-ctrl-${stationNum}-3`, name: 'Complete Electrical BOM', status: 'Not Started', progress: 0, startDate: '2026-03-05', endDate: '2026-03-14' },
-                        { id: `p3-ctrl-${stationNum}-4`, name: 'Update budgets with actual costs', status: 'Not Started', progress: 0, startDate: '2026-03-10', endDate: '2026-03-14' },
-                        { id: `p3-ctrl-${stationNum}-5`, name: 'Safety Strategy to minimize risks', status: 'Not Started', progress: 0, startDate: '2026-03-12', endDate: '2026-03-20' }
-                    ]
-                }))
+                        { id: `p3-ctrl-${n}-1`, name: 'Update concept based on feedback', status: 'Not Started', progress: 0, startDate: '2026-02-25', endDate: '2026-03-02' },
+                        { id: `p3-ctrl-${n}-2`, name: 'Complete IO list (panel & field)', status: 'Not Started', progress: 0, startDate: '2026-03-01', endDate: '2026-03-11' },
+                        { id: `p3-ctrl-${n}-3`, name: 'Complete Electrical BOM', status: 'Not Started', progress: 0, startDate: '2026-03-05', endDate: '2026-03-14' },
+                        { id: `p3-ctrl-${n}-4`, name: 'Update budgets with actual costs', status: 'Not Started', progress: 0, startDate: '2026-03-10', endDate: '2026-03-14' },
+                        { id: `p3-ctrl-${n}-5`, name: 'Safety Strategy to minimize risks', status: 'Not Started', progress: 0, startDate: '2026-03-12', endDate: '2026-03-20' }
+                    ] }))
             },
-            {
-                id: 'p3-project-mgmt',
-                name: 'PROJECT MANAGEMENT',
-                color: '#8b5cf6',
-                expanded: false,
-                stations: [{
-                    id: 'p3-pm-station-1',
-                    stationNum: 1,
-                    name: 'PROJECT COORDINATION',
-                    color: '#a78bfa',
-                    expanded: false,
-                    groupLeadId: null,
+            { id: 'p3-project-mgmt', name: 'PROJECT MANAGEMENT', color: '#8b5cf6', expanded: false,
+                stations: [{ id: 'p3-pm-station-1', stationNum: 1, name: 'PROJECT COORDINATION', color: '#a78bfa', expanded: false, groupLeadId: null,
                     tasks: [
                         { id: 'p3-pm-1', name: 'Update project Gantt chart', status: 'Not Started', progress: 0, startDate: '2026-03-14', endDate: '2026-03-18' },
                         { id: 'p3-pm-2', name: 'Update project costs', status: 'Not Started', progress: 0, startDate: '2026-03-14', endDate: '2026-03-18' },
                         { id: 'p3-pm-3', name: 'Detailed Design Presentation', status: 'Not Started', progress: 0, startDate: '2026-03-18', endDate: '2026-03-20' }
-                    ]
-                }]
+                    ] }]
+            },
+            { id: 'p3-safety', name: 'SAFETY', color: '#f97316', expanded: false,
+                stations: [{ id: 'p3-safety-station-1', stationNum: 1, name: 'SAFETY REVIEW', color: '#fb923c', expanded: false, groupLeadId: null,
+                    tasks: [
+                        { id: 'p3-safety-1', name: 'Risk assessment review', status: 'Not Started', progress: 0, startDate: '2026-03-14', endDate: '2026-03-20' }
+                    ] }]
             }
         ]
     },
-    
-    // PHASE 4A - Design Validation (25/03 to 15/04)
     {
-        id: 'phase4a',
+        id: 'phase4a', semester: 'A',
         name: 'PHASE 4A - DESIGN VALIDATION (25%)',
-        color: '#ef4444',
-        startDate: '2026-03-25',
-        endDate: '2026-04-15',
-        expanded: true,
+        color: '#ef4444', startDate: '2026-03-25', endDate: '2026-04-15', expanded: true,
         categories: [
-            {
-                id: 'p4a-analysis',
-                name: 'DESIGN ANALYSIS (D&A)',
-                color: '#f87171',
-                expanded: true,
-                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `p4a-analysis-station-${stationNum}`,
-                    stationNum: stationNum,
-                    name: `STATION ${stationNum} ANALYSIS`,
-                    color: '#fca5a5',
-                    expanded: false,
-                    groupLeadId: `mech-lead-${stationNum}`,
+            { id: 'p4a-analysis', name: 'DESIGN ANALYSIS (D&A)', color: '#f87171', expanded: true,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `p4a-analysis-station-${n}`, stationNum: n, name: `STATION ${n} ANALYSIS`, color: '#fca5a5', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `p4a-${stationNum}-1`, name: 'Cylinder load analysis', status: 'Not Started', progress: 0, startDate: '2026-03-25', endDate: '2026-03-28' },
-                        { id: `p4a-${stationNum}-2`, name: 'Moment of Inertia analysis', status: 'Not Started', progress: 0, startDate: '2026-03-27', endDate: '2026-04-01' },
-                        { id: `p4a-${stationNum}-3`, name: 'Normal and Shear Stress analysis', status: 'Not Started', progress: 0, startDate: '2026-03-30', endDate: '2026-04-04' },
-                        { id: `p4a-${stationNum}-4`, name: 'Static analysis', status: 'Not Started', progress: 0, startDate: '2026-04-02', endDate: '2026-04-07' },
-                        { id: `p4a-${stationNum}-5`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2026-04-07', endDate: '2026-04-10' },
-                        { id: `p4a-${stationNum}-6`, name: 'Design Analysis Report', status: 'Not Started', progress: 0, startDate: '2026-04-10', endDate: '2026-04-15' }
-                    ]
-                }))
+                        { id: `p4a-${n}-1`, name: 'Cylinder load analysis', status: 'Not Started', progress: 0, startDate: '2026-03-25', endDate: '2026-03-28' },
+                        { id: `p4a-${n}-2`, name: 'Moment of Inertia analysis', status: 'Not Started', progress: 0, startDate: '2026-03-27', endDate: '2026-04-01' },
+                        { id: `p4a-${n}-3`, name: 'Normal and Shear Stress analysis', status: 'Not Started', progress: 0, startDate: '2026-03-30', endDate: '2026-04-04' },
+                        { id: `p4a-${n}-4`, name: 'Static analysis', status: 'Not Started', progress: 0, startDate: '2026-04-02', endDate: '2026-04-07' },
+                        { id: `p4a-${n}-5`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2026-04-07', endDate: '2026-04-10' },
+                        { id: `p4a-${n}-6`, name: 'Design Analysis Report', status: 'Not Started', progress: 0, startDate: '2026-04-10', endDate: '2026-04-15' }
+                    ] }))
             }
         ]
     },
-    
-    // PHASE 4B - Detailed Drawings (25/03 to 15/04 - parallel with 4A)
     {
-        id: 'phase4b',
+        id: 'phase4b', semester: 'A',
         name: 'PHASE 4B - DETAILED DRAWINGS (25%)',
-        color: '#06b6d4',
-        startDate: '2026-03-25',
-        endDate: '2026-04-15',
-        expanded: true,
+        color: '#06b6d4', startDate: '2026-03-25', endDate: '2026-04-15', expanded: true,
         categories: [
-            {
-                id: 'p4b-mechanical-drawings',
-                name: 'MECHANICAL DRAWINGS (R&A)',
-                color: '#22d3ee',
-                expanded: true,
-                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `p4b-mech-station-${stationNum}`,
-                    stationNum: stationNum,
-                    name: `STATION ${stationNum} DRAWINGS`,
-                    color: '#67e8f9',
-                    expanded: false,
-                    groupLeadId: `mech-lead-${stationNum}`,
+            { id: 'p4b-mechanical-drawings', name: 'MECHANICAL DRAWINGS (R&A)', color: '#22d3ee', expanded: true,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `p4b-mech-station-${n}`, stationNum: n, name: `STATION ${n} DRAWINGS`, color: '#67e8f9', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `p4b-${stationNum}-1`, name: 'Complete part drawings (custom parts)', status: 'Not Started', progress: 0, startDate: '2026-03-25', endDate: '2026-04-02' },
-                        { id: `p4b-${stationNum}-2`, name: 'Complete assembly drawings', status: 'Not Started', progress: 0, startDate: '2026-04-01', endDate: '2026-04-07' },
-                        { id: `p4b-${stationNum}-3`, name: 'Create mechanical build package', status: 'Not Started', progress: 0, startDate: '2026-04-06', endDate: '2026-04-10' },
-                        { id: `p4b-${stationNum}-4`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2026-04-08', endDate: '2026-04-12' },
-                        { id: `p4b-${stationNum}-5`, name: 'Submit Mechanical Build Package', status: 'Not Started', progress: 0, startDate: '2026-04-12', endDate: '2026-04-15' }
-                    ]
-                }))
+                        { id: `p4b-${n}-1`, name: 'Complete part drawings (custom parts)', status: 'Not Started', progress: 0, startDate: '2026-03-25', endDate: '2026-04-02' },
+                        { id: `p4b-${n}-2`, name: 'Complete assembly drawings', status: 'Not Started', progress: 0, startDate: '2026-04-01', endDate: '2026-04-07' },
+                        { id: `p4b-${n}-3`, name: 'Create mechanical build package', status: 'Not Started', progress: 0, startDate: '2026-04-06', endDate: '2026-04-10' },
+                        { id: `p4b-${n}-4`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2026-04-08', endDate: '2026-04-12' },
+                        { id: `p4b-${n}-5`, name: 'Submit Mechanical Build Package', status: 'Not Started', progress: 0, startDate: '2026-04-12', endDate: '2026-04-15' }
+                    ] }))
             }
         ]
     },
-    
-    // PHASE 4C - Electrical/Pneumatic Drawings (25/03 to 15/04 - parallel with 4A/4B)
     {
-        id: 'phase4c',
+        id: 'phase4c', semester: 'A',
         name: 'PHASE 4C - ELECTRICAL/PNEUMATIC DRAWINGS (25%)',
-        color: '#84cc16',
-        startDate: '2026-03-25',
-        endDate: '2026-04-15',
-        expanded: true,
+        color: '#84cc16', startDate: '2026-03-25', endDate: '2026-04-15', expanded: true,
         categories: [
-            {
-                id: 'p4c-electrical',
-                name: 'ELECTRICAL/PNEUMATIC (R&A)',
-                color: '#a3e635',
-                expanded: true,
-                stations: [1, 2, 3, 4, 5, 6].map(stationNum => ({
-                    id: `p4c-ctrl-station-${stationNum}`,
-                    stationNum: stationNum,
-                    name: `STATION ${stationNum} ELECTRICAL`,
-                    color: '#bef264',
-                    expanded: false,
-                    groupLeadId: `ctrl-lead-${stationNum}`,
+            { id: 'p4c-electrical', name: 'ELECTRICAL/PNEUMATIC (R&A)', color: '#a3e635', expanded: true,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `p4c-ctrl-station-${n}`, stationNum: n, name: `STATION ${n} ELECTRICAL`, color: '#bef264', expanded: false, groupLeadId: `ctrl-lead-${n}`,
                     tasks: [
-                        { id: `p4c-${stationNum}-1`, name: 'Power consumption analysis', status: 'Not Started', progress: 0, startDate: '2026-03-25', endDate: '2026-03-30' },
-                        { id: `p4c-${stationNum}-2`, name: 'Develop detailed electrical drawings', status: 'Not Started', progress: 0, startDate: '2026-03-28', endDate: '2026-04-06' },
-                        { id: `p4c-${stationNum}-3`, name: 'Develop detailed pneumatic drawings', status: 'Not Started', progress: 0, startDate: '2026-04-03', endDate: '2026-04-10' },
-                        { id: `p4c-${stationNum}-4`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2026-04-08', endDate: '2026-04-12' },
-                        { id: `p4c-${stationNum}-5`, name: 'Submit Electrical/Pneumatic Drawings', status: 'Not Started', progress: 0, startDate: '2026-04-12', endDate: '2026-04-15' }
-                    ]
-                }))
+                        { id: `p4c-${n}-1`, name: 'Power consumption analysis', status: 'Not Started', progress: 0, startDate: '2026-03-25', endDate: '2026-03-30' },
+                        { id: `p4c-${n}-2`, name: 'Develop detailed electrical drawings', status: 'Not Started', progress: 0, startDate: '2026-03-28', endDate: '2026-04-06' },
+                        { id: `p4c-${n}-3`, name: 'Develop detailed pneumatic drawings', status: 'Not Started', progress: 0, startDate: '2026-04-03', endDate: '2026-04-10' },
+                        { id: `p4c-${n}-4`, name: 'Update Gantt chart and costs', status: 'Not Started', progress: 0, startDate: '2026-04-08', endDate: '2026-04-12' },
+                        { id: `p4c-${n}-5`, name: 'Submit Electrical/Pneumatic Drawings', status: 'Not Started', progress: 0, startDate: '2026-04-12', endDate: '2026-04-15' }
+                    ] }))
             }
         ]
     },
-    
-    // PHASE 5 - Final Design Consolidation (16/04 to 30/04)
     {
-        id: 'phase5',
+        id: 'phase5', semester: 'A',
         name: 'PHASE 5 - FINAL DESIGN CONSOLIDATION (10%)',
-        color: '#ec4899',
-        startDate: '2026-04-16',
-        endDate: '2026-04-30',
-        expanded: true,
+        color: '#ec4899', startDate: '2026-04-16', endDate: '2026-04-30', expanded: true,
         categories: [
-            {
-                id: 'p5-build-package',
-                name: 'BUILD PACKAGE',
-                color: '#f472b6',
-                expanded: true,
-                stations: [{
-                    id: 'p5-build-station-1',
-                    stationNum: 1,
-                    name: 'DOCUMENTATION',
-                    color: '#f9a8d4',
-                    expanded: false,
-                    groupLeadId: null,
+            { id: 'p5-build-package', name: 'BUILD PACKAGE', color: '#f472b6', expanded: true,
+                stations: [{ id: 'p5-build-station-1', stationNum: 1, name: 'DOCUMENTATION', color: '#f9a8d4', expanded: false, groupLeadId: null,
                     tasks: [
                         { id: 'p5-build-1', name: 'Update drawings based on feedback', status: 'Not Started', progress: 0, startDate: '2026-04-16', endDate: '2026-04-18' },
                         { id: 'p5-build-2', name: 'Mechanical Assembly & Part Drawings (PDF)', status: 'Not Started', progress: 0, startDate: '2026-04-16', endDate: '2026-04-21' },
                         { id: 'p5-build-3', name: 'Electrical Drawings', status: 'Not Started', progress: 0, startDate: '2026-04-18', endDate: '2026-04-23' },
                         { id: 'p5-build-4', name: 'Pneumatic Drawings', status: 'Not Started', progress: 0, startDate: '2026-04-18', endDate: '2026-04-23' },
                         { id: 'p5-build-5', name: 'eAssemblies (whole machine & substations)', status: 'Not Started', progress: 0, startDate: '2026-04-21', endDate: '2026-04-25' }
-                    ]
-                }]
+                    ] }]
             },
-            {
-                id: 'p5-project-mgmt',
-                name: 'PROJECT MANAGEMENT PACKAGE',
-                color: '#a855f7',
-                expanded: true,
-                stations: [{
-                    id: 'p5-pm-station-1',
-                    stationNum: 1,
-                    name: 'FINAL DELIVERABLES',
-                    color: '#c084fc',
-                    expanded: false,
-                    groupLeadId: null,
+            { id: 'p5-project-mgmt', name: 'PROJECT MANAGEMENT PACKAGE', color: '#a855f7', expanded: true,
+                stations: [{ id: 'p5-pm-station-1', stationNum: 1, name: 'FINAL DELIVERABLES', color: '#c084fc', expanded: false, groupLeadId: null,
                     tasks: [
                         { id: 'p5-pm-1', name: 'Design and Analysis Report', status: 'Not Started', progress: 0, startDate: '2026-04-20', endDate: '2026-04-25' },
                         { id: 'p5-pm-2', name: 'Updated Gantt Chart (Build/Commission)', status: 'Not Started', progress: 0, startDate: '2026-04-22', endDate: '2026-04-27' },
                         { id: 'p5-pm-3', name: 'Overall BOM by substation', status: 'Not Started', progress: 0, startDate: '2026-04-22', endDate: '2026-04-27' },
                         { id: 'p5-pm-4', name: 'Updated budgets (industry & college)', status: 'Not Started', progress: 0, startDate: '2026-04-24', endDate: '2026-04-28' },
                         { id: 'p5-pm-5', name: 'Design Phase Reflections', status: 'Not Started', progress: 0, startDate: '2026-04-27', endDate: '2026-04-30' }
-                    ]
-                }]
+                    ] }]
             },
-            {
-                id: 'p5-reflections',
-                name: 'REFLECTIONS',
-                color: '#14b8a6',
-                expanded: false,
-                stations: [{
-                    id: 'p5-reflect-station-1',
-                    stationNum: 1,
-                    name: 'TEAM REFLECTIONS',
-                    color: '#2dd4bf',
-                    expanded: false,
-                    groupLeadId: null,
+            { id: 'p5-reflections', name: 'REFLECTIONS', color: '#14b8a6', expanded: false,
+                stations: [{ id: 'p5-reflect-station-1', stationNum: 1, name: 'TEAM REFLECTIONS', color: '#2dd4bf', expanded: false, groupLeadId: null,
                     tasks: [
                         { id: 'p5-ref-1', name: 'Compare original vs final Gantt', status: 'Not Started', progress: 0, startDate: '2026-04-27', endDate: '2026-04-29' },
                         { id: 'p5-ref-2', name: 'Compare proposed vs final budget', status: 'Not Started', progress: 0, startDate: '2026-04-27', endDate: '2026-04-29' },
                         { id: 'p5-ref-3', name: 'Compare initial concept to final design', status: 'Not Started', progress: 0, startDate: '2026-04-28', endDate: '2026-04-30' },
                         { id: 'p5-ref-4', name: 'Identify 3 things done well', status: 'Not Started', progress: 0, startDate: '2026-04-28', endDate: '2026-04-30' },
                         { id: 'p5-ref-5', name: 'Identify 3 things to improve', status: 'Not Started', progress: 0, startDate: '2026-04-29', endDate: '2026-04-30' }
-                    ]
-                }]
+                    ] }]
+            }
+        ]
+    },
+
+    // ======================== SEMESTER B ========================
+    {
+        id: 'sb-phase0', semester: 'B',
+        name: 'PHASE 0 - FINAL DESIGN PRESENTATION',
+        color: '#8b5cf6', startDate: '2026-09-08', endDate: '2026-09-26', expanded: false,
+        categories: [
+            { id: 'sb-p0-design', name: 'DESIGN COMPLETION', color: '#a78bfa', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p0-design-station-${n}`, stationNum: n, name: `STATION ${n} DESIGN COMPLETION`, color: '#c4b5fd', expanded: false, groupLeadId: `mech-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p0-${n}-1`, name: 'Complete Phase 4 design recommendations', status: 'Not Started', progress: 0, startDate: '2026-09-08', endDate: '2026-09-16' },
+                        { id: `sb-p0-${n}-2`, name: 'Semester B design presentation prep', status: 'Not Started', progress: 0, startDate: '2026-09-14', endDate: '2026-09-19' },
+                        { id: `sb-p0-${n}-3`, name: 'Semester B design presentation', status: 'Not Started', progress: 0, startDate: '2026-09-19', endDate: '2026-09-22' }
+                    ] }))
+            },
+            { id: 'sb-p0-procurement', name: 'PROCUREMENT', color: '#f59e0b', expanded: false,
+                stations: [{ id: 'sb-p0-proc-station-1', stationNum: 1, name: 'COMPONENT PROCUREMENT', color: '#fbbf24', expanded: false, groupLeadId: null,
+                    tasks: [
+                        { id: 'sb-p0-proc-1', name: 'Finalize procurement list', status: 'Not Started', progress: 0, startDate: '2026-09-08', endDate: '2026-09-12' },
+                        { id: 'sb-p0-proc-2', name: 'Place orders for components', status: 'Not Started', progress: 0, startDate: '2026-09-12', endDate: '2026-09-16' },
+                        { id: 'sb-p0-proc-3', name: 'Obtain components and materials', status: 'Not Started', progress: 0, startDate: '2026-09-16', endDate: '2026-09-26' }
+                    ] }]
+            }
+        ]
+    },
+    {
+        id: 'sb-phase1', semester: 'B',
+        name: 'PHASE 1 - BUILD & OFFLINE PROGRAM DEVELOPMENT',
+        color: '#3b82f6', startDate: '2026-09-22', endDate: '2026-11-06', expanded: false,
+        categories: [
+            { id: 'sb-p1-manufacture', name: 'MANUFACTURE / FABRICATION', color: '#60a5fa', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-fab-station-${n}`, stationNum: n, name: `STATION ${n} FABRICATION`, color: '#93c5fd', expanded: false, groupLeadId: `mech-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p1-fab-${n}-1`, name: 'Machine/3D print custom parts', status: 'Not Started', progress: 0, startDate: '2026-09-22', endDate: '2026-10-06' },
+                        { id: `sb-p1-fab-${n}-2`, name: 'Quality check fabricated parts', status: 'Not Started', progress: 0, startDate: '2026-10-05', endDate: '2026-10-09' }
+                    ] }))
+            },
+            { id: 'sb-p1-assembly', name: 'MECHANICAL ASSEMBLY', color: '#14b8a6', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-asm-station-${n}`, stationNum: n, name: `STATION ${n} ASSEMBLY`, color: '#5eead4', expanded: false, groupLeadId: `mech-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p1-asm-${n}-1`, name: 'Assemble substation', status: 'Not Started', progress: 0, startDate: '2026-10-06', endDate: '2026-10-17' },
+                        { id: `sb-p1-asm-${n}-2`, name: 'Assemble guarding', status: 'Not Started', progress: 0, startDate: '2026-10-15', endDate: '2026-10-20' },
+                        { id: `sb-p1-asm-${n}-3`, name: 'Overall system integration', status: 'Not Started', progress: 0, startDate: '2026-10-19', endDate: '2026-10-24' }
+                    ] }))
+            },
+            { id: 'sb-p1-panels', name: 'PANEL BUILDING', color: '#f97316', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-panel-station-${n}`, stationNum: n, name: `STATION ${n} PANELS`, color: '#fb923c', expanded: false, groupLeadId: `ctrl-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p1-panel-${n}-1`, name: 'Mount components in electrical panels', status: 'Not Started', progress: 0, startDate: '2026-10-06', endDate: '2026-10-17' },
+                        { id: `sb-p1-panel-${n}-2`, name: 'Complete local panel wiring', status: 'Not Started', progress: 0, startDate: '2026-10-15', endDate: '2026-10-24' }
+                    ] }))
+            },
+            { id: 'sb-p1-fieldwire', name: 'FIELD WIRING', color: '#eab308', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-fw-station-${n}`, stationNum: n, name: `STATION ${n} FIELD WIRING`, color: '#facc15', expanded: false, groupLeadId: `ctrl-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p1-fw-${n}-1`, name: 'Wire sensors to network blocks / panels', status: 'Not Started', progress: 0, startDate: '2026-10-20', endDate: '2026-10-31' }
+                    ] }))
+            },
+            { id: 'sb-p1-programming', name: 'PROGRAM DEVELOPMENT', color: '#10b981', expanded: false,
+                stations: [{ id: 'sb-p1-prog-station-1', stationNum: 1, name: 'SOFTWARE DEVELOPMENT', color: '#34d399', expanded: false, groupLeadId: null,
+                    tasks: [
+                        { id: 'sb-p1-prog-1', name: 'PLC program development', status: 'Not Started', progress: 0, startDate: '2026-09-22', endDate: '2026-10-31' },
+                        { id: 'sb-p1-prog-2', name: 'HMI program development', status: 'Not Started', progress: 0, startDate: '2026-09-28', endDate: '2026-10-31' },
+                        { id: 'sb-p1-prog-3', name: 'Robot program development', status: 'Not Started', progress: 0, startDate: '2026-10-05', endDate: '2026-11-06' }
+                    ] }]
+            }
+        ]
+    },
+    {
+        id: 'sb-phase2', semester: 'B',
+        name: 'PHASE 2 - SETUP & COMMISSIONING',
+        color: '#06b6d4', startDate: '2026-11-02', endDate: '2026-11-20', expanded: false,
+        categories: [
+            { id: 'sb-p2-commission', name: 'COMMISSIONING', color: '#22d3ee', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p2-comm-station-${n}`, stationNum: n, name: `STATION ${n} COMMISSIONING`, color: '#67e8f9', expanded: false, groupLeadId: `ctrl-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p2-${n}-1`, name: 'Panel power up', status: 'Not Started', progress: 0, startDate: '2026-11-02', endDate: '2026-11-04' },
+                        { id: `sb-p2-${n}-2`, name: 'IO checkout', status: 'Not Started', progress: 0, startDate: '2026-11-04', endDate: '2026-11-07' },
+                        { id: `sb-p2-${n}-3`, name: 'Manual mode commissioning (HMI & fault diagnostics)', status: 'Not Started', progress: 0, startDate: '2026-11-07', endDate: '2026-11-14' },
+                        { id: `sb-p2-${n}-4`, name: 'Mechanical fit up and validation', status: 'Not Started', progress: 0, startDate: '2026-11-14', endDate: '2026-11-20' }
+                    ] }))
+            }
+        ]
+    },
+    {
+        id: 'sb-phase3', semester: 'B',
+        name: 'PHASE 3 - SYSTEM TESTING',
+        color: '#ef4444', startDate: '2026-11-16', endDate: '2026-11-28', expanded: false,
+        categories: [
+            { id: 'sb-p3-testing', name: 'SYSTEM TESTING', color: '#f87171', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p3-test-station-${n}`, stationNum: n, name: `STATION ${n} TESTING`, color: '#fca5a5', expanded: false, groupLeadId: `ctrl-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p3-${n}-1`, name: 'Automatic mode program testing', status: 'Not Started', progress: 0, startDate: '2026-11-16', endDate: '2026-11-20' },
+                        { id: `sb-p3-${n}-2`, name: 'Track parts through system & identify rejects', status: 'Not Started', progress: 0, startDate: '2026-11-19', endDate: '2026-11-23' },
+                        { id: `sb-p3-${n}-3`, name: 'Test "what ifs" (E-stop, power loss, operator error)', status: 'Not Started', progress: 0, startDate: '2026-11-22', endDate: '2026-11-26' },
+                        { id: `sb-p3-${n}-4`, name: 'Mechanical troubleshooting', status: 'Not Started', progress: 0, startDate: '2026-11-24', endDate: '2026-11-28' }
+                    ] }))
+            }
+        ]
+    },
+    {
+        id: 'sb-phase4', semester: 'B',
+        name: 'PHASE 4 - SYSTEM VALIDATION',
+        color: '#84cc16', startDate: '2026-11-25', endDate: '2026-12-12', expanded: false,
+        categories: [
+            { id: 'sb-p4-validation', name: 'VALIDATION & DOCUMENTATION', color: '#a3e635', expanded: false,
+                stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p4-val-station-${n}`, stationNum: n, name: `STATION ${n} VALIDATION`, color: '#bef264', expanded: false, groupLeadId: `mech-lead-${n}`,
+                    tasks: [
+                        { id: `sb-p4-${n}-1`, name: 'Program & test machine statistics / bonus features', status: 'Not Started', progress: 0, startDate: '2026-11-25', endDate: '2026-11-30' },
+                        { id: `sb-p4-${n}-2`, name: 'Durability/Reliability testing (run in auto)', status: 'Not Started', progress: 0, startDate: '2026-11-28', endDate: '2026-12-05' },
+                        { id: `sb-p4-${n}-3`, name: 'Troubleshooting as needed', status: 'Not Started', progress: 0, startDate: '2026-12-01', endDate: '2026-12-06' },
+                        { id: `sb-p4-${n}-4`, name: 'Mechanical As Builds', status: 'Not Started', progress: 0, startDate: '2026-12-03', endDate: '2026-12-08' },
+                        { id: `sb-p4-${n}-5`, name: 'Electrical / Pneumatic As Builds', status: 'Not Started', progress: 0, startDate: '2026-12-05', endDate: '2026-12-10' },
+                        { id: `sb-p4-${n}-6`, name: 'Final Design & Analysis Report', status: 'Not Started', progress: 0, startDate: '2026-12-08', endDate: '2026-12-12' }
+                    ] }))
+            }
+        ]
+    },
+    {
+        id: 'sb-phase5', semester: 'B',
+        name: 'PHASE 5 - SAT',
+        color: '#ec4899', startDate: '2026-12-14', endDate: '2026-12-19', expanded: false,
+        categories: [
+            { id: 'sb-p5-sat', name: 'SITE ACCEPTANCE TEST', color: '#f472b6', expanded: false,
+                stations: [{ id: 'sb-p5-sat-station-1', stationNum: 1, name: 'SAT & SHOWCASE', color: '#f9a8d4', expanded: false, groupLeadId: null,
+                    tasks: [
+                        { id: 'sb-p5-sat-1', name: 'SAT (Site Acceptance Test) - Evaluation Day', status: 'Not Started', progress: 0, startDate: '2026-12-14', endDate: '2026-12-17' },
+                        { id: 'sb-p5-sat-2', name: 'Showcase Day', status: 'Not Started', progress: 0, startDate: '2026-12-17', endDate: '2026-12-19' }
+                    ] }]
             }
         ]
     }
@@ -538,9 +527,16 @@ let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSO
 (function migrateProjectPhases() {
     let needsSave = false;
     
-    // Check if we need to add new phases (Phase 3, 4A, 4B, 4C, 5)
     const existingPhaseIds = projectPhases.map(p => p.id);
-    const requiredPhaseIds = ['phase2', 'phase3', 'phase4a', 'phase4b', 'phase4c', 'phase5'];
+    const requiredPhaseIds = ['phase2', 'phase3', 'phase4a', 'phase4b', 'phase4c', 'phase5',
+        'sb-phase0', 'sb-phase1', 'sb-phase2', 'sb-phase3', 'sb-phase4', 'sb-phase5'];
+
+    projectPhases.forEach(p => {
+        if (!p.semester) {
+            p.semester = p.id.startsWith('sb-') ? 'B' : 'A';
+            needsSave = true;
+        }
+    });
     
     requiredPhaseIds.forEach(phaseId => {
         if (!existingPhaseIds.includes(phaseId)) {
@@ -1287,7 +1283,26 @@ function renderProjectTimeline() {
     html += '</div></div>';
     
     // Data rows
+    let lastSemester = null;
     projectPhases.forEach(phase => {
+        if (phase.semester && phase.semester !== lastSemester) {
+            lastSemester = phase.semester;
+            const semLabel = phase.semester === 'A' ? 'SEMESTER A — Design Phase' : 'SEMESTER B — Build & Commission';
+            const semColor = phase.semester === 'A' ? '#00d4aa' : '#f59e0b';
+            html += `<div class="phase-gantt-row semester-header-row" style="background: ${semColor}12; border-bottom: 2px solid ${semColor}40;">`;
+            html += '<div class="phase-gantt-info-cells" style="border-right-color: ${semColor}40;">';
+            html += `<div class="pg-col" style="flex:1; padding: 8px 12px; font-weight: 800; font-size: 0.85rem; color: ${semColor}; letter-spacing: 1.5px; text-transform: uppercase; display: flex; align-items: center; gap: 10px;">
+                <span style="display:inline-block;width:4px;height:20px;background:${semColor};border-radius:2px;"></span>
+                ${semLabel}
+            </div>`;
+            html += '</div>';
+            html += `<div class="phase-gantt-timeline-cells" style="border-bottom: none;">`;
+            for (let w = 0; w < numWeeks; w++) {
+                html += `<div class="pg-week-cell" style="background: ${semColor}06; border-color: ${semColor}15;"></div>`;
+            }
+            html += '</div></div>';
+        }
+
         const phaseProgress = calculatePhaseProgress(phase);
         const phaseStart = phase.startDate || '2026-01-20';
         const phaseEnd = phase.endDate || '2026-04-18';
