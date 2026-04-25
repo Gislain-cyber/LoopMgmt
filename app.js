@@ -397,22 +397,19 @@ const defaultPhases = [
     {
         id: 'sb-phase0', semester: 'B',
         name: 'PHASE 0 - FINAL DESIGN PRESENTATION',
-        color: '#8b5cf6', startDate: '2026-09-08', endDate: '2026-09-26', expanded: false,
+        color: '#8b5cf6', startDate: '2026-04-25', endDate: '2026-05-09', expanded: false,
         categories: [
             { id: 'sb-p0-design', name: 'DESIGN COMPLETION', color: '#a78bfa', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p0-design-station-${n}`, stationNum: n, name: `STATION ${n} DESIGN COMPLETION`, color: '#c4b5fd', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `sb-p0-${n}-1`, name: 'Complete Phase 4 design recommendations', status: 'Not Started', progress: 0, startDate: '2026-09-08', endDate: '2026-09-16' },
-                        { id: `sb-p0-${n}-2`, name: 'Semester B design presentation prep', status: 'Not Started', progress: 0, startDate: '2026-09-14', endDate: '2026-09-19' },
-                        { id: `sb-p0-${n}-3`, name: 'Semester B design presentation', status: 'Not Started', progress: 0, startDate: '2026-09-19', endDate: '2026-09-22' }
+                        { id: `sb-p0-${n}-1`, name: 'Complete Phase 4 design recommendations for Semester B design presentation', status: 'Not Started', progress: 0, startDate: '2026-04-25', endDate: '2026-05-06' },
+                        { id: `sb-p0-${n}-2`, name: 'Semester B design presentation', status: 'Not Started', progress: 0, startDate: '2026-04-25', endDate: '2026-05-06' }
                     ] }))
             },
             { id: 'sb-p0-procurement', name: 'PROCUREMENT', color: '#f59e0b', expanded: false,
                 stations: [{ id: 'sb-p0-proc-station-1', stationNum: 1, name: 'COMPONENT PROCUREMENT', color: '#fbbf24', expanded: false, groupLeadId: null,
                     tasks: [
-                        { id: 'sb-p0-proc-1', name: 'Finalize procurement list', status: 'Not Started', progress: 0, startDate: '2026-09-08', endDate: '2026-09-12' },
-                        { id: 'sb-p0-proc-2', name: 'Place orders for components', status: 'Not Started', progress: 0, startDate: '2026-09-12', endDate: '2026-09-16' },
-                        { id: 'sb-p0-proc-3', name: 'Obtain components and materials', status: 'Not Started', progress: 0, startDate: '2026-09-16', endDate: '2026-09-26' }
+                        { id: 'sb-p0-proc-1', name: 'Obtain components and materials', status: 'Not Started', progress: 0, startDate: '2026-04-28', endDate: '2026-05-08' }
                     ] }]
             }
         ]
@@ -420,42 +417,38 @@ const defaultPhases = [
     {
         id: 'sb-phase1', semester: 'B',
         name: 'PHASE 1 - BUILD & OFFLINE PROGRAM DEVELOPMENT',
-        color: '#3b82f6', startDate: '2026-09-22', endDate: '2026-11-06', expanded: false,
+        color: '#3b82f6', startDate: '2026-05-10', endDate: '2026-05-28', expanded: false,
         categories: [
             { id: 'sb-p1-manufacture', name: 'MANUFACTURE / FABRICATION', color: '#60a5fa', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-fab-station-${n}`, stationNum: n, name: `STATION ${n} FABRICATION`, color: '#93c5fd', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `sb-p1-fab-${n}-1`, name: 'Machine/3D print custom parts', status: 'Not Started', progress: 0, startDate: '2026-09-22', endDate: '2026-10-06' },
-                        { id: `sb-p1-fab-${n}-2`, name: 'Quality check fabricated parts', status: 'Not Started', progress: 0, startDate: '2026-10-05', endDate: '2026-10-09' }
+                        { id: `sb-p1-fab-${n}-1`, name: 'Machine/3D print custom parts', status: 'Not Started', progress: 0, startDate: '2026-05-10', endDate: '2026-05-28' }
                     ] }))
             },
             { id: 'sb-p1-assembly', name: 'MECHANICAL ASSEMBLY', color: '#14b8a6', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-asm-station-${n}`, stationNum: n, name: `STATION ${n} ASSEMBLY`, color: '#5eead4', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `sb-p1-asm-${n}-1`, name: 'Assemble substation', status: 'Not Started', progress: 0, startDate: '2026-10-06', endDate: '2026-10-17' },
-                        { id: `sb-p1-asm-${n}-2`, name: 'Assemble guarding', status: 'Not Started', progress: 0, startDate: '2026-10-15', endDate: '2026-10-20' },
-                        { id: `sb-p1-asm-${n}-3`, name: 'Overall system integration', status: 'Not Started', progress: 0, startDate: '2026-10-19', endDate: '2026-10-24' }
+                        { id: `sb-p1-asm-${n}-1`, name: 'Assemble substations, guarding & overall system', status: 'Not Started', progress: 0, startDate: '2026-05-10', endDate: '2026-05-28' }
                     ] }))
             },
             { id: 'sb-p1-panels', name: 'PANEL BUILDING', color: '#f97316', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-panel-station-${n}`, stationNum: n, name: `STATION ${n} PANELS`, color: '#fb923c', expanded: false, groupLeadId: `ctrl-lead-${n}`,
                     tasks: [
-                        { id: `sb-p1-panel-${n}-1`, name: 'Mount components in electrical panels', status: 'Not Started', progress: 0, startDate: '2026-10-06', endDate: '2026-10-17' },
-                        { id: `sb-p1-panel-${n}-2`, name: 'Complete local panel wiring', status: 'Not Started', progress: 0, startDate: '2026-10-15', endDate: '2026-10-24' }
+                        { id: `sb-p1-panel-${n}-1`, name: 'Mount components in electrical panels & complete local wiring', status: 'Not Started', progress: 0, startDate: '2026-05-14', endDate: '2026-05-28' }
                     ] }))
             },
             { id: 'sb-p1-fieldwire', name: 'FIELD WIRING', color: '#eab308', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p1-fw-station-${n}`, stationNum: n, name: `STATION ${n} FIELD WIRING`, color: '#facc15', expanded: false, groupLeadId: `ctrl-lead-${n}`,
                     tasks: [
-                        { id: `sb-p1-fw-${n}-1`, name: 'Wire sensors to network blocks / panels', status: 'Not Started', progress: 0, startDate: '2026-10-20', endDate: '2026-10-31' }
+                        { id: `sb-p1-fw-${n}-1`, name: 'Wire sensors to network blocks / back to electrical panels', status: 'Not Started', progress: 0, startDate: '2026-05-21', endDate: '2026-05-28' }
                     ] }))
             },
             { id: 'sb-p1-programming', name: 'PROGRAM DEVELOPMENT', color: '#10b981', expanded: false,
                 stations: [{ id: 'sb-p1-prog-station-1', stationNum: 1, name: 'SOFTWARE DEVELOPMENT', color: '#34d399', expanded: false, groupLeadId: null,
                     tasks: [
-                        { id: 'sb-p1-prog-1', name: 'PLC program development', status: 'Not Started', progress: 0, startDate: '2026-09-22', endDate: '2026-10-31' },
-                        { id: 'sb-p1-prog-2', name: 'HMI program development', status: 'Not Started', progress: 0, startDate: '2026-09-28', endDate: '2026-10-31' },
-                        { id: 'sb-p1-prog-3', name: 'Robot program development', status: 'Not Started', progress: 0, startDate: '2026-10-05', endDate: '2026-11-06' }
+                        { id: 'sb-p1-prog-1', name: 'PLC program development', status: 'Not Started', progress: 0, startDate: '2026-05-11', endDate: '2026-05-28' },
+                        { id: 'sb-p1-prog-2', name: 'HMI program development', status: 'Not Started', progress: 0, startDate: '2026-05-10', endDate: '2026-05-28' },
+                        { id: 'sb-p1-prog-3', name: 'Robot program development', status: 'Not Started', progress: 0, startDate: '2026-05-11', endDate: '2026-05-28' }
                     ] }]
             }
         ]
@@ -463,15 +456,15 @@ const defaultPhases = [
     {
         id: 'sb-phase2', semester: 'B',
         name: 'PHASE 2 - SETUP & COMMISSIONING',
-        color: '#06b6d4', startDate: '2026-11-02', endDate: '2026-11-20', expanded: false,
+        color: '#06b6d4', startDate: '2026-05-28', endDate: '2026-06-08', expanded: false,
         categories: [
             { id: 'sb-p2-commission', name: 'COMMISSIONING', color: '#22d3ee', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p2-comm-station-${n}`, stationNum: n, name: `STATION ${n} COMMISSIONING`, color: '#67e8f9', expanded: false, groupLeadId: `ctrl-lead-${n}`,
                     tasks: [
-                        { id: `sb-p2-${n}-1`, name: 'Panel power up', status: 'Not Started', progress: 0, startDate: '2026-11-02', endDate: '2026-11-04' },
-                        { id: `sb-p2-${n}-2`, name: 'IO checkout', status: 'Not Started', progress: 0, startDate: '2026-11-04', endDate: '2026-11-07' },
-                        { id: `sb-p2-${n}-3`, name: 'Manual mode commissioning (HMI & fault diagnostics)', status: 'Not Started', progress: 0, startDate: '2026-11-07', endDate: '2026-11-14' },
-                        { id: `sb-p2-${n}-4`, name: 'Mechanical fit up and validation', status: 'Not Started', progress: 0, startDate: '2026-11-14', endDate: '2026-11-20' }
+                        { id: `sb-p2-${n}-1`, name: 'Panel power up', status: 'Not Started', progress: 0, startDate: '2026-05-28', endDate: '2026-06-02' },
+                        { id: `sb-p2-${n}-2`, name: 'IO checkout', status: 'Not Started', progress: 0, startDate: '2026-06-02', endDate: '2026-06-04' },
+                        { id: `sb-p2-${n}-3`, name: 'Manual mode commissioning (test manual mode, HMI & fault diagnostics)', status: 'Not Started', progress: 0, startDate: '2026-06-04', endDate: '2026-06-08' },
+                        { id: `sb-p2-${n}-4`, name: 'Mechanical fit up and validation', status: 'Not Started', progress: 0, startDate: '2026-05-28', endDate: '2026-06-08' }
                     ] }))
             }
         ]
@@ -479,15 +472,15 @@ const defaultPhases = [
     {
         id: 'sb-phase3', semester: 'B',
         name: 'PHASE 3 - SYSTEM TESTING',
-        color: '#ef4444', startDate: '2026-11-16', endDate: '2026-11-28', expanded: false,
+        color: '#ef4444', startDate: '2026-06-08', endDate: '2026-06-30', expanded: false,
         categories: [
             { id: 'sb-p3-testing', name: 'SYSTEM TESTING', color: '#f87171', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p3-test-station-${n}`, stationNum: n, name: `STATION ${n} TESTING`, color: '#fca5a5', expanded: false, groupLeadId: `ctrl-lead-${n}`,
                     tasks: [
-                        { id: `sb-p3-${n}-1`, name: 'Automatic mode program testing', status: 'Not Started', progress: 0, startDate: '2026-11-16', endDate: '2026-11-20' },
-                        { id: `sb-p3-${n}-2`, name: 'Track parts through system & identify rejects', status: 'Not Started', progress: 0, startDate: '2026-11-19', endDate: '2026-11-23' },
-                        { id: `sb-p3-${n}-3`, name: 'Test "what ifs" (E-stop, power loss, operator error)', status: 'Not Started', progress: 0, startDate: '2026-11-22', endDate: '2026-11-26' },
-                        { id: `sb-p3-${n}-4`, name: 'Mechanical troubleshooting', status: 'Not Started', progress: 0, startDate: '2026-11-24', endDate: '2026-11-28' }
+                        { id: `sb-p3-${n}-1`, name: 'Automatic mode program testing', status: 'Not Started', progress: 0, startDate: '2026-06-08', endDate: '2026-06-30' },
+                        { id: `sb-p3-${n}-2`, name: 'Track parts through system & identify rejects', status: 'Not Started', progress: 0, startDate: '2026-06-15', endDate: '2026-06-30' },
+                        { id: `sb-p3-${n}-3`, name: 'Test "what ifs" (E-stop, power loss, operator error handling)', status: 'Not Started', progress: 0, startDate: '2026-06-23', endDate: '2026-06-30' },
+                        { id: `sb-p3-${n}-4`, name: 'Mechanical troubleshooting', status: 'Not Started', progress: 0, startDate: '2026-06-08', endDate: '2026-06-30' }
                     ] }))
             }
         ]
@@ -495,17 +488,17 @@ const defaultPhases = [
     {
         id: 'sb-phase4', semester: 'B',
         name: 'PHASE 4 - SYSTEM VALIDATION',
-        color: '#84cc16', startDate: '2026-11-25', endDate: '2026-12-12', expanded: false,
+        color: '#84cc16', startDate: '2026-06-30', endDate: '2026-07-18', expanded: false,
         categories: [
             { id: 'sb-p4-validation', name: 'VALIDATION & DOCUMENTATION', color: '#a3e635', expanded: false,
                 stations: [1,2,3,4,5,6].map(n => ({ id: `sb-p4-val-station-${n}`, stationNum: n, name: `STATION ${n} VALIDATION`, color: '#bef264', expanded: false, groupLeadId: `mech-lead-${n}`,
                     tasks: [
-                        { id: `sb-p4-${n}-1`, name: 'Program & test machine statistics / bonus features', status: 'Not Started', progress: 0, startDate: '2026-11-25', endDate: '2026-11-30' },
-                        { id: `sb-p4-${n}-2`, name: 'Durability/Reliability testing (run in auto)', status: 'Not Started', progress: 0, startDate: '2026-11-28', endDate: '2026-12-05' },
-                        { id: `sb-p4-${n}-3`, name: 'Troubleshooting as needed', status: 'Not Started', progress: 0, startDate: '2026-12-01', endDate: '2026-12-06' },
-                        { id: `sb-p4-${n}-4`, name: 'Mechanical As Builds', status: 'Not Started', progress: 0, startDate: '2026-12-03', endDate: '2026-12-08' },
-                        { id: `sb-p4-${n}-5`, name: 'Electrical / Pneumatic As Builds', status: 'Not Started', progress: 0, startDate: '2026-12-05', endDate: '2026-12-10' },
-                        { id: `sb-p4-${n}-6`, name: 'Final Design & Analysis Report', status: 'Not Started', progress: 0, startDate: '2026-12-08', endDate: '2026-12-12' }
+                        { id: `sb-p4-${n}-1`, name: 'Program & test machine statistics and bonus features', status: 'Not Started', progress: 0, startDate: '2026-06-30', endDate: '2026-07-15' },
+                        { id: `sb-p4-${n}-2`, name: 'Durability/Reliability testing (run whole machine in auto)', status: 'Not Started', progress: 0, startDate: '2026-06-30', endDate: '2026-07-15' },
+                        { id: `sb-p4-${n}-3`, name: 'Troubleshooting as needed', status: 'Not Started', progress: 0, startDate: '2026-06-30', endDate: '2026-07-15' },
+                        { id: `sb-p4-${n}-4`, name: 'Mechanical As Builds', status: 'Not Started', progress: 0, startDate: '2026-06-30', endDate: '2026-07-15' },
+                        { id: `sb-p4-${n}-5`, name: 'Electrical / Pneumatic As Builds', status: 'Not Started', progress: 0, startDate: '2026-06-25', endDate: '2026-07-18' },
+                        { id: `sb-p4-${n}-6`, name: 'Final Design & Analysis Report (Build/Troubleshooting portion)', status: 'Not Started', progress: 0, startDate: '2026-06-30', endDate: '2026-07-18' }
                     ] }))
             }
         ]
@@ -513,20 +506,20 @@ const defaultPhases = [
     {
         id: 'sb-phase5', semester: 'B',
         name: 'PHASE 5 - SAT',
-        color: '#ec4899', startDate: '2026-12-14', endDate: '2026-12-19', expanded: false,
+        color: '#ec4899', startDate: '2026-07-18', endDate: '2026-08-18', expanded: false,
         categories: [
             { id: 'sb-p5-sat', name: 'SITE ACCEPTANCE TEST', color: '#f472b6', expanded: false,
                 stations: [{ id: 'sb-p5-sat-station-1', stationNum: 1, name: 'SAT & SHOWCASE', color: '#f9a8d4', expanded: false, groupLeadId: null,
                     tasks: [
-                        { id: 'sb-p5-sat-1', name: 'SAT (Site Acceptance Test) - Evaluation Day', status: 'Not Started', progress: 0, startDate: '2026-12-14', endDate: '2026-12-17' },
-                        { id: 'sb-p5-sat-2', name: 'Showcase Day', status: 'Not Started', progress: 0, startDate: '2026-12-17', endDate: '2026-12-19' }
+                        { id: 'sb-p5-sat-1', name: 'SAT (Site Acceptance Test) - Evaluation Day', status: 'Not Started', progress: 0, startDate: '2026-07-18', endDate: '2026-08-10' },
+                        { id: 'sb-p5-sat-2', name: 'Showcase Day', status: 'Not Started', progress: 0, startDate: '2026-08-10', endDate: '2026-08-18' }
                     ] }]
             }
         ]
     }
 ];
 
-const DATA_VERSION = 2; // Bump this to force Semester B phases to appear
+const DATA_VERSION = 3; // Bump to force updated Semester B phases with correct dates
 
 let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSON.parse(JSON.stringify(defaultPhases));
 
@@ -595,8 +588,12 @@ function ensureSemesterBPhases(phases) {
 // Force migration if data version is outdated
 const storedVersion = parseInt(localStorage.getItem('loopDataVersion') || '0');
 if (storedVersion < DATA_VERSION) {
-    console.log(`Data version ${storedVersion} < ${DATA_VERSION}, forcing Semester B migration`);
-    ensureSemesterBPhases(projectPhases);
+    console.log(`Data version ${storedVersion} < ${DATA_VERSION}, replacing Semester B phases with updated defaults`);
+    // Remove all old Semester B phases
+    projectPhases = projectPhases.filter(p => p.semester !== 'B');
+    // Add fresh Semester B phases from defaults
+    const freshSemB = JSON.parse(JSON.stringify(defaultPhases.filter(p => p.semester === 'B')));
+    projectPhases.push(...freshSemB);
     localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
     localStorage.setItem('loopDataVersion', String(DATA_VERSION));
 }
