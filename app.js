@@ -3168,10 +3168,14 @@ function renderTeam() {
     const prevScrollTop = grid ? grid.scrollTop : 0;
     const prevScrollLeft = grid ? grid.scrollLeft : 0;
     
-    // Hide "Add Member" button if not admin
+    // Hide admin-only buttons if not admin
     const addMemberBtn = document.querySelector('#team-view .header-actions .btn-primary');
     if (addMemberBtn) {
         addMemberBtn.style.display = isAdmin ? 'flex' : 'none';
+    }
+    const clearTaskBtn = document.getElementById('clear-task-data-btn');
+    if (clearTaskBtn) {
+        clearTaskBtn.style.display = isAdmin ? 'flex' : 'none';
     }
     
     grid.innerHTML = teamMembers.map((member, index) => {
@@ -3243,6 +3247,35 @@ function renderTeam() {
             grid.scrollLeft = prevScrollLeft;
         }
     });
+}
+
+async function clearAllTaskData() {
+    if (!isAdmin) {
+        showError('Admin access required');
+        return;
+    }
+    
+    if (!confirm('This will reset ALL task assignments, statuses, hours, and progress for every station.\n\nThis action cannot be undone. Continue?')) {
+        return;
+    }
+    
+    let cleared = 0;
+    stations.forEach(station => {
+        if (station.tasks) {
+            station.tasks.forEach(task => {
+                task.assignedTo = '';
+                task.status = 'Not Started';
+                task.progress = 0;
+                task.estHours = 0;
+                task.actualHours = 0;
+                cleared++;
+            });
+        }
+    });
+    
+    await saveStations(stations);
+    renderTeam();
+    showSuccess(`Cleared task data for ${cleared} tasks across ${stations.length} stations`);
 }
 
 function openModal(modalId) {
@@ -5393,6 +5426,7 @@ window.deleteTask = deleteTask;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.addNewTeamMember = addNewTeamMember;
+window.clearAllTaskData = clearAllTaskData;
 window.editTeamMember = editTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.validateProject = validateProject;
