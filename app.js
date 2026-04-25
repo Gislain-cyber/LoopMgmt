@@ -519,7 +519,7 @@ const defaultPhases = [
     }
 ];
 
-const DATA_VERSION = 3; // Bump to force updated Semester B phases with correct dates
+const DATA_VERSION = 4; // Bump to force-replace Semester B phases with correct 2026 dates
 
 let projectPhases = JSON.parse(localStorage.getItem('loopProjectPhases')) || JSON.parse(JSON.stringify(defaultPhases));
 
@@ -589,13 +589,14 @@ function ensureSemesterBPhases(phases) {
 const storedVersion = parseInt(localStorage.getItem('loopDataVersion') || '0');
 if (storedVersion < DATA_VERSION) {
     console.log(`Data version ${storedVersion} < ${DATA_VERSION}, replacing Semester B phases with updated defaults`);
-    // Remove all old Semester B phases
-    projectPhases = projectPhases.filter(p => p.semester !== 'B');
+    // Remove all old Semester B phases (check both semester property and id prefix)
+    projectPhases = projectPhases.filter(p => p.semester !== 'B' && !p.id.startsWith('sb-'));
     // Add fresh Semester B phases from defaults
     const freshSemB = JSON.parse(JSON.stringify(defaultPhases.filter(p => p.semester === 'B')));
     projectPhases.push(...freshSemB);
     localStorage.setItem('loopProjectPhases', JSON.stringify(projectPhases));
     localStorage.setItem('loopDataVersion', String(DATA_VERSION));
+    console.log('Semester B phases replaced. New phase count:', projectPhases.length);
 }
 ensureSemesterBPhases(projectPhases);
 
@@ -661,11 +662,16 @@ async function initializeFirebase() {
                     await saveProjectPhases();
                 } else {
                     const fbPhases = phasesDoc.data().phases || [];
+                    const fbVersion = parseInt(localStorage.getItem('loopDataVersion') || '0');
+                    const needsReplace = fbVersion >= DATA_VERSION;
                     const hasSemB = fbPhases.some(p => p.id === 'sb-phase0');
                     if (!hasSemB) {
-                        console.log('Semester B missing from Firebase — one-time migration');
+                        console.log('Semester B missing from Firebase — adding');
                         projectPhases = fbPhases;
                         ensureSemesterBPhases(projectPhases);
+                        await saveProjectPhases();
+                    } else if (needsReplace) {
+                        console.log('Pushing updated Semester B phases to Firebase');
                         await saveProjectPhases();
                     }
                 }
