@@ -2310,13 +2310,13 @@ body {
    MEMBER TASKS MODAL
    ============================================ */
 .member-tasks-overlay {
-    padding: 20px;
+    padding: 12px;
 }
 
 .member-tasks-modal-wrapper {
-    max-width: 900px;
-    width: 100%;
-    max-height: 85vh;
+    max-width: 95vw;
+    width: 1400px;
+    max-height: 90vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -2327,28 +2327,28 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
-    max-height: 85vh;
+    max-height: 90vh;
     overflow: hidden;
 }
 
 .member-tasks-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 20px 24px;
+    gap: 12px;
+    padding: 12px 20px;
     background: var(--bg-tertiary);
     border-radius: 12px 12px 0 0;
     position: relative;
 }
 
 .member-avatar-large {
-    width: 60px;
-    height: 60px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1rem;
     font-weight: 700;
     color: white;
     flex-shrink: 0;
@@ -2356,15 +2356,15 @@ body {
 
 .member-header-info h2 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
 }
 
 .member-role-badge {
     display: inline-block;
-    padding: 4px 12px;
+    padding: 2px 8px;
     background: var(--bg-primary);
-    border-radius: 12px;
-    font-size: 0.8rem;
+    border-radius: 10px;
+    font-size: 0.72rem;
     color: var(--text-secondary);
     margin-top: 4px;
 }
@@ -2377,8 +2377,8 @@ body {
 
 .member-tasks-stats {
     display: flex;
-    gap: 12px;
-    padding: 16px 24px;
+    gap: 8px;
+    padding: 8px 20px;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-primary);
     flex-wrap: wrap;
@@ -2386,15 +2386,15 @@ body {
 
 .member-stat-card {
     flex: 1;
-    min-width: 100px;
-    padding: 12px 16px;
+    min-width: 70px;
+    padding: 6px 10px;
     background: var(--bg-primary);
-    border-radius: 8px;
+    border-radius: 6px;
     text-align: center;
 }
 
 .member-stat-card .member-stat-value {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text-primary);
     font-family: 'JetBrains Mono', monospace;
@@ -2409,21 +2409,28 @@ body {
 }
 
 .member-stat-card .member-stat-label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-top: 4px;
+    margin-top: 2px;
+}
+
+.member-tasks-panels {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
 }
 
 .member-tasks-body {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 20px 24px;
+    padding: 12px 16px;
     background: var(--bg-primary);
     min-height: 0;
-    max-height: calc(85vh - 220px);
+    max-height: calc(90vh - 160px);
     -webkit-overflow-scrolling: touch;
 }
 
@@ -2446,80 +2453,90 @@ body {
 }
 
 .member-tasks-body h3 {
-    margin: 0 0 16px;
-    font-size: 1rem;
+    margin: 0 0 10px;
+    font-size: 0.9rem;
     color: var(--text-secondary);
 }
 
 .member-tasks-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .member-task-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
-    border-radius: 10px;
-    padding: 16px;
+    border-radius: 8px;
+    padding: 8px 12px;
     transition: all 0.2s ease;
+    display: grid;
+    grid-template-columns: minmax(120px, 1.2fr) minmax(100px, 1fr) minmax(110px, 0.8fr) minmax(140px, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: 6px 10px;
 }
 
 .member-task-card:hover {
     border-color: var(--accent-primary);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .member-task-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 0;
+    grid-column: 1;
 }
 
 .member-task-station {
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: 600;
 }
 
 .member-task-name {
-    margin: 0 0 8px;
-    font-size: 1rem;
+    margin: 0;
+    font-size: 0.82rem;
     color: var(--text-primary);
+    line-height: 1.2;
 }
 
 .member-task-dates {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
+    gap: 4px;
+    font-size: 0.7rem;
     color: var(--text-muted);
-    margin-bottom: 12px;
+    margin-bottom: 0;
+    grid-column: 2;
+    white-space: nowrap;
 }
 
 .member-task-progress-section {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 6px;
+    margin-bottom: 0;
+    grid-column: 3;
 }
 
 .member-task-hours {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
 }
 
 .member-task-hours input {
-    width: 50px;
-    padding: 4px 6px;
+    width: 42px;
+    padding: 2px 4px;
     background: var(--bg-primary);
     border: 1px solid var(--border-primary);
     border-radius: 4px;
     color: var(--text-primary);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     text-align: center;
 }
 
@@ -2530,46 +2547,50 @@ body {
 
 .member-task-progress-bar {
     flex: 1;
-    height: 6px;
+    height: 4px;
     background: var(--bg-tertiary);
-    border-radius: 3px;
+    border-radius: 2px;
     overflow: hidden;
+    min-width: 30px;
 }
 
 .member-task-progress-bar .progress-fill {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 2px;
     transition: width 0.3s ease;
 }
 
 .member-task-progress-section .progress-percent {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
     color: var(--text-secondary);
-    min-width: 35px;
+    min-width: 28px;
     text-align: right;
 }
 
 .member-task-status-update {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
+    grid-column: 4 / -1;
+    flex-wrap: wrap;
 }
 
 .member-task-status-update label {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
+    display: none;
 }
 
 .member-task-status-update select {
-    flex: 1;
-    padding: 8px 12px;
+    padding: 4px 6px;
     background: var(--bg-primary);
     border: 1px solid var(--border-primary);
-    border-radius: 6px;
+    border-radius: 5px;
     color: var(--text-primary);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     cursor: pointer;
+    min-width: 90px;
 }
 
 .member-task-status-update select:focus {
@@ -2580,13 +2601,13 @@ body {
 .btn-save-task {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
+    gap: 4px;
+    padding: 4px 10px;
     background: linear-gradient(135deg, var(--accent-primary), #00b894);
     color: white;
     border: none;
-    border-radius: 6px;
-    font-size: 0.85rem;
+    border-radius: 5px;
+    font-size: 0.72rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -2604,6 +2625,24 @@ body {
 
 .btn-save-task svg {
     flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .member-tasks-panels {
+        flex-direction: column;
+    }
+    .member-tasks-panels .member-tasks-body {
+        border-right: none !important;
+        border-bottom: 1px solid var(--border-primary);
+        max-height: calc(45vh - 80px);
+    }
+    .member-task-card {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+    .member-task-status-update {
+        grid-column: 1;
+    }
 }
 
 /* ============================================

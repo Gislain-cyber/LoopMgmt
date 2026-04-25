@@ -3891,54 +3891,58 @@ function openMemberTasks(memberName, memberIndex) {
         </div>`;
     }
     
-    // Create modal content
+    // Create modal content — horizontal two-panel layout
     const modalContent = `
         <div class="member-tasks-modal-content">
             <div class="member-tasks-header" style="border-left: 4px solid ${member.color}">
                 <div class="member-avatar-large" style="background: ${member.color}">${getInitials(memberName)}</div>
                 <div class="member-header-info">
-                    <h2>${memberName}</h2>
+                    <h2 style="font-size:1.1rem;margin:0;">${memberName}</h2>
                     <span class="member-role-badge">${member.role}</span>
-                    ${isAdmin ? `<div style="display:flex;gap:6px;margin-top:8px;">
-                        <button onclick="closeModal('member-tasks-modal'); editTeamMember(${memberIndex});" style="padding:5px 14px;font-size:0.8rem;background:rgba(0,212,170,0.15);color:#00d4aa;border:1px solid rgba(0,212,170,0.3);border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">Edit Member</button>
-                        <button onclick="closeModal('member-tasks-modal'); deleteTeamMember(${memberIndex});" style="padding:5px 14px;font-size:0.8rem;background:rgba(220,53,69,0.15);color:#dc3545;border:1px solid rgba(220,53,69,0.3);border-radius:6px;cursor:pointer;font-family:inherit;">Remove</button>
-                    </div>` : ''}
-                    ${(currentMember && currentMember.name === memberName) ? `<div style="margin-top:8px;">
-                        <button onclick="closeModal('member-tasks-modal'); editMemberProfile();" style="padding:5px 14px;font-size:0.8rem;background:${member.color}20;color:${member.color};border:1px solid ${member.color}40;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">Edit My Profile</button>
-                    </div>` : ''}
+                </div>
+                <div class="member-tasks-stats" style="flex:1;border:none;padding:0;margin:0 12px;background:none;">
+                    <div class="member-stat-card">
+                        <div class="member-stat-value">${totalTasks}</div>
+                        <div class="member-stat-label">Tasks</div>
+                    </div>
+                    <div class="member-stat-card complete">
+                        <div class="member-stat-value">${completedTasks}</div>
+                        <div class="member-stat-label">Done</div>
+                    </div>
+                    <div class="member-stat-card in-progress">
+                        <div class="member-stat-value">${inProgressTasks}</div>
+                        <div class="member-stat-label">Active</div>
+                    </div>
+                    <div class="member-stat-card">
+                        <div class="member-stat-value">${actualHours}/${totalHours}h</div>
+                        <div class="member-stat-label">Hours</div>
+                    </div>
+                    <div class="member-stat-card">
+                        <div class="member-stat-value" style="color: ${member.color}">${progressPercent}%</div>
+                        <div class="member-stat-label">Progress</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:5px;align-items:center;">
+                    ${isAdmin ? `
+                        <button onclick="closeModal('member-tasks-modal'); editTeamMember(${memberIndex});" style="padding:4px 10px;font-size:0.72rem;background:rgba(0,212,170,0.15);color:#00d4aa;border:1px solid rgba(0,212,170,0.3);border-radius:5px;cursor:pointer;font-weight:600;">Edit</button>
+                        <button onclick="closeModal('member-tasks-modal'); deleteTeamMember(${memberIndex});" style="padding:4px 10px;font-size:0.72rem;background:rgba(220,53,69,0.15);color:#dc3545;border:1px solid rgba(220,53,69,0.3);border-radius:5px;cursor:pointer;">Remove</button>
+                    ` : ''}
+                    ${(currentMember && currentMember.name === memberName) ? `
+                        <button onclick="closeModal('member-tasks-modal'); editMemberProfile();" style="padding:4px 10px;font-size:0.72rem;background:${member.color}20;color:${member.color};border:1px solid ${member.color}40;border-radius:5px;cursor:pointer;font-weight:600;">Edit Profile</button>
+                    ` : ''}
                 </div>
                 <button class="modal-close" onclick="closeModal('member-tasks-modal')">&times;</button>
             </div>
             
-            <div class="member-tasks-stats">
-                <div class="member-stat-card">
-                    <div class="member-stat-value">${totalTasks}</div>
-                    <div class="member-stat-label">Total Tasks</div>
+            <div class="member-tasks-panels">
+                <div class="member-tasks-body" style="flex:1;border-right:1px solid var(--border-primary);">
+                    <h3>Assigned Tasks (${totalTasks})</h3>
+                    ${tasksHTML}
                 </div>
-                <div class="member-stat-card complete">
-                    <div class="member-stat-value">${completedTasks}</div>
-                    <div class="member-stat-label">Completed</div>
-                </div>
-                <div class="member-stat-card in-progress">
-                    <div class="member-stat-value">${inProgressTasks}</div>
-                    <div class="member-stat-label">In Progress</div>
-                </div>
-                <div class="member-stat-card">
-                    <div class="member-stat-value">${actualHours}/${totalHours}h</div>
-                    <div class="member-stat-label">Hours</div>
-                </div>
-                <div class="member-stat-card">
-                    <div class="member-stat-value" style="color: ${member.color}">${progressPercent}%</div>
-                    <div class="member-stat-label">Progress</div>
+                <div class="member-tasks-body" style="flex:1;min-width:0;">
+                    ${buildTimesheetSection(memberName, member)}
                 </div>
             </div>
-            
-            <div class="member-tasks-body">
-                <h3>Assigned Tasks</h3>
-                ${tasksHTML}
-            </div>
-
-            ${buildTimesheetSection(memberName, member)}
         </div>
     `;
     
@@ -6015,14 +6019,12 @@ function buildTimesheetSection(memberName, member) {
     const totalLogged = entries.reduce((s, e) => s + (e.hours || 0), 0);
 
     return `
-        <div class="member-tasks-body" style="margin-top:0;">
-            <h3 style="display:flex;justify-content:space-between;align-items:center;">
-                Timesheet Log
-                <span style="font-size:0.85rem;font-weight:600;color:var(--accent);">${totalLogged.toFixed(1)}h logged</span>
-            </h3>
-            ${logFormHTML}
-            ${entriesHTML}
-        </div>`;
+        <h3 style="display:flex;justify-content:space-between;align-items:center;">
+            Timesheet Log
+            <span style="font-size:0.8rem;font-weight:600;color:var(--accent);">${totalLogged.toFixed(1)}h logged</span>
+        </h3>
+        ${logFormHTML}
+        ${entriesHTML}`;
 }
 
 function parseTimeToDecimal(t) {
