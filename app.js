@@ -3654,29 +3654,18 @@ function renderTeam() {
         if (loadPercent > 100) loadColor = '#dc3545';
         
         const isOwnCard = currentMember && currentMember.name === member.name;
-        let actionsHTML;
+        let headerButtons = '';
         if (isAdmin) {
-            actionsHTML = `
-                <div class="team-card-actions admin-actions" onclick="event.stopPropagation()">
-                    <button onclick="editTeamMember(${index}); event.stopPropagation();">Edit</button>
-                    ${member.email ? `<button onclick="resendInvite(${index}); event.stopPropagation();" title="Send invitation email to ${member.email}" style="background: #00d4aa20; color: #00d4aa;">Invite</button>` : ''}
-                    <button class="delete" onclick="deleteTeamMember(${index}); event.stopPropagation();">Remove</button>
+            headerButtons = `
+                <div style="display:flex;gap:4px;margin-left:auto;" onclick="event.stopPropagation()">
+                    <button onclick="editTeamMember(${index}); event.stopPropagation();" style="padding:4px 10px;font-size:0.7rem;background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary);border-radius:5px;cursor:pointer;font-family:inherit;">Edit</button>
+                    ${member.email ? `<button onclick="resendInvite(${index}); event.stopPropagation();" title="Send invitation email" style="padding:4px 8px;font-size:0.7rem;background:#00d4aa15;color:#00d4aa;border:1px solid #00d4aa30;border-radius:5px;cursor:pointer;font-family:inherit;">Invite</button>` : ''}
+                    <button onclick="deleteTeamMember(${index}); event.stopPropagation();" style="padding:4px 8px;font-size:0.7rem;background:#dc354515;color:#dc3545;border:1px solid #dc354530;border-radius:5px;cursor:pointer;font-family:inherit;">✕</button>
                 </div>`;
         } else if (isOwnCard) {
-            actionsHTML = `
-                <div class="team-card-actions" onclick="event.stopPropagation()">
-                    <button onclick="editMemberProfile(); event.stopPropagation();" style="background: ${member.color}20; color: ${member.color};">Edit My Profile</button>
-                </div>`;
-        } else {
-            actionsHTML = `
-                <div class="team-card-actions public-actions">
-                    <span style="color: var(--text-muted); font-size: 0.8rem;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
-                            <rect x="3" y="11" width="18" height="11" rx="2"/>
-                            <path d="M7 11V7a5 5 0 0110 0v4"/>
-                        </svg>
-                        Admin only
-                    </span>
+            headerButtons = `
+                <div style="margin-left:auto;" onclick="event.stopPropagation()">
+                    <button onclick="editMemberProfile(); event.stopPropagation();" style="padding:4px 10px;font-size:0.7rem;background:${member.color}15;color:${member.color};border:1px solid ${member.color}30;border-radius:5px;cursor:pointer;font-family:inherit;">Edit Profile</button>
                 </div>`;
         }
         
@@ -3688,6 +3677,7 @@ function renderTeam() {
                         <h4>${member.name}</h4>
                         <span class="team-role">${member.role}</span>
                     </div>
+                    ${headerButtons}
                 </div>
                 <div class="team-stats">
                     <div class="team-stat">
@@ -3703,13 +3693,6 @@ function renderTeam() {
                     <div class="team-progress-bar">
                         <div class="team-progress-fill" style="width: ${Math.min(loadPercent, 100)}%; background: ${loadColor}"></div>
                     </div>
-                </div>
-                ${actionsHTML}
-                <div class="team-card-click-hint">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
-                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-                    </svg>
-                    Click to view tasks
                 </div>
             </div>
         `;
