@@ -1243,10 +1243,19 @@ function renderProjectTimeline() {
     const container = document.getElementById('timeline-container');
     if (!container) return;
     
-    // Save scroll position of the view wrapper (the actual scrollable element)
-    const viewEl = document.getElementById('timeline-view');
-    const viewScrollTop = viewEl ? viewEl.scrollTop : 0;
-    const viewScrollLeft = viewEl ? viewEl.scrollLeft : 0;
+    // Save scroll from every scrollable ancestor before DOM wipe
+    const scrollSnapshot = [];
+    let el = container;
+    while (el) {
+        if (el.scrollTop || el.scrollLeft) {
+            scrollSnapshot.push({ el, top: el.scrollTop, left: el.scrollLeft });
+        }
+        el = el.parentElement;
+    }
+    // Also capture .phase-gantt-container inside container (child, destroyed by innerHTML)
+    const innerScroller = container.querySelector('.phase-gantt-container');
+    const innerScrollTop = innerScroller ? innerScroller.scrollTop : 0;
+    const innerScrollLeft = innerScroller ? innerScroller.scrollLeft : 0;
     
     // Get the project timeline range
     const { minDate, maxDate } = getProjectTimelineRange();
@@ -1579,13 +1588,17 @@ function renderProjectTimeline() {
     html += '</div></div>';
     container.innerHTML = html;
     
-    // Restore scroll position after re-render
-    requestAnimationFrame(() => {
-        if (viewEl) {
-            viewEl.scrollTop = viewScrollTop;
-            viewEl.scrollLeft = viewScrollLeft;
-        }
+    // Restore all ancestor scroll positions
+    scrollSnapshot.forEach(s => {
+        s.el.scrollTop = s.top;
+        s.el.scrollLeft = s.left;
     });
+    // Restore inner .phase-gantt-container scroll (new element after innerHTML)
+    const newInner = container.querySelector('.phase-gantt-container');
+    if (newInner) {
+        newInner.scrollTop = innerScrollTop;
+        newInner.scrollLeft = innerScrollLeft;
+    }
 }
 
 function calculatePhaseProgress(phase) {
