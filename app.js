@@ -1590,7 +1590,7 @@ function renderProjectTimeline() {
                                 ${groupLead.name}
                             </span>` : ''}
                             ${isCurrentLeadStation ? '<span class="pg-my-station-badge">Your Station</span>' : ''}
-                            ${isAdmin ? `<button class="pg-add-btn" onclick="addTimelineTask('${phase.id}', '${category.id}', '${station.id}')" title="Add Task">+</button>` : ''}
+                            ${(isAdmin || isCurrentLeadStation) ? `<button class="pg-add-btn" onclick="addTimelineTask('${phase.id}', '${category.id}', '${station.id}')" title="Add Task">+</button>` : ''}
                             ${isAdmin ? `<button class="pg-delete-btn" onclick="deleteTimelineStation('${phase.id}', '${category.id}', '${station.id}')" title="Delete Station">×</button>` : ''}
                         </div>`;
                         html += `<div class="pg-col pg-col-dates">
@@ -1637,11 +1637,12 @@ function renderProjectTimeline() {
                                 html += '<div class="phase-gantt-info-cells">';
                                 const assignedMember = task.assignedTo ? teamMembers.find(m => m.name === task.assignedTo) : null;
                                 const assignBadge = task.assignedTo ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:${assignedMember?.color || '#666'}30;color:${assignedMember?.color || '#aaa'};white-space:nowrap;" title="Assigned to ${task.assignedTo}">${task.assignedTo.split(' ')[0]}</span>` : '';
+                                const canAssignHere = isAdmin || canGroupLeadAssignStation(category.id, station.id);
                                 html += `<div class="pg-col pg-col-name pg-task-name">
                                     <span class="pg-task-bullet" style="background: ${station.color}"></span>
-                                    <span class="editable-name" ${isAdmin ? `contenteditable="true" onblur="updateTimelineTaskName('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.textContent)"` : ''}>${task.name}</span>
+                                    <span class="editable-name" ${canAssignHere ? `contenteditable="true" onblur="updateTimelineTaskName('${phase.id}', '${category.id}', '${station.id}', '${task.id}', this.textContent)"` : ''}>${task.name}</span>
                                     ${assignBadge}
-                                    ${isAdmin ? `<select class="pg-assign-select" onchange="updateTaskAssignment('${phase.id}','${category.id}','${station.id}','${task.id}',this.value)" title="Assign to member" style="font-size:0.65rem;padding:1px 2px;max-width:70px;background:var(--bg-primary);color:var(--text-secondary);border:1px solid var(--border-primary);border-radius:3px;cursor:pointer;">
+                                    ${canAssignHere ? `<select class="pg-assign-select" onchange="updateTaskAssignment('${phase.id}','${category.id}','${station.id}','${task.id}',this.value)" title="Assign to member" style="font-size:0.65rem;padding:1px 2px;max-width:70px;background:var(--bg-primary);color:var(--text-secondary);border:1px solid var(--border-primary);border-radius:3px;cursor:pointer;">
                                         <option value="">—</option>
                                         ${teamMembers.map(m => `<option value="${m.name}" ${task.assignedTo === m.name ? 'selected' : ''}>${m.name.split(' ')[0]}</option>`).join('')}
                                     </select>` : ''}
@@ -2254,7 +2255,7 @@ function updateTimelineStationName(phaseId, categoryId, stationId, newName) {
 }
 
 function updateTimelineTaskName(phaseId, categoryId, stationId, taskId, newName) {
-    if (!isAdmin) return;
+    if (!isAdmin && !canGroupLeadAssignStation(categoryId, stationId)) return;
     const phase = projectPhases.find(p => p.id === phaseId);
     if (phase) {
         const category = phase.categories.find(c => c.id === categoryId);
@@ -2348,7 +2349,7 @@ function deleteTimelineStation(phaseId, categoryId, stationId) {
 }
 
 function addTimelineTask(phaseId, categoryId, stationId) {
-    if (!isAdmin) return;
+    if (!isAdmin && !canGroupLeadAssignStation(categoryId, stationId)) return;
     const phase = projectPhases.find(p => p.id === phaseId);
     if (phase) {
         const category = phase.categories.find(c => c.id === categoryId);
@@ -2371,7 +2372,10 @@ function addTimelineTask(phaseId, categoryId, stationId) {
 }
 
 async function updateTaskAssignment(phaseId, categoryId, stationId, taskId, newAssignee) {
-    if (!isAdmin) return;
+    if (!isAdmin && !canGroupLeadAssignStation(categoryId, stationId)) {
+        showError('You do not have permission to assign tasks for this station');
+        return;
+    }
     const phase = projectPhases.find(p => p.id === phaseId);
     if (!phase) return;
     const category = phase.categories.find(c => c.id === categoryId);
@@ -3158,16 +3162,16 @@ function saveGroupLeads() {
     localStorage.setItem('loopGroupLeads', JSON.stringify(groupLeads));
 }
 
+function canGroupLeadAssignStation(categoryId, stationId) {
+    if (!currentGroupLead) return false;
+    const station = findStationInPhases(categoryId, stationId);
+    if (station && station.groupLeadId === currentGroupLead.id) return true;
+    return false;
+}
+
 function canEditStation(categoryId, stationId) {
     if (isAdmin) return true;
-    
-    if (currentGroupLead) {
-        const station = findStationInPhases(categoryId, stationId);
-        if (station && station.groupLeadId === currentGroupLead.id) {
-            return true;
-        }
-    }
-    
+    if (canGroupLeadAssignStation(categoryId, stationId)) return true;
     return false;
 }
 
@@ -3281,14 +3285,23 @@ function updateGroupLeadUI() {
                 <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
                     ${currentGroupLead.category === 'mechanical' ? 'Mechanical' : 'Controls'} - Station ${currentGroupLead.stationNum}
                 </div>
-                <button class="btn-logout" onclick="groupLeadLogout()" style="margin-top: 8px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-                        <polyline points="16 17 21 12 16 7"/>
-                        <line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
-                    Logout
-                </button>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button class="btn-logout" onclick="showChangePasswordModal('grouplead')" style="flex:1;background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0110 0v4"/>
+                        </svg>
+                        Password
+                    </button>
+                    <button class="btn-logout" onclick="groupLeadLogout()" style="flex:1;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
             `;
         }
     } else {
@@ -3384,14 +3397,23 @@ function updateMemberUI() {
                         <div style="color: var(--text-muted); font-size: 0.65rem;">${currentMember.role}</div>
                     </div>
                 </div>
-                <button class="btn-logout" onclick="memberLogout()" style="margin-top: 4px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-                        <polyline points="16 17 21 12 16 7"/>
-                        <line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
-                    Logout
-                </button>
+                <div style="display:flex;gap:6px;margin-top:4px;">
+                    <button class="btn-logout" onclick="showChangePasswordModal('member')" style="flex:1;background:${currentMember.color}15;color:${currentMember.color};border:1px solid ${currentMember.color}40;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0110 0v4"/>
+                        </svg>
+                        Password
+                    </button>
+                    <button class="btn-logout" onclick="memberLogout()" style="flex:1;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
             `;
         }
     } else {
@@ -3417,14 +3439,109 @@ function editMemberProfile() {
     document.getElementById('member-password').value = member.password || '';
     document.getElementById('member-color').value = member.color;
 
-    // Disable admin-only fields for self-edit
+    // Disable admin-only fields for self-edit, but allow password change
     document.getElementById('member-role').disabled = true;
     document.getElementById('member-target').disabled = true;
     document.getElementById('member-username').disabled = true;
-    document.getElementById('member-password').disabled = true;
+    document.getElementById('member-password').disabled = false;
 
     openModal('team-modal');
 }
+
+// Change password modal — works for members and group leads
+function showChangePasswordModal(userType) {
+    let modal = document.getElementById('change-password-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'change-password-modal';
+        modal.className = 'modal-overlay';
+        modal.onclick = (e) => { if (e.target === modal) closeModal('change-password-modal'); };
+        document.body.appendChild(modal);
+    }
+
+    const displayName = userType === 'member'
+        ? (currentMember ? currentMember.name : '')
+        : (currentGroupLead ? (currentGroupLead.name || currentGroupLead.username) : '');
+
+    modal.innerHTML = `
+        <div class="modal" style="max-width:400px;">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <button class="modal-close" onclick="closeModal('change-password-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:16px;">Changing password for <strong>${displayName}</strong></p>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label for="cp-current">Current Password</label>
+                    <input type="password" id="cp-current" placeholder="Enter current password" required style="width:100%;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.85rem;">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label for="cp-new">New Password</label>
+                    <input type="password" id="cp-new" placeholder="Enter new password" required style="width:100%;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.85rem;">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label for="cp-confirm">Confirm New Password</label>
+                    <input type="password" id="cp-confirm" placeholder="Confirm new password" required style="width:100%;padding:8px 12px;background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:6px;color:var(--text-primary);font-size:0.85rem;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('change-password-modal')">Cancel</button>
+                <button class="btn-primary" onclick="submitPasswordChange('${userType}')">Update Password</button>
+            </div>
+        </div>
+    `;
+    openModal('change-password-modal');
+}
+
+async function submitPasswordChange(userType) {
+    const currentPwd = document.getElementById('cp-current').value;
+    const newPwd = document.getElementById('cp-new').value;
+    const confirmPwd = document.getElementById('cp-confirm').value;
+
+    if (!currentPwd || !newPwd || !confirmPwd) {
+        showError('Please fill in all fields');
+        return;
+    }
+    if (newPwd !== confirmPwd) {
+        showError('New passwords do not match');
+        return;
+    }
+    if (newPwd.length < 4) {
+        showError('Password must be at least 4 characters');
+        return;
+    }
+
+    if (userType === 'member' && currentMember) {
+        if (currentPwd !== currentMember.password) {
+            showError('Current password is incorrect');
+            return;
+        }
+        const idx = teamMembers.findIndex(m => m.name === currentMember.name);
+        if (idx >= 0) {
+            teamMembers[idx].password = newPwd;
+            currentMember.password = newPwd;
+            await saveTeamMembers(teamMembers);
+            closeModal('change-password-modal');
+            showSuccess('Password updated successfully');
+        }
+    } else if (userType === 'grouplead' && currentGroupLead) {
+        if (currentPwd !== currentGroupLead.password) {
+            showError('Current password is incorrect');
+            return;
+        }
+        const lead = groupLeads.find(gl => gl.id === currentGroupLead.id);
+        if (lead) {
+            lead.password = newPwd;
+            currentGroupLead.password = newPwd;
+            saveGroupLeads();
+            closeModal('change-password-modal');
+            showSuccess('Password updated successfully');
+        }
+    }
+}
+
+window.showChangePasswordModal = showChangePasswordModal;
+window.submitPasswordChange = submitPasswordChange;
 
 // Admin function to manage group leads
 function showManageGroupLeadsModal() {
