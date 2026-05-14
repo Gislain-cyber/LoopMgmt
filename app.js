@@ -645,6 +645,7 @@ async function initializeFirebase() {
                 setupStationsListener();
                 setupProjectPhasesListener();
                 setupTimesheetListener();
+                setupGroupLeadsListener();
 
                 // Check if data exists, if not, initialize with defaults
                 const teamDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project'));
@@ -654,6 +655,15 @@ async function initializeFirebase() {
                     await saveStations(JSON.parse(JSON.stringify(defaultStations)));
                 }
                 
+                // Load group leads from Firebase
+                const glDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project-groupleads'));
+                if (glDoc.exists() && glDoc.data().leads) {
+                    groupLeads = glDoc.data().leads;
+                    localStorage.setItem('loopGroupLeads', JSON.stringify(groupLeads));
+                } else {
+                    await saveGroupLeads();
+                }
+
                 // Check if phases exist in Firebase or need Semester B migration
                 const phasesDoc = await window.firebaseGetDoc(window.firebaseDoc(db, 'projects', 'main-project-phases'));
                 const didMigrate = (storedVersion < DATA_VERSION) || (parseInt(localStorage.getItem('loopDataVersion') || '0') >= DATA_VERSION && projectPhases.some(p => p.id === 'sb-phase0' && p.startDate === '2026-04-25'));
@@ -883,6 +893,22 @@ function setupTimesheetListener() {
         }
     }, (error) => {
         console.error('Error listening to timesheet entries:', error);
+    });
+}
+
+function setupGroupLeadsListener() {
+    if (!firebaseEnabled || !db) return;
+    const glDocRef = window.firebaseDoc(db, 'projects', 'main-project-groupleads');
+    window.firebaseOnSnapshot(glDocRef, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            if (data.leads) {
+                groupLeads = data.leads;
+                localStorage.setItem('loopGroupLeads', JSON.stringify(groupLeads));
+            }
+        }
+    }, (error) => {
+        console.error('Error listening to group leads:', error);
     });
 }
 
@@ -3158,8 +3184,16 @@ window.exportTimelineImage = exportTimelineImage;
 // GROUP LEAD MANAGEMENT
 // ============================================
 
-function saveGroupLeads() {
+async function saveGroupLeads() {
     localStorage.setItem('loopGroupLeads', JSON.stringify(groupLeads));
+    if (firebaseEnabled && db) {
+        try {
+            await window.firebaseSetDoc(window.firebaseDoc(db, 'projects', 'main-project-groupleads'), {
+                leads: groupLeads,
+                lastUpdated: new Date().toISOString()
+            }, { merge: true });
+        } catch (e) { console.warn('Group leads Firebase save failed:', e); }
+    }
 }
 
 function canGroupLeadAssignStation(categoryId, stationId) {
