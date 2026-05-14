@@ -3308,9 +3308,11 @@ function updateGroupLeadUI() {
         updateMemberUI();
         if (indicator) {
             indicator.style.display = 'flex';
+            indicator.style.flexDirection = 'column';
+            indicator.style.width = '100%';
             indicator.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="width: 16px; height: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3); flex-wrap: wrap;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="width: 16px; height: 16px; flex-shrink: 0;">
                         <circle cx="12" cy="7" r="4"/>
                         <path d="M5 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/>
                     </svg>
@@ -3319,23 +3321,21 @@ function updateGroupLeadUI() {
                 <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
                     ${currentGroupLead.category === 'mechanical' ? 'Mechanical' : 'Controls'} - Station ${currentGroupLead.stationNum}
                 </div>
-                <div style="display:flex;gap:6px;margin-top:8px;">
-                    <button class="btn-logout" onclick="showChangePasswordModal('grouplead')" style="flex:1;background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0110 0v4"/>
-                        </svg>
-                        Password
-                    </button>
-                    <button class="btn-logout" onclick="groupLeadLogout()" style="flex:1;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-                            <polyline points="16 17 21 12 16 7"/>
-                            <line x1="21" y1="12" x2="9" y2="12"/>
-                        </svg>
-                        Logout
-                    </button>
-                </div>
+                <button class="btn-logout" onclick="showChangePasswordModal('grouplead')" style="margin-top:6px;width:100%;background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0110 0v4"/>
+                    </svg>
+                    Change Password
+                </button>
+                <button class="btn-logout" onclick="groupLeadLogout()" style="margin-top:4px;width:100%;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Logout
+                </button>
             `;
         }
     } else {
