@@ -1204,6 +1204,23 @@ function getAssignedHours(memberName) {
     return stationHours + timelineHours;
 }
 
+// Returns the actual hours a member has logged, combining task-bound actual hours
+// and timesheet entries. Uses Math.max to avoid double counting when a task has
+// been committed to the timesheet. This is the canonical actual-hours figure
+// shown on team cards and in the member modal.
+function getMemberActualHours(memberName) {
+    const stationActual = getAllTasks()
+        .filter(t => t.assignedTo === memberName)
+        .reduce((sum, t) => sum + (parseFloat(t.actualHours) || 0), 0);
+    const timelineActual = getTimelineTasksForMember(memberName)
+        .reduce((sum, t) => sum + (parseFloat(t.actualHours) || 0), 0);
+    const taskActual = stationActual + timelineActual;
+    const timesheetTotal = (timesheetEntries || [])
+        .filter(e => e.memberName === memberName)
+        .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+    return Math.max(taskActual, timesheetTotal);
+}
+
 function getStatusClass(status) {
     const map = {
         'Complete': 'status-complete',
@@ -3827,10 +3844,12 @@ function renderTeam() {
     
     grid.innerHTML = teamMembers.map((member, index) => {
         const assignedHours = getAssignedHours(member.name);
+        const actualHours = getMemberActualHours(member.name);
+        const actualHoursDisplay = Number.isInteger(actualHours) ? actualHours : actualHours.toFixed(1);
         const stationTaskCount = getAllTasks().filter(t => t.assignedTo === member.name).length;
         const timelineTasks = getTimelineTasksForMember(member.name);
         const taskCount = stationTaskCount + timelineTasks.length;
-        const loadPercent = member.targetHours > 0 ? (assignedHours / member.targetHours) * 100 : 0;
+        const loadPercent = assignedHours > 0 ? (actualHours / assignedHours) * 100 : 0;
         
         let loadColor = '#28a745';
         if (loadPercent > 80 && loadPercent <= 100) loadColor = '#00d4aa';
@@ -3885,7 +3904,7 @@ function renderTeam() {
                         <span class="team-stat-label">Tasks</span>
                     </div>
                     <div class="team-stat">
-                        <span class="team-stat-value">${assignedHours}/${member.targetHours}</span>
+                        <span class="team-stat-value">${actualHoursDisplay}/${assignedHours}</span>
                         <span class="team-stat-label">Hours</span>
                     </div>
                 </div>
@@ -3985,13 +4004,7 @@ function openMemberTasks(memberName, memberIndex) {
     const completedTasks = memberTasks.filter(t => t.status === 'Complete').length;
     const inProgressTasks = memberTasks.filter(t => t.status === 'In Progress').length;
     const totalHours = memberTasks.reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
-    // Actual hours combines task-bound actual hours and timesheet entries for this member.
-    // Use the larger of the two to avoid double counting when a task has been committed to the timesheet.
-    const taskActualHours = memberTasks.reduce((sum, t) => sum + (parseFloat(t.actualHours) || 0), 0);
-    const timesheetHours = (timesheetEntries || [])
-        .filter(e => e.memberName === memberName)
-        .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
-    const actualHours = Math.max(taskActualHours, timesheetHours);
+    const actualHours = getMemberActualHours(memberName);
     const actualHoursDisplay = Number.isInteger(actualHours) ? actualHours : actualHours.toFixed(1);
     const progressPercent = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
     
