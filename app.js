@@ -3984,8 +3984,15 @@ function openMemberTasks(memberName, memberIndex) {
     const totalTasks = memberTasks.length;
     const completedTasks = memberTasks.filter(t => t.status === 'Complete').length;
     const inProgressTasks = memberTasks.filter(t => t.status === 'In Progress').length;
-    const totalHours = memberTasks.reduce((sum, t) => sum + (t.estHours || 0), 0);
-    const actualHours = memberTasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+    const totalHours = memberTasks.reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
+    // Actual hours combines task-bound actual hours and timesheet entries for this member.
+    // Use the larger of the two to avoid double counting when a task has been committed to the timesheet.
+    const taskActualHours = memberTasks.reduce((sum, t) => sum + (parseFloat(t.actualHours) || 0), 0);
+    const timesheetHours = (timesheetEntries || [])
+        .filter(e => e.memberName === memberName)
+        .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+    const actualHours = Math.max(taskActualHours, timesheetHours);
+    const actualHoursDisplay = Number.isInteger(actualHours) ? actualHours : actualHours.toFixed(1);
     const progressPercent = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
     
     // Determine if the viewer can edit this member's tasks
@@ -4107,7 +4114,7 @@ function openMemberTasks(memberName, memberIndex) {
                         <div class="member-stat-label">Active</div>
                     </div>
                     <div class="member-stat-card">
-                        <div class="member-stat-value">${actualHours}/${totalHours}h</div>
+                        <div class="member-stat-value">${actualHoursDisplay}/${totalHours}h</div>
                         <div class="member-stat-label">Hours</div>
                     </div>
                     <div class="member-stat-card">
