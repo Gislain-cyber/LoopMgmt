@@ -3845,11 +3845,14 @@ function renderTeam() {
     grid.innerHTML = teamMembers.map((member, index) => {
         const assignedHours = getAssignedHours(member.name);
         const actualHours = getMemberActualHours(member.name);
+        const targetHours = parseFloat(member.targetHours) || 0;
         const actualHoursDisplay = Number.isInteger(actualHours) ? actualHours : actualHours.toFixed(1);
+        const assignedHoursDisplay = Number.isInteger(assignedHours) ? assignedHours : assignedHours.toFixed(1);
         const stationTaskCount = getAllTasks().filter(t => t.assignedTo === member.name).length;
         const timelineTasks = getTimelineTasksForMember(member.name);
         const taskCount = stationTaskCount + timelineTasks.length;
-        const loadPercent = assignedHours > 0 ? (actualHours / assignedHours) * 100 : 0;
+        // Progress bar = logged actual hours against the member's project target.
+        const loadPercent = targetHours > 0 ? (actualHours / targetHours) * 100 : 0;
         
         let loadColor = '#28a745';
         if (loadPercent > 80 && loadPercent <= 100) loadColor = '#00d4aa';
@@ -3903,9 +3906,9 @@ function renderTeam() {
                         <span class="team-stat-value">${taskCount}</span>
                         <span class="team-stat-label">Tasks</span>
                     </div>
-                    <div class="team-stat">
-                        <span class="team-stat-value">${actualHoursDisplay}/${assignedHours}</span>
-                        <span class="team-stat-label">Hours</span>
+                    <div class="team-stat" title="Logged hours / Target hours&#10;Assigned (estimated): ${assignedHoursDisplay}h">
+                        <span class="team-stat-value">${actualHoursDisplay}/${targetHours}</span>
+                        <span class="team-stat-label">Hours · ${assignedHoursDisplay}h assigned</span>
                     </div>
                 </div>
                 ${taskListHTML}
@@ -4003,10 +4006,17 @@ function openMemberTasks(memberName, memberIndex) {
     const totalTasks = memberTasks.length;
     const completedTasks = memberTasks.filter(t => t.status === 'Complete').length;
     const inProgressTasks = memberTasks.filter(t => t.status === 'In Progress').length;
-    const totalHours = memberTasks.reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
+    // Hours model:
+    //   assignedHours  = sum of est hours across tasks assigned to this member (workload)
+    //   actualHours    = max(task-bound actual hours, timesheet entries) — actual time logged
+    //   targetHours    = the member's capacity / target for the project
+    const assignedHours = memberTasks.reduce((sum, t) => sum + (parseFloat(t.estHours) || 0), 0);
     const actualHours = getMemberActualHours(memberName);
+    const targetHours = parseFloat(member.targetHours) || 0;
     const actualHoursDisplay = Number.isInteger(actualHours) ? actualHours : actualHours.toFixed(1);
-    const progressPercent = totalHours > 0 ? Math.round((actualHours / totalHours) * 100) : 0;
+    const assignedHoursDisplay = Number.isInteger(assignedHours) ? assignedHours : assignedHours.toFixed(1);
+    // Progress is logged actual against the member's project target (capacity burn).
+    const progressPercent = targetHours > 0 ? Math.round((actualHours / targetHours) * 100) : 0;
     
     // Determine if the viewer can edit this member's tasks
     const isOwnProfile = currentMember && currentMember.name === memberName;
@@ -4127,8 +4137,12 @@ function openMemberTasks(memberName, memberIndex) {
                         <div class="member-stat-label">Active</div>
                     </div>
                     <div class="member-stat-card">
-                        <div class="member-stat-value">${actualHoursDisplay}/${totalHours}h</div>
-                        <div class="member-stat-label">Hours</div>
+                        <div class="member-stat-value">${actualHoursDisplay}/${targetHours}h</div>
+                        <div class="member-stat-label">Hours (logged / target)</div>
+                    </div>
+                    <div class="member-stat-card">
+                        <div class="member-stat-value">${assignedHoursDisplay}h</div>
+                        <div class="member-stat-label">Assigned</div>
                     </div>
                     <div class="member-stat-card">
                         <div class="member-stat-value" style="color: ${member.color}">${progressPercent}%</div>
